@@ -1,0 +1,40 @@
+[osmium]
+  url=git@github.com:motis-project/libosmium.git
+  branch=master
+  commit=6e6d6b3081cc8bdf25dda89730e25c36eb995516
+[geo]
+  url=git@github.com:motis-project/geo.git
+  branch=master
+  commit=98e98acce0b4ea56260b6f458c20a0209c6ea213
+[cista]
+  url=git@github.com:felixguendling/cista.git
+  branch=master
+  commit=a6218e9cd9da9e1c7a70c1188e2faf9e082b7f1c
+[googletest]
+  url=git@github.com:motis-project/googletest.git
+  branch=master
+  commit=34a46558609e05865c197f0260ab36daa7cbbb6e
+[utl]
+  url=git@github.com:motis-project/utl.git
+  branch=master
+  commit=b81cfdccda166cef3c20dd41b4c9697b4137cea4
+[protozero]
+  url=git@github.com:motis-project/protozero.git
+  branch=master
+  commit=8c9f3fa97c2cfdceef86d0b61818ae98e9328f29
+[guess]
+  url=git@github.com:motis-project/guess.git
+  branch=master
+  commit=5acaeaacca154bd20987806f9626be5e3b87e1c5
+[boost]
+  url=git@github.com:motis-project/boost.git
+  branch=master
+  commit=4c256be5b83f0d91898ea48d65bdb33e07d30f65
+[zlib]
+  url=git@github.com:motis-project/zlib.git
+  branch=master
+  commit=8e7c86d3a0e49101b9a67d74c4a07345dcb0e485
+[unordered_dense]
+  url=git@github.com:motis-project/unordered_dense.git
+  branch=main
+  commit=77e91016354e6d8cba24a86c5abb807de2534c02

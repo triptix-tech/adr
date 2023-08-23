@@ -1,0 +1,4 @@
+/.idea
+/deps
+/*build*
+/.pkg.mutex
