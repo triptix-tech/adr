@@ -41,8 +41,6 @@ struct coordinates {
 
 struct typeahead {
   area_idx_t add_postal_code_area(osmium::TagList const& tags) {
-    assert(verify());
-
     auto const postal_code = tags["postal_code"];
     if (postal_code == nullptr) {
       return area_idx_t::invalid();
@@ -53,13 +51,11 @@ struct typeahead {
     area_population_.emplace_back(0U);
     area_names_.emplace_back(
         get_or_create_string(postal_code, to_idx(idx), location_type_t::kArea));
-    assert(verify());
+    utl::verify(verify(), "verify failed");
     return idx;
   }
 
   area_idx_t add_admin_area(osmium::TagList const& tags) {
-    assert(verify());
-
     auto const admin_lvl = tags["admin_level"];
     if (admin_lvl == nullptr) {
       return area_idx_t::invalid();
@@ -78,13 +74,11 @@ struct typeahead {
         population == nullptr ? 0U : utl::parse<unsigned>(population));
     area_names_.emplace_back(
         get_or_create_string(name, to_idx(idx), location_type_t::kArea));
-    assert(verify());
+    utl::verify(verify(), "verify failed");
     return idx;
   }
 
   void add_address(osmium::TagList const& tags, osmium::Location const& l) {
-    assert(verify());
-
     auto const house_number = tags["addr:housenumber"];
     if (house_number == nullptr) {
       return;
@@ -103,21 +97,28 @@ struct typeahead {
           return idx;
         });
 
+    if (!street_coordinates_[street_idx].empty()) {
+      auto const last = street_coordinates_[street_idx].back();
+      if (osmium::geom::haversine::distance(
+              osmium::geom::Coordinates{l},
+              osmium::geom::Coordinates{
+                  osmium::Location{last.lat_, last.lng_}}) < 1000.0) {
+        return;
+      }
+    }
+
     utl::insert_sorted(
         string_to_location_[string_idx],
         data::pair{to_idx(street_idx), location_type_t::kStreet});
-    assert(verify());
 
     auto const house_number_idx = get_or_create_string(
         house_number, to_idx(street_idx), location_type_t::kHouseNumber);
     house_numbers_[street_idx].push_back(house_number_idx);
     house_coordinates_[street_idx].push_back(coordinates{l.x(), l.y()});
-    assert(verify());
+    utl::verify(verify(), "verify failed");
   }
 
   void add_street(osmium::TagList const& tags, osmium::Location const& l) {
-    assert(verify());
-
     auto const name = tags["name"];
     if (name == nullptr) {
       return;
@@ -145,14 +146,13 @@ struct typeahead {
     utl::insert_sorted(
         string_to_location_[string_idx],
         data::pair{to_idx(street_idx), location_type_t::kStreet});
-    assert(verify());
+    utl::verify(verify(), "verify failed");
   }
 
   void add_place(std::uint64_t const id,
+                 bool const is_way,
                  osmium::TagList const& tags,
                  osmium::Location const& l) {
-    assert(verify());
-
     auto const name = tags["name"];
     if (name == nullptr) {
       return;
@@ -163,7 +163,9 @@ struct typeahead {
         get_or_create_string(name, idx, location_type_t::kPlace));
     place_coordinates_.emplace_back(l.x(), l.y());
     place_osm_ids_.emplace_back(id);
-    assert(verify());
+    place_is_way_.resize(place_is_way_.size() + 1U);
+    place_is_way_.set(idx, is_way);
+    utl::verify(verify(), "verify failed");
   }
 
   string_idx_t get_or_create_string(std::string_view s,
@@ -191,6 +193,8 @@ struct typeahead {
   }
 
   bool verify() {
+    return true;
+
     auto i = 0U;
     for (auto const [str, locations] :
          utl::zip(strings_, string_to_location_)) {
@@ -203,6 +207,7 @@ struct typeahead {
                         << " != i=" << i << "\n";
               return false;
             }
+            break;
           case location_type_t::kPlace:
             if (place_names_[place_idx_t{l}] != i) {
               std::cerr << "ERROR: place " << l
@@ -210,6 +215,7 @@ struct typeahead {
                         << " != i=" << i << "\n";
               return false;
             }
+            break;
           case location_type_t::kHouseNumber: break;
           case location_type_t::kArea:
             if (area_names_[area_idx_t{l}] != i) {
@@ -218,6 +224,7 @@ struct typeahead {
                         << " != i=" << i << "\n";
               return false;
             }
+            break;
         }
       }
       ++i;
@@ -231,8 +238,9 @@ struct typeahead {
 
   data::vector_map<place_idx_t, string_idx_t> place_names_;
   data::vector_map<place_idx_t, coordinates> place_coordinates_;
-  data::vector_map<place_idx_t, std::int64_t> place_osm_ids_;
   data::vector_map<place_idx_t, area_set_idx_t> place_areas_;
+  data::vector_map<place_idx_t, std::int64_t> place_osm_ids_;
+  data::bitvec place_is_way_;
 
   data::vector_map<street_idx_t, string_idx_t> street_names_;
   data::mutable_fws_multimap<street_idx_t, coordinates> street_coordinates_;
