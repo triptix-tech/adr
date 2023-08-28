@@ -118,7 +118,10 @@ void extract(std::filesystem::path const& in_path,
                 !tags.has_key("highway") && /* named motorway_junction */
                 !tags.has_key("traffic_sign") &&
                 !tags.has_tag("building", "industrial") &&
-                !tags.has_tag("amenity", "bicycle_rental")) {
+                !tags.has_tag("amenity", "bicycle_rental") &&
+                !tags.has_tag("leisure", "playground") &&
+                !tags.has_tag("access", "false") &&
+                !tags.has_tag("amenity", "taxi")) {
               t.add_address(ctx, tags, n.location());
               t.add_place(ctx, n.id(), false, tags, n.location());
             }
@@ -128,7 +131,10 @@ void extract(std::filesystem::path const& in_path,
               auto const& tags = w.tags();
               if (!tags.has_key("public_transport") &&
                   !tags.has_tag("amenity", "toilets") &&
-                  !tags.has_tag("building", "industrial")) {
+                  !tags.has_tag("building", "industrial") &&
+                  !tags.has_tag("leisure", "playground") &&
+                  !tags.has_tag("access", "false") &&
+                  !tags.has_tag("amenity", "taxi")) {
                 tags.has_key("highway")
                     ? t.add_street(ctx, tags, w.nodes().front().location())
                     : t.add_place(ctx, w.id(), true, tags,
@@ -150,6 +156,8 @@ void extract(std::filesystem::path const& in_path,
   for (auto const b : ctx.string_to_location_) {
     t.string_to_location_.emplace_back(b);
   }
+
+  t.house_coordinates_.resize(t.street_names_.size());
 
   auto rtree_results = std::basic_string<area_idx_t>{};
   auto area_bbox_rtree = rtree{areas};
@@ -177,6 +185,7 @@ void extract(std::filesystem::path const& in_path,
           t.get_or_create_area_set(ctx, geo_lookup(c)));
     }
 
+    assert(t.house_areas_.size() == street_idx);
     t.house_areas_.add_back_sized(0);
     for (auto const& c : t.house_coordinates_[street_idx_t{street_idx}]) {
       t.house_areas_[street_idx_t{street_idx}].push_back(

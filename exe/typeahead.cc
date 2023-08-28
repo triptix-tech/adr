@@ -9,7 +9,7 @@ namespace bpo = boost::program_options;
 namespace fs = std::filesystem;
 
 int main(int ac, char** av) {
-  auto in = fs::path{"osm.pbf"};
+  auto in = fs::path{"adr.cista"};
   auto guess = std::string{""};
 
   try {

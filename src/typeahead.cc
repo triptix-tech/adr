@@ -262,18 +262,16 @@ void typeahead::guess(std::string_view in, guess_context& ctx) const {
   ctx.match_counts_.resize(strings_.size());
   for (auto i = 0U; i != n_in_trigrams; ++i) {
     auto const t = in_trigrams_buf[i];
-    auto const idf =
-        fast_log_2(kNTrigrams) - fast_log_2(trigram_index_[t].size());
+    auto const idf = static_cast<float>(fast_log_2(strings_.size())) /
+                     static_cast<float>(fast_log_2(trigram_index_[t].size()));
     std::cout << decompress_trigram(t) << ": "
-              << "kNTrigrams=" << static_cast<float>(kNTrigrams)
+              << "strings_.size=" << strings_.size()
               << ", trigram_index_[t].size=" << trigram_index_[t].size()
-              << trigram_index_[t].size()
-              << ", nominator=" << std::log(static_cast<double>(kNTrigrams))
-              << ", denominator=" << std::log(1.0 + trigram_index_[t].size())
+              << ", nominator=" << fast_log_2(strings_.size())
+              << ", denominator=" << fast_log_2(1 + trigram_index_[t].size())
               << ": " << idf << "\n";
     for (auto const str : trigram_index_[t]) {
-      ctx.match_counts_[to_idx(str)] +=
-          static_cast<std::uint8_t>(std::ceil(idf));
+      ctx.match_counts_[to_idx(str)] += std::ceil(idf);
     }
   }
 
@@ -288,26 +286,6 @@ void typeahead::guess(std::string_view in, guess_context& ctx) const {
     auto const match_count = ctx.match_counts_[to_idx(i)];
     ctx.matches_.emplace_back(i, static_cast<float>(match_count) /
                                      (ctx.sqrt_len_vec_in_ * match_sqrts_[i]));
-    //    auto const len_cmp = static_cast<float>(strings_[i].size()) /
-    //                         static_cast<float>(ctx.normalized_.length());
-    //    if (len_cmp < 1.0f) {
-    //      ctx.matches_[ctx.matches_.size() - 1].cos_sim_ *= len_cmp;
-    //    }
-
-    // Score exact word match.
-    //    if (ctx.matches_.back().cos_sim_ > 0.5) {
-    //      utl::for_each_token(strings_[i].view(), ' ', [&](utl::cstr t1) {
-    //        utl::for_each_token(ctx.normalized_, ' ', [&](utl::cstr t2) {
-    //          if (t1 == t2) {
-    //            ctx.matches_.back().cos_sim_ *= 2.0F;
-    //            return utl::continue_t::kBreak;
-    //          } else {
-    //            return utl::continue_t::kContinue;
-    //          }
-    //        });
-    //        return utl::continue_t::kContinue;
-    //      });
-    //    }
   }
 
   // Sort matches by cosine-similarity.

@@ -85,7 +85,7 @@ void get_suggestions(typeahead const& t,
                         << t.strings_[t.area_names_[area.area_]].view() << "\n";
               continue;
             }
-            if (area.cos_sim_ < 0.1 && t.area_admin_level_[area.area_] != 6) {
+            if (area.cos_sim_ < 0.1) {
               continue;
             }
             std::cout << "  AREA "
