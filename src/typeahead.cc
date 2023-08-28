@@ -205,21 +205,34 @@ bool typeahead::verify() {
 
 void typeahead::build_trigram_index() {
   auto normalized = std::string{};
-  auto tmp = std::vector<std::vector<string_idx_t>>{};
-  tmp.resize(kNTrigrams);
+
+  auto const build_index = [&]<typename T>(
+                               data::vector_map<T, string_idx_t> const& strings,
+                               trigram_idx_t<T>& trigram_index) {
+    auto tmp = std::vector<std::vector<T>>{};
+    tmp.resize(kNTrigrams);
+    for (auto const [i, str_idx] : utl::enumerate(strings)) {
+      normalize(strings_[str_idx].view(), normalized);
+      for_each_trigram(normalized, [&](std::string_view trigram) {
+        tmp[compress_trigram(trigram)].emplace_back(i);
+      });
+    }
+
+    for (auto& x : tmp) {
+      utl::erase_duplicates(x);
+      trigram_index.emplace_back(x);
+    }
+  };
+
+  build_index(area_names_, area_trigrams_);
+  build_index(street_names_, street_trigrams_);
+  build_index(place_names_, place_trigrams_);
+
   match_sqrts_.resize(strings_.size());
-  for (auto const [i, str] : utl::enumerate(strings_)) {
-    normalize(str.view(), normalized);
-    for_each_trigram(normalized, [&](std::string_view trigram) {
-      tmp[compress_trigram(trigram)].emplace_back(i);
-    });
+  for (auto i = string_idx_t{0U}; i != strings_.size(); ++i) {
     match_sqrts_[string_idx_t{i}] =
         static_cast<float>(std::sqrt(normalized.size() - 2U));
-  }
-
-  for (auto& x : tmp) {
-    utl::erase_duplicates(x);
-    trigram_index_.emplace_back(x);
+    match_sqrts_.resize(strings_.size());
   }
 }
 
@@ -241,8 +254,8 @@ std::uint64_t fast_log_2(std::uint64_t v) {
 }
 
 void typeahead::guess(std::string_view in, guess_context& ctx) const {
+  ctx.reset();
   normalize(in, ctx.normalized_);
-  ctx.matches_.clear();
   if (ctx.normalized_.length() < 3) {
     return;
   }
@@ -257,44 +270,60 @@ void typeahead::guess(std::string_view in, guess_context& ctx) const {
   });
   std::sort(begin(in_trigrams_buf), begin(in_trigrams_buf) + n_in_trigrams);
 
-  // Collect candidate indices matched by the trigrams in the input string.
-  ctx.match_counts_.clear();
-  ctx.match_counts_.resize(strings_.size());
-  for (auto i = 0U; i != n_in_trigrams; ++i) {
-    auto const t = in_trigrams_buf[i];
-    auto const idf = static_cast<float>(fast_log_2(strings_.size())) /
-                     static_cast<float>(fast_log_2(trigram_index_[t].size()));
-    std::cout << decompress_trigram(t) << ": "
-              << "strings_.size=" << strings_.size()
-              << ", trigram_index_[t].size=" << trigram_index_[t].size()
-              << ", nominator=" << fast_log_2(strings_.size())
-              << ", denominator=" << fast_log_2(1 + trigram_index_[t].size())
-              << ": " << idf << "\n";
-    for (auto const str : trigram_index_[t]) {
-      ctx.match_counts_[to_idx(str)] += std::ceil(idf);
-    }
-  }
+  auto const match_trigrams =
+      [&]<typename T>(
+          data::vector_map<T, string_idx_t> const& names,
+          data::vecvec<compressed_trigram_t, T, std::uint32_t> const& trigrams,
+          cista::raw::vector_map<T, match<T>>& matches,
+          cista::raw::vector_map<T, std::uint8_t>& match_counts) {
+        // Collect candidate indices matched by the trigrams in the input
+        // string.
+        match_counts.clear();
+        match_counts.resize(strings_.size());
+        for (auto i = 0U; i != n_in_trigrams; ++i) {
+          auto const t = in_trigrams_buf[i];
+          auto const idf = static_cast<float>(fast_log_2(strings_.size())) /
+                           static_cast<float>(fast_log_2(trigrams[t].size()));
+          std::cout << decompress_trigram(t) << ": "
+                    << "strings_.size=" << strings_.size()
+                    << ", trigram_index[t].size=" << trigrams[t].size()
+                    << ", nominator=" << fast_log_2(strings_.size())
+                    << ", denominator=" << fast_log_2(1 + trigrams[t].size())
+                    << ": " << idf << "\n";
+          for (auto const item_idx : trigrams[t]) {
+            match_counts[item_idx] += std::ceil(idf);
+          }
+        }
 
-  // Calculate cosine-similarity.
-  ctx.sqrt_len_vec_in_ =
-      static_cast<float>(std::sqrt(ctx.normalized_.size() - 2));
-  for (auto i = string_idx_t{0U}; i < strings_.size(); ++i) {
-    if (ctx.match_counts_[to_idx(i)] == 0U) {
-      continue;
-    }
+        // Calculate cosine-similarity.
+        ctx.sqrt_len_vec_in_ =
+            static_cast<float>(std::sqrt(ctx.normalized_.size() - 2));
+        for (auto i = T{0U}; i < match_counts.size(); ++i) {
+          if (match_counts[T{i}] == 0U) {
+            continue;
+          }
 
-    auto const match_count = ctx.match_counts_[to_idx(i)];
-    ctx.matches_.emplace_back(i, static_cast<float>(match_count) /
-                                     (ctx.sqrt_len_vec_in_ * match_sqrts_[i]));
-  }
+          auto const match_count = match_counts[i];
+          matches.emplace_back(
+              i, static_cast<float>(match_count) /
+                     (ctx.sqrt_len_vec_in_ * match_sqrts_[names[i]]));
+        }
 
-  // Sort matches by cosine-similarity.
-  auto const result_count = static_cast<std::ptrdiff_t>(
-      std::min(static_cast<std::size_t>(200), ctx.matches_.size()));
-  std::nth_element(begin(ctx.matches_), begin(ctx.matches_) + result_count,
-                   end(ctx.matches_));
-  ctx.matches_.resize(result_count);
-  utl::sort(ctx.matches_);
+        // Sort matches by cosine-similarity.
+        auto const result_count =
+            static_cast<std::ptrdiff_t>(std::min(200U, matches.size()));
+        std::nth_element(begin(matches), begin(matches) + result_count,
+                         end(matches));
+        matches.resize(result_count);
+        utl::sort(matches);
+      };
+
+  match_trigrams(place_names_, place_trigrams_, ctx.place_matches_,
+                 ctx.place_match_counts_);
+  match_trigrams(area_names_, area_trigrams_, ctx.area_matches_,
+                 ctx.area_match_counts_);
+  match_trigrams(street_names_, street_trigrams_, ctx.street_matches_,
+                 ctx.street_match_counts_);
 }
 
 void typeahead::print_match(string_idx_t const str_idx) const {

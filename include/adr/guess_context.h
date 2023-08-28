@@ -6,15 +6,18 @@
 #include <variant>
 #include <vector>
 
+#include "cista/containers/vector.h"
+
 #include "adr/types.h"
 
 namespace adr {
 
 struct typeahead;
 
+template <typename T>
 struct match {
   bool operator<(match const& o) const { return cos_sim_ > o.cos_sim_; }
-  string_idx_t str_idx_;
+  T idx_;
   float cos_sim_;
 };
 
@@ -35,9 +38,19 @@ struct suggestion {
 };
 
 struct guess_context {
+  void reset() {
+    place_matches_.clear();
+    area_matches_.clear();
+    street_matches_.clear();
+  }
+
   std::string normalized_;
-  std::vector<match> matches_;
-  std::vector<std::uint8_t> match_counts_;
+  cista::raw::vector_map<place_idx_t, match<place_idx_t>> place_matches_;
+  cista::raw::vector_map<place_idx_t, std::uint8_t> place_match_counts_;
+  cista::raw::vector_map<area_idx_t, match<area_idx_t>> area_matches_;
+  cista::raw::vector_map<area_idx_t, std::uint8_t> area_match_counts_;
+  cista::raw::vector_map<street_idx_t, match<street_idx_t>> street_matches_;
+  cista::raw::vector_map<street_idx_t, std::uint8_t> street_match_counts_;
   std::vector<suggestion> suggestions_;
   float sqrt_len_vec_in_;
 };

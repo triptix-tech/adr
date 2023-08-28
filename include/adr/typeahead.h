@@ -28,6 +28,9 @@
 
 namespace adr {
 
+template <typename T>
+using trigram_idx_t = data::vecvec<compressed_trigram_t, T, std::uint32_t>;
+
 struct import_context {
   template <typename K, typename V>
   using raw_hash_map = cista::raw::ankerl_map<K, V>;
@@ -113,8 +116,9 @@ struct typeahead {
       string_to_location_;
 
   data::vector_map<string_idx_t, float> match_sqrts_;
-  data::vecvec<compressed_trigram_t, string_idx_t, std::uint64_t>
-      trigram_index_;
+  trigram_idx_t<area_idx_t> area_trigrams_;
+  trigram_idx_t<place_idx_t> place_trigrams_;
+  trigram_idx_t<street_idx_t> street_trigrams_;
 };
 
 }  // namespace adr
