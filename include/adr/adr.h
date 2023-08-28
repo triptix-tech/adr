@@ -7,22 +7,22 @@
 
 #include "geo/latlng.h"
 
-namespace adr {
+#include "cista/memory_holder.h"
 
-struct suggestion {};
+#include "adr/guess_context.h"
+
+namespace adr {
 
 struct typeahead;
 
-std::unique_ptr<typeahead> create();
-
 void extract(std::filesystem::path const& in, std::filesystem::path const& out);
 
-void read(std::filesystem::path const&, std::unique_ptr<typeahead>&);
+cista::wrapped<typeahead> read(std::filesystem::path const&);
 
-void get_suggestions(typeahead&,
+void get_suggestions(typeahead const&,
                      geo::latlng const&,
                      std::string_view input,
                      unsigned n_suggestions,
-                     std::vector<suggestion>&);
+                     guess_context&);
 
 }  // namespace adr

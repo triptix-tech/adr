@@ -1,4 +1,4 @@
-#include "adr/adr.h"
+#include <cista/mmap.h>
 
 #include "boost/geometry.hpp"
 #include "boost/geometry/geometries/box.hpp"
@@ -14,14 +14,13 @@
 #include "utl/enumerate.h"
 #include "utl/helpers/algorithm.h"
 #include "utl/progress_tracker.h"
+#include "utl/zip.h"
 
 #include "adr/typeahead.h"
-#include "utl/zip.h"
 
 namespace osm = osmium;
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
-using namespace std::string_view_literals;
 
 namespace adr {
 
@@ -79,6 +78,7 @@ void extract(std::filesystem::path const& in_path,
   auto index = location_index_t{};
   auto location_handler = location_handler_t{index};
 
+  auto ctx = import_context{};
   auto t = typeahead{};
   auto areas = std::vector<area_rtree_value>{};
   osm::apply(
@@ -90,9 +90,10 @@ void extract(std::filesystem::path const& in_path,
                        return;
                      }
 
-                     auto const admin_area_idx = t.add_admin_area(a.tags());
+                     auto const admin_area_idx =
+                         t.add_admin_area(ctx, a.tags());
                      auto const postal_code_area_idx =
-                         t.add_postal_code_area(a.tags());
+                         t.add_postal_code_area(ctx, a.tags());
 
                      auto const bbox =
                          box{{env.bottom_left().x(), env.bottom_left().y()},
@@ -118,8 +119,8 @@ void extract(std::filesystem::path const& in_path,
                 !tags.has_key("traffic_sign") &&
                 !tags.has_tag("building", "industrial") &&
                 !tags.has_tag("amenity", "bicycle_rental")) {
-              t.add_address(tags, n.location());
-              t.add_place(n.id(), false, tags, n.location());
+              t.add_address(ctx, tags, n.location());
+              t.add_place(ctx, n.id(), false, tags, n.location());
             }
           },
           [&](osm::Way const& w) {
@@ -129,13 +130,26 @@ void extract(std::filesystem::path const& in_path,
                   !tags.has_tag("amenity", "toilets") &&
                   !tags.has_tag("building", "industrial")) {
                 tags.has_key("highway")
-                    ? t.add_street(tags, w.nodes().front().location())
-                    : t.add_place(w.id(), true, tags,
+                    ? t.add_street(ctx, tags, w.nodes().front().location())
+                    : t.add_place(ctx, w.id(), true, tags,
                                   w.nodes().front().location());
-                t.add_address(tags, w.nodes().front().location());
+                t.add_address(ctx, tags, w.nodes().front().location());
               }
             }
           }});
+
+  for (auto const b : ctx.street_coordinates_) {
+    t.street_coordinates_.emplace_back(b);
+  }
+  for (auto const b : ctx.house_numbers_) {
+    t.house_numbers_.emplace_back(b);
+  }
+  for (auto const b : ctx.house_coordinates_) {
+    t.house_coordinates_.emplace_back(b);
+  }
+  for (auto const b : ctx.string_to_location_) {
+    t.string_to_location_.emplace_back(b);
+  }
 
   auto rtree_results = std::basic_string<area_idx_t>{};
   auto area_bbox_rtree = rtree{areas};
@@ -152,13 +166,7 @@ void extract(std::filesystem::path const& in_path,
   };
 
   for (auto const& c : t.place_coordinates_) {
-    rtree_results.clear();
-    area_bbox_rtree.query(
-        bgi::covers(point{c.lat_, c.lng_}),
-        boost::make_function_output_iterator(
-            [&](auto&& entry) { rtree_results.push_back(entry.second); }));
-    utl::sort(rtree_results);
-    t.place_areas_.emplace_back(t.get_or_create_area_set(rtree_results));
+    t.place_areas_.emplace_back(t.get_or_create_area_set(ctx, geo_lookup(c)));
   }
 
   for (auto const& [street_idx, coordinates] :
@@ -166,132 +174,28 @@ void extract(std::filesystem::path const& in_path,
     t.street_areas_.add_back_sized(0);
     for (auto const& c : coordinates) {
       t.street_areas_[street_idx_t{street_idx}].push_back(
-          t.get_or_create_area_set(geo_lookup(c)));
+          t.get_or_create_area_set(ctx, geo_lookup(c)));
     }
 
     t.house_areas_.add_back_sized(0);
     for (auto const& c : t.house_coordinates_[street_idx_t{street_idx}]) {
       t.house_areas_[street_idx_t{street_idx}].push_back(
-          t.get_or_create_area_set(geo_lookup(c)));
+          t.get_or_create_area_set(ctx, geo_lookup(c)));
     }
-
-    utl::verify(t.street_areas_[street_idx_t{street_idx}].size() ==
-                    t.street_coordinates_[street_idx_t{street_idx}].size(),
-                "invalid sizes");
   }
 
   t.house_numbers_[street_idx_t{t.street_names_.size() - 1}];
   t.house_coordinates_[street_idx_t{t.street_names_.size() - 1}];
 
-  t.area_set_lookup_ = {};
-  t.string_lookup_ = {};
-  t.street_lookup_ = {};
+  ctx.string_lookup_ = {};
+  ctx.street_lookup_ = {};
+  ctx.street_names_ = {};
 
-  return;
+  t.build_trigram_index();
 
-  constexpr auto const admin_str =
-      std::array<std::string_view, 12>{"0",
-                                       "1",
-                                       "2",
-                                       "region"sv,
-                                       "state"sv,
-                                       "district",
-                                       "county",
-                                       "municipality",
-                                       "town",
-                                       "subtownship",
-                                       "neighbourhood",
-                                       "zip"};
-
-  auto const print_area = [&](area_idx_t const area) {
-    auto const admin_lvl = t.area_admin_level_[area];
-    std::cout << "          name=" << t.strings_[t.area_names_[area]].view()
-              << ", admin_lvl="
-              << (admin_lvl >= admin_str.size()
-                      ? fmt::to_string(to_idx(admin_lvl))
-                      : admin_str[to_idx(admin_lvl)])
-              << "\n";
-  };
-
-  auto const print_coordinate_and_areas = [&](coordinates const& c,
-                                              area_set_idx_t const area_set) {
-    std::cout << "        " << osmium::Location{c.lat_, c.lng_} << "\n";
-
-    for (auto const& area : t.area_sets_[area_set]) {
-      print_area(area);
-    }
-  };
-
-  auto const print_street = [&](street_idx_t const street_idx) {
-    auto const name_idx = t.street_names_[street_idx];
-    auto const area_sets = t.street_areas_[street_idx];
-    auto const coordinates = t.street_coordinates_[street_idx];
-    auto const house_numbers = t.house_numbers_[street_idx];
-    auto const house_coordinates = t.house_coordinates_[street_idx];
-    auto const house_areas = t.house_areas_[street_idx];
-
-    std::cout << "    " << t.strings_[name_idx].view() << "\n";
-
-    std::cout << "      HOUSE NUMBERS:\n";
-    for (auto const [house_number, house_coordinates, area_set] :
-         utl::zip(house_numbers, house_coordinates, house_areas)) {
-      print_coordinate_and_areas(house_coordinates, area_set);
-    }
-
-    std::cout << "      COORDINATES [n_coordinates=" << coordinates.size()
-              << ", n_areas=" << area_sets.size() << "]:\n";
-    for (auto const& [c, area_set] : utl::zip(coordinates, area_sets)) {
-      print_coordinate_and_areas(c, area_set);
-    }
-  };
-
-  //  for (auto const& [name_idx, area_sets, coordinates, house_numbers,
-  //                    house_coordinates] :
-  //       utl::zip(t.street_names_, t.street_areas_, t.street_coordinates_,
-  //                t.house_numbers_, t.house_coordinates_)) {
-  //    std::cout << t.strings_[name_idx].view() << ": ";
-  //
-  //    std::cout << "  locations: " << coordinates.size() << ", "
-  //              << area_sets.size() << "\n";
-  //    for (auto const& [c, area_set] : utl::zip(coordinates, area_sets)) {
-  //      std::cout << "    " << osmium::Location{c.lat_, c.lng_} << "\n";
-  //
-  //      for (auto const& area : t.area_sets_[area_set]) {
-  //        print_area(area);
-  //      }
-  //    }
-  //  }
-
-  for (auto const [str, locations] :
-       utl::zip(t.strings_, t.string_to_location_)) {
-    std::cout << "STR=" << str.view() << ": " << locations.size() << "\n";
-    for (auto const& [l, type] : locations) {
-      switch (type) {
-        case location_type_t::kStreet:
-          std::cout << "  STREET\n";
-          print_street(street_idx_t{l});
-          break;
-
-        case location_type_t::kPlace: {
-          std::cout << "  PLACE " << l << " [way=" << t.place_is_way_.test(l)
-                    << ", osm_id=" << t.place_osm_ids_[place_idx_t{l}]
-                    << "] name=\""
-                    << t.strings_[t.place_names_[place_idx_t{l}]].view()
-                    << "\"\n";
-          print_coordinate_and_areas(t.place_coordinates_[place_idx_t{l}],
-                                     t.place_areas_[place_idx_t{l}]);
-          break;
-        }
-
-        case location_type_t::kHouseNumber: break;
-
-        case location_type_t::kArea:
-          //          std::cout << "  AREA\n";
-          //          print_area(area_idx_t{l});
-          break;
-      }
-    }
-  }
+  auto mmap = cista::buf{
+      cista::mmap{out_path.string().c_str(), cista::mmap::protection::WRITE}};
+  cista::serialize<cista::mode::WITH_STATIC_VERSION>(mmap, t);
 }
 
 }  // namespace adr
