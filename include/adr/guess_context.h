@@ -47,12 +47,13 @@ struct suggestion {
   std::variant<place_idx_t, address, area_idx_t> location_;
   coordinates coordinates_;
   area_idx_t area_;
-  float score_;
+  std::uint8_t score_;
   std::string street_token_, area_token_;
 };
 
 struct guess_context {
   void reset() {
+    suggestions_.clear();
     place_matches_.clear();
     area_matches_.clear();
     street_matches_.clear();

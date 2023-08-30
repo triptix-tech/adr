@@ -3,6 +3,14 @@
 
 #include "boost/program_options.hpp"
 
+#include "ftxui/component/captured_mouse.hpp"  // for ftxui
+#include "ftxui/component/component.hpp"  // for Input, Renderer, Vertical
+#include "ftxui/component/component_base.hpp"  // for ComponentBase
+#include "ftxui/component/component_options.hpp"  // for InputOption
+#include "ftxui/component/screen_interactive.hpp"  // for Component, ScreenInteractive
+#include "ftxui/dom/elements.hpp"  // for text, hbox, separator, Element, operator|, vbox, border
+#include "ftxui/util/ref.hpp"  // for Ref
+
 #include "adr/adr.h"
 
 namespace bpo = boost::program_options;
@@ -52,14 +60,35 @@ int main(int ac, char** av) {
     }
     return 0;
   } else {
+    using namespace ftxui;
+
     std::string line;
     auto ctx = adr::guess_context{};
-    while (std::cout << "$ ", std::getline(std::cin, line)) {
-      adr::get_suggestions(*t, geo::latlng{0, 0}, line, 10, ctx);
+
+    std::string first_name;
+    auto const guesses = [&]() {
+      adr::get_suggestions(*t, geo::latlng{0, 0}, first_name, 10, ctx);
+
+      Elements list;
       for (auto const& s : ctx.suggestions_) {
-        s.print(std::cout, *t);
+        auto ss = std::stringstream{};
+        s.print(ss, *t);
+        list.push_back(text(ss.str()));
       }
-    }
-    std::cout << "\n";
+      return vbox(std::move(list));
+    };
+
+    InputOption options;
+    Component input_first_name = Input(&first_name, "", options);
+
+    auto component = Container::Vertical({input_first_name});
+
+    auto renderer = Renderer(component, [&] {
+      return bgcolor(Color::DeepPink1,
+                     vbox({input_first_name->Render(), hbox(guesses())}));
+    });
+
+    auto screen = ScreenInteractive::TerminalOutput();
+    screen.Loop(renderer);
   }
 }

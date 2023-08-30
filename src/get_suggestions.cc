@@ -88,13 +88,18 @@ void get_suggestions(typeahead const& t,
                      unsigned n_suggestions,
                      guess_context& ctx) {
   auto tokens = std::vector<std::string>{};
+  auto all_tokens_mask = std::uint8_t{0U};
+  auto i = 0U;
   utl::for_each_token(utl::cstr{in}, ' ', [&](utl::cstr token) {
     tokens.emplace_back(normalize_alloc(token.view()));
+    all_tokens_mask |= 1U << (i++);
   });
+  //  std::cout << "all tokens mask: " << bit_mask_to_str(all_tokens_mask) <<
+  //  "\n";
   auto const in_phrases = get_phrases(tokens);
-  for (auto const [i, p] : utl::enumerate(in_phrases)) {
-    std::cout << "  " << i << ": " << p.s_ << "\n";
-  }
+  //  for (auto const [i, p] : utl::enumerate(in_phrases)) {
+  //    std::cout << "  " << i << ": " << p.s_ << "\n";
+  //  }
 
   t.guess(in, ctx);
 
@@ -113,24 +118,27 @@ void get_suggestions(typeahead const& t,
                       std::vector<match<T>>& matches,
                       data::vector_map<T, string_idx_t> const& names) {
         for (auto [i, m] : utl::enumerate(matches)) {
-          std::cout << "  IN " << type << " [" << i
-                    << "]: " << t.strings_[names[m.idx_]].view()
-                    << " [match_count="
-                    << static_cast<unsigned>(match_counts[m.idx_])
-                    << ", sqrt_len_vec_in=" << ctx.sqrt_len_vec_in_
-                    << ", sqrt_name_len=" << t.match_sqrts_[names[m.idx_]]
-                    << ", cos_sim = " << m.cos_sim_ << " = "
-                    << static_cast<unsigned>(match_counts[m.idx_]) << " / ("
-                    << ctx.sqrt_len_vec_in_ << " * "
-                    << t.match_sqrts_[names[m.idx_]] << ") = "
-                    << (static_cast<float>(match_counts[m.idx_]) /
-                        (ctx.sqrt_len_vec_in_ * t.match_sqrts_[names[m.idx_]]))
-                    << ", edit_distance=[";
+          //          std::cout << "  IN " << type << " [" << i
+          //                    << "]: " << t.strings_[names[m.idx_]].view()
+          //                    << " [match_count="
+          //                    << static_cast<unsigned>(match_counts[m.idx_])
+          //                    << ", sqrt_len_vec_in=" << ctx.sqrt_len_vec_in_
+          //                    << ", sqrt_name_len=" <<
+          //                    t.match_sqrts_[names[m.idx_]]
+          //                    << ", cos_sim = " << m.cos_sim_ << " = "
+          //                    << static_cast<unsigned>(match_counts[m.idx_])
+          //                    << " / ("
+          //                    << ctx.sqrt_len_vec_in_ << " * "
+          //                    << t.match_sqrts_[names[m.idx_]] << ") = "
+          //                    << (static_cast<float>(match_counts[m.idx_]) /
+          //                        (ctx.sqrt_len_vec_in_ *
+          //                        t.match_sqrts_[names[m.idx_]]))
+          //                    << ", edit_distance=[";
           auto first = true;
           for (auto const& [j, p] : utl::enumerate(in_phrases)) {
-            if (!first) {
-              std::cout << ", ";
-            }
+            //            if (!first) {
+            //              std::cout << ", ";
+            //            }
             first = false;
             auto const normalized_str =
                 normalize_alloc(t.strings_[names[m.idx_]].view());
@@ -138,27 +146,28 @@ void get_suggestions(typeahead const& t,
                 0U, std::min(normalized_str.size(), p.s_.size()));
             auto const edit_dist =
                 levenshtein_distance(cut_normalized_str, p.s_, ctx.lev_dist_);
-            std::cout << "\"" << p.s_ << "\" vs \"" << cut_normalized_str
-                      << "\": " << edit_dist << "|"
-                      << (static_cast<float>(edit_dist) /
-                          static_cast<float>(p.s_.size()));
+            //            std::cout << "\"" << p.s_ << "\" vs \"" <<
+            //            cut_normalized_str
+            //                      << "\": " << edit_dist << "|"
+            //                      << (static_cast<float>(edit_dist) /
+            //                          static_cast<float>(p.s_.size()));
             m.edit_dist_[j] = static_cast<float>(edit_dist);
             // (static_cast<float>(edit_dist) /
             // static_cast<float>(p.s_.size()));
           }
-          std::cout << "]\n";
+          //          std::cout << "]\n";
         }
       };
 
-  std::cout << "STREETS\n";
+  //  std::cout << "STREETS\n";
   calc_edit_distances("STREETS", ctx.street_match_counts_, ctx.street_matches_,
                       t.street_names_);
 
-  std::cout << "PLACES\n";
+  //  std::cout << "PLACES\n";
   calc_edit_distances("PLACES", ctx.place_match_counts_, ctx.place_matches_,
                       t.place_names_);
 
-  std::cout << "AREAS\n";
+  //  std::cout << "AREAS\n";
   calc_edit_distances("AREAS", ctx.area_match_counts_, ctx.area_matches_,
                       t.area_names_);
 
@@ -188,24 +197,14 @@ void get_suggestions(typeahead const& t,
     area_active[to_idx(m.idx_)] = true;
   }
 
-  std::vector<suggestion> suggestions;
-  for (auto const& m : ctx.street_matches_) {
-    fmt::print("BOOST: {} -> [", t.strings_[t.street_names_[m.idx_]].view());
-    for (auto i = 0U; i != in_phrases.size(); ++i) {
-      fmt::print("{} ", m.edit_dist_[i]);
-    }
-    auto const [street_best_token_edit_dist, street_best_phrase_idx] =
-        get_best_token_match(m.edit_dist_, 0U);
-    fmt::print("] -> (best_edit_dist={}, best_idx={})\n",
-               street_best_token_edit_dist, street_best_phrase_idx);
-
-    if (street_best_token_edit_dist == std::numeric_limits<float>::max()) {
-      continue;
-    }
+  for (auto const& street_match : ctx.street_matches_) {
+    //    fmt::print("BOOST: {}",
+    //               t.strings_[t.street_names_[street_match.idx_]].view());
 
     std::set<area_idx_t> areas;
     for (auto const [area_sets, coord] :
-         utl::zip(t.street_areas_[m.idx_], t.street_coordinates_[m.idx_])) {
+         utl::zip(t.street_areas_[street_match.idx_],
+                  t.street_coordinates_[street_match.idx_])) {
       for (auto const a : t.area_sets_[area_sets]) {
         if (area_active[to_idx(a)] && t.area_admin_level_[a] >= 6 &&
             t.area_admin_level_[a] <= 8) {
@@ -215,41 +214,72 @@ void get_suggestions(typeahead const& t,
     }
 
     for (auto const a : areas) {
-      fmt::print("  BOOST {} -> [", t.strings_[t.area_names_[a]].view());
-      for (auto i = 0U; i != in_phrases.size(); ++i) {
-        fmt::print("{} ", area_edit_dist[a][i]);
-      }
-      auto const [area_best_token_edit_dist, area_best_phrase_idx] =
-          get_best_token_match(
-              area_edit_dist[a],
-              in_phrases[street_best_phrase_idx].input_token_bits_);
-      fmt::print("] -> (best_edit_dist={}, best_idx={})\n",
-                 area_best_token_edit_dist, area_best_phrase_idx);
-
-      if (area_best_token_edit_dist == std::numeric_limits<float>::max()) {
+      if (!area_active[to_idx(a)]) {
         continue;
       }
 
-      suggestions.emplace_back(suggestion{
-          .location_ = address{.street_ = m.idx_,
+      auto min_dist = std::numeric_limits<std::uint8_t>::max();
+      auto min_area_phrase_idx = 0U;
+      auto min_street_phrase_idx = 0U;
+
+      if (in_phrases.size() == 1U) {
+        std::tie(min_dist, min_street_phrase_idx) =
+            get_best_token_match(street_match.edit_dist_, 0U);
+      } else {
+        for (auto street_phrase_idx = 0U;
+             street_phrase_idx != in_phrases.size(); ++street_phrase_idx) {
+          for (auto area_phrase_idx = 0U; area_phrase_idx != in_phrases.size();
+               ++area_phrase_idx) {
+            if ((in_phrases[street_phrase_idx].input_token_bits_ &
+                 in_phrases[area_phrase_idx].input_token_bits_) != 0U) {
+              continue;
+            }
+
+            auto const total = in_phrases[street_phrase_idx].input_token_bits_ |
+                               in_phrases[area_phrase_idx].input_token_bits_;
+            if (total != all_tokens_mask) {
+              continue;
+            }
+
+            auto const x = static_cast<std::uint8_t>(
+                street_match.edit_dist_[street_phrase_idx] +
+                area_edit_dist[a][area_phrase_idx]);
+
+            auto const total_edit_dist =
+                std::max(street_match.edit_dist_[street_phrase_idx],
+                         area_edit_dist[a][area_phrase_idx]) +
+                x;
+
+            if (total_edit_dist < min_dist) {
+              min_dist = total_edit_dist;
+              min_street_phrase_idx = street_phrase_idx;
+              min_area_phrase_idx = area_phrase_idx;
+            }
+          }
+        }
+      }
+
+      ctx.suggestions_.emplace_back(suggestion{
+          .location_ = address{.street_ = street_match.idx_,
                                .house_number_ =
                                    std::numeric_limits<std::uint16_t>::max()},
           .area_ = a,
-          .score_ = area_best_token_edit_dist + street_best_token_edit_dist,
-          .street_token_ = in_phrases[street_best_phrase_idx].s_,
-          .area_token_ = in_phrases[area_best_phrase_idx].s_});
+          .score_ = min_dist,
+          .street_token_ = in_phrases[min_street_phrase_idx].s_,
+          .area_token_ = in_phrases[min_area_phrase_idx].s_});
 
-      suggestions.back().print(std::cout, t);
+      //      suggestions.back().print(std::cout, t);
     }
   }
 
-  std::sort(begin(suggestions), end(suggestions),
+  std::sort(begin(ctx.suggestions_), end(ctx.suggestions_),
             [](auto&& a, auto&& b) { return a.score_ < b.score_; });
+  ctx.suggestions_.resize(n_suggestions);
 
-  std::cout << "SUGGESTIONS\n";
-  for (auto const& s : suggestions) {
-    s.print(std::cout, t);
-  }
+  //  std::cout << "SUGGESTIONS\n";
+  //  for (auto const& s : suggestions) {
+  //    s.print(std::cout, t);
+  //  }
 }
 
 }  // namespace adr

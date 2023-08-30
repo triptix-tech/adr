@@ -13,7 +13,13 @@ add_executable(adr-extract exe/extract.cc)
 target_link_libraries(adr-extract adr boost-program_options)
 
 add_executable(adr-typeahead exe/typeahead.cc)
-target_link_libraries(adr-typeahead adr boost-program_options)
+target_link_libraries(adr-typeahead
+    adr
+    boost-program_options
+    ftxui::screen
+    ftxui::dom
+    ftxui::component
+)
 
 file(GLOB_RECURSE adr-test-files test/*cc)
 configure_file (

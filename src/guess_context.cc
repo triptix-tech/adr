@@ -27,7 +27,8 @@ void suggestion::print(std::ostream& out, adr::typeahead const& t) const {
              location_);
   out << ", street_token=" << street_token_ << ", area_token=" << area_token_
       << ", area=" << t.strings_[t.area_names_[area_]].view() << " ("
-      << to_str(t.area_admin_level_[area_]) << ") -> score=" << score_ << "\n";
+      << to_str(t.area_admin_level_[area_])
+      << ") -> score=" << static_cast<float>(score_) << "\n";
 }
 
 }  // namespace adr
