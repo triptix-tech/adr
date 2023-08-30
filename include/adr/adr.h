@@ -22,7 +22,7 @@ cista::wrapped<typeahead> read(std::filesystem::path const&);
 void get_suggestions(typeahead const&,
                      geo::latlng const&,
                      std::string_view input,
-                     unsigned n_suggestions,
+                     unsigned names,
                      guess_context&);
 
 }  // namespace adr

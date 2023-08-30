@@ -22,14 +22,14 @@
 #include "utl/zip.h"
 
 #include "adr/guess_context.h"
+#include "adr/ngram.h"
 #include "adr/normalize.h"
-#include "adr/trigram.h"
 #include "adr/types.h"
 
 namespace adr {
 
 template <typename T>
-using trigram_idx_t = data::vecvec<compressed_trigram_t, T, std::uint32_t>;
+using ngram_index_t = data::vecvec<ngram_t, T, std::uint32_t>;
 
 struct import_context {
   template <typename K, typename V>
@@ -116,9 +116,14 @@ struct typeahead {
       string_to_location_;
 
   data::vector_map<string_idx_t, float> match_sqrts_;
-  trigram_idx_t<area_idx_t> area_trigrams_;
-  trigram_idx_t<place_idx_t> place_trigrams_;
-  trigram_idx_t<street_idx_t> street_trigrams_;
+
+  //  ngram_index_t<area_idx_t> area_trigrams_;
+  //  ngram_index_t<place_idx_t> place_trigrams_;
+  //  ngram_index_t<street_idx_t> street_trigrams_;
+
+  ngram_index_t<area_idx_t> area_bigrams_;
+  ngram_index_t<place_idx_t> place_bigrams_;
+  ngram_index_t<street_idx_t> street_bigrams_;
 };
 
 }  // namespace adr

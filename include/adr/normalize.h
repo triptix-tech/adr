@@ -14,7 +14,7 @@ inline void replace_all(std::string& s,
   }
 }
 
-inline void normalize(std::string_view v, std::string& s) {
+inline std::string const& normalize(std::string_view v, std::string& s) {
   s.resize(v.size());
   std::copy(begin(v), end(v), begin(s));
 
@@ -46,6 +46,47 @@ inline void normalize(std::string_view v, std::string& s) {
   replace_all(s, "  ", " ");
 
   std::transform(begin(s), end(s), begin(s), ::tolower);
+
+  return s;
+}
+
+inline std::string normalize_alloc(std::string_view in) {
+  std::string normalized;
+  normalize(in, normalized);
+  return normalized;
+}
+
+struct phrase {
+  std::uint8_t input_token_bits_;
+  std::string s_;
+};
+
+inline std::string bit_mask_to_str(std::uint8_t const b) {
+  auto r = std::string{};
+  for (auto i = 0U; i != sizeof(b) * 8U; ++i) {
+    r += (((b >> i) & 0x1) == 0x1) ? '1' : '0';
+  }
+  return r;
+}
+
+inline std::vector<phrase> get_phrases(
+    std::vector<std::string> const& in_tokens) {
+  auto r = std::vector<phrase>{};
+  for (auto from = 0U; from != in_tokens.size(); ++from) {
+    auto p = phrase{};
+    for (auto length = 1U; from + length <= in_tokens.size() && length != 4U;
+         ++length) {
+      for (auto to = from; to < from + length && to < in_tokens.size(); ++to) {
+        p.input_token_bits_ |= 1 << to;
+        if (to != from) {
+          p.s_ += ' ';
+        }
+        p.s_ += in_tokens[to];
+      }
+      r.emplace_back(std::move(p));
+    }
+  }
+  return r;
 }
 
 }  // namespace adr

@@ -206,33 +206,55 @@ bool typeahead::verify() {
 void typeahead::build_trigram_index() {
   auto normalized = std::string{};
 
-  auto const build_index = [&]<typename T>(
-                               data::vector_map<T, string_idx_t> const& strings,
-                               trigram_idx_t<T>& trigram_index) {
-    auto tmp = std::vector<std::vector<T>>{};
-    tmp.resize(kNTrigrams);
-    for (auto const [i, str_idx] : utl::enumerate(strings)) {
-      normalize(strings_[str_idx].view(), normalized);
-      for_each_trigram(normalized, [&](std::string_view trigram) {
-        tmp[compress_trigram(trigram)].emplace_back(i);
-      });
-    }
+  auto const build_trigram_index =
+      [&]<typename T>(data::vector_map<T, string_idx_t> const& strings,
+                      ngram_index_t<T>& trigram_index) {
+        auto tmp = std::vector<std::vector<T>>{};
+        tmp.resize(kNTrigrams);
+        for (auto const [i, str_idx] : utl::enumerate(strings)) {
+          normalize(strings_[str_idx].view(), normalized);
+          for_each_trigram(normalized, [&](std::string_view trigram) {
+            tmp[compress_trigram(trigram)].emplace_back(i);
+          });
+        }
 
-    for (auto& x : tmp) {
-      utl::erase_duplicates(x);
-      trigram_index.emplace_back(x);
-    }
-  };
+        for (auto& x : tmp) {
+          utl::erase_duplicates(x);
+          trigram_index.emplace_back(x);
+        }
+      };
 
-  build_index(area_names_, area_trigrams_);
-  build_index(street_names_, street_trigrams_);
-  build_index(place_names_, place_trigrams_);
+  auto const build_bigram_index =
+      [&]<typename T>(data::vector_map<T, string_idx_t> const& strings,
+                      ngram_index_t<T>& trigram_index) {
+        auto tmp = std::vector<std::vector<T>>{};
+        tmp.resize(kNBigrams);
+        for (auto const [i, str_idx] : utl::enumerate(strings)) {
+          normalize(strings_[str_idx].view(), normalized);
+          for_each_bigram(normalized, [&](std::string_view bigram) {
+            tmp[compress_bigram(bigram)].emplace_back(i);
+          });
+        }
+
+        for (auto& x : tmp) {
+          utl::erase_duplicates(x);
+          trigram_index.emplace_back(x);
+        }
+      };
+
+  //  build_trigram_index(area_names_, area_trigrams_);
+  //  build_trigram_index(street_names_, street_trigrams_);
+  //  build_trigram_index(place_names_, place_trigrams_);
+
+  build_bigram_index(area_names_, area_bigrams_);
+  build_bigram_index(street_names_, street_bigrams_);
+  build_bigram_index(place_names_, place_bigrams_);
 
   match_sqrts_.resize(strings_.size());
   for (auto i = string_idx_t{0U}; i != strings_.size(); ++i) {
+    normalize(strings_[i].view(), normalized);
     match_sqrts_[string_idx_t{i}] =
-        static_cast<float>(std::sqrt(normalized.size() - 2U));
-    match_sqrts_.resize(strings_.size());
+        static_cast<float>(std::sqrt(normalized.size() - 1U));
   }
 }
 
@@ -256,48 +278,34 @@ std::uint64_t fast_log_2(std::uint64_t v) {
 void typeahead::guess(std::string_view in, guess_context& ctx) const {
   ctx.reset();
   normalize(in, ctx.normalized_);
-  if (ctx.normalized_.length() < 3) {
+  if (ctx.normalized_.length() < 2U) {
     return;
   }
 
-  auto n_in_trigrams = std::uint16_t{0U};
-  auto in_trigrams_buf = std::array<compressed_trigram_t, 128U>{};
-  for_each_trigram(ctx.normalized_, [&](std::string_view trigram) {
-    if (n_in_trigrams >= 128U) {
-      return;
-    }
-    in_trigrams_buf[n_in_trigrams++] = compress_trigram(trigram);
-  });
-  std::sort(begin(in_trigrams_buf), begin(in_trigrams_buf) + n_in_trigrams);
+  ctx.sqrt_len_vec_in_ =
+      static_cast<float>(std::sqrt(ctx.normalized_.size() - 1U));
+  auto const [in_ngrams_buf, n_in_ngrams] = split_ngrams(ctx.normalized_);
 
-  auto const match_trigrams =
-      [&]<typename T>(
-          data::vector_map<T, string_idx_t> const& names,
-          data::vecvec<compressed_trigram_t, T, std::uint32_t> const& trigrams,
-          cista::raw::vector_map<T, match<T>>& matches,
-          cista::raw::vector_map<T, std::uint8_t>& match_counts) {
-        // Collect candidate indices matched by the trigrams in the input
+  auto const match_bigrams =
+      [&]<typename T>(data::vector_map<T, string_idx_t> const& names,
+                      ngram_index_t<T> const& ngrams,
+                      std::vector<match<T>>& matches,
+                      cista::raw::vector_map<T, std::uint8_t>& match_counts) {
+        // Collect candidate indices matched by the bigrams in the input
         // string.
         match_counts.clear();
-        match_counts.resize(strings_.size());
-        for (auto i = 0U; i != n_in_trigrams; ++i) {
-          auto const t = in_trigrams_buf[i];
-          auto const idf = static_cast<float>(fast_log_2(strings_.size())) /
-                           static_cast<float>(fast_log_2(trigrams[t].size()));
-          std::cout << decompress_trigram(t) << ": "
-                    << "strings_.size=" << strings_.size()
-                    << ", trigram_index[t].size=" << trigrams[t].size()
-                    << ", nominator=" << fast_log_2(strings_.size())
-                    << ", denominator=" << fast_log_2(1 + trigrams[t].size())
-                    << ": " << idf << "\n";
-          for (auto const item_idx : trigrams[t]) {
-            match_counts[item_idx] += std::ceil(idf);
+        match_counts.resize(names.size());
+        for (auto i = 0U; i != n_in_ngrams; ++i) {
+          //          auto const idf =
+          //              fast_log_2(names.size()) -
+          //              fast_log_2(ngrams[i].size());
+          for (auto const item_idx : ngrams[in_ngrams_buf[i]]) {
+            //            match_counts[item_idx] += idf;
+            ++match_counts[item_idx];
           }
         }
 
         // Calculate cosine-similarity.
-        ctx.sqrt_len_vec_in_ =
-            static_cast<float>(std::sqrt(ctx.normalized_.size() - 2));
         for (auto i = T{0U}; i < match_counts.size(); ++i) {
           if (match_counts[T{i}] == 0U) {
             continue;
@@ -305,25 +313,25 @@ void typeahead::guess(std::string_view in, guess_context& ctx) const {
 
           auto const match_count = match_counts[i];
           matches.emplace_back(
-              i, static_cast<float>(match_count) /
-                     (ctx.sqrt_len_vec_in_ * match_sqrts_[names[i]]));
+              match<T>{i, static_cast<float>(match_count) /
+                              (ctx.sqrt_len_vec_in_ * match_sqrts_[names[i]])});
         }
 
-        // Sort matches by cosine-similarity.
-        auto const result_count =
-            static_cast<std::ptrdiff_t>(std::min(200U, matches.size()));
+        // Sort matches by cosine - similarity.
+        auto const result_count = static_cast<std::ptrdiff_t>(
+            std::min(std::size_t{5000}, matches.size()));
         std::nth_element(begin(matches), begin(matches) + result_count,
                          end(matches));
         matches.resize(result_count);
         utl::sort(matches);
       };
 
-  match_trigrams(place_names_, place_trigrams_, ctx.place_matches_,
-                 ctx.place_match_counts_);
-  match_trigrams(area_names_, area_trigrams_, ctx.area_matches_,
-                 ctx.area_match_counts_);
-  match_trigrams(street_names_, street_trigrams_, ctx.street_matches_,
-                 ctx.street_match_counts_);
+  match_bigrams(place_names_, place_bigrams_, ctx.place_matches_,
+                ctx.place_match_counts_);
+  match_bigrams(area_names_, area_bigrams_, ctx.area_matches_,
+                ctx.area_match_counts_);
+  match_bigrams(street_names_, street_bigrams_, ctx.street_matches_,
+                ctx.street_match_counts_);
 }
 
 void typeahead::print_match(string_idx_t const str_idx) const {

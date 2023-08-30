@@ -7,6 +7,7 @@
 namespace adr {
 
 void suggestion::print(std::ostream& out, adr::typeahead const& t) const {
+  out << "  ";
   std::visit(utl::overloaded{
                  [&](place_idx_t const p) {
                    out << t.strings_[t.place_names_[p]].view();
@@ -24,15 +25,9 @@ void suggestion::print(std::ostream& out, adr::typeahead const& t) const {
                    out << t.strings_[t.area_names_[area]].view();
                  }},
              location_);
-  out << ", coordinates="
-      << osmium::Location{coordinates_.lat_, coordinates_.lng_} << ", areas:\n";
-
-  for (auto const [i, a] : utl::enumerate(areas_)) {
-    if (a == area_idx_t::invalid()) {
-      out << "  " << t.strings_[t.area_names_[a]].view() << " ("
-          << kAdminString[i] << ")\n";
-    }
-  }
+  out << ", street_token=" << street_token_ << ", area_token=" << area_token_
+      << ", area=" << t.strings_[t.area_names_[area_]].view() << " ("
+      << to_str(t.area_admin_level_[area_]) << ") -> score=" << score_ << "\n";
 }
 
 }  // namespace adr
