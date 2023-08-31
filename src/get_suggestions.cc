@@ -1,7 +1,12 @@
 #include "adr/adr.h"
 
+#include "fmt/ranges.h"
+
+#include "utl/timing.h"
+
 #include "cista/containers/flat_matrix.h"
 
+#include "adr/trace.h"
 #include "adr/typeahead.h"
 
 namespace adr {
@@ -15,39 +20,9 @@ struct area {
   float cos_sim_{0.0};
 };
 
-std::uint8_t soundex(char const c) {
-  switch (c) {
-    case 'b':
-    case 'f':
-    case 'p':
-    case 'v': return 1;
-    case 'c':
-    case 'g':
-    case 'j':
-    case 'k':
-    case 'q':
-    case 's':
-    case 'x':
-    case 'z': return 2;
-    case 'd':
-    case 't': return 3;
-    case 'l': return 4;
-    case 'm':
-    case 'n': return 5;
-    case 'r': return 6;
-    default: return c;
-  }
-}
-
-std::uint8_t soundex_diff(char const a, char const b) {
-  return soundex(a) == soundex(b) ? 1U : 1U;
-}
-
-unsigned levenshtein_distance(std::string_view source,
-                              std::string_view target,
-                              std::vector<unsigned>& lev_dist) {
-  using size_type = unsigned;
-
+std::uint8_t levenshtein_distance(std::string_view source,
+                                  std::string_view target,
+                                  std::vector<std::uint8_t>& lev_dist) {
   if (source.size() > target.size()) {
     return levenshtein_distance(target, source, lev_dist);
   }
@@ -72,33 +47,45 @@ unsigned levenshtein_distance(std::string_view source,
       } else {
         lev_dist[i] = std::min(std::min(lev_dist[i - 1], lev_dist[i]),
                                previous_diagonal) +
-                      soundex_diff(source[i - 1], target[j - 1]);
+                      1U;
       }
+
       previous_diagonal = previous_diagonal_save;
+    }
+
+    if (lev_dist[j] > source.size() / 2 + 1) {
+      return std::numeric_limits<std::uint8_t>::max();
     }
   }
 
   return lev_dist[min_size];
 }
 
-unsigned levenshtein_distance_normalize(std::string_view s,
-                                        std::string_view p,
-                                        std::vector<unsigned>& lev_dist) {
-  auto const normalized_str = normalize_alloc(s);
+std::uint8_t levenshtein_distance_normalize(std::string_view s,
+                                            std::string_view p,
+                                            std::vector<std::uint8_t>& lev_dist,
+                                            std::string& tmp) {
+  auto const normalized_str = std::string_view{normalize(s, tmp)};
   auto const cut_normalized_str =
       normalized_str.substr(0U, std::min(normalized_str.size(), p.size()));
   auto const dist = levenshtein_distance(cut_normalized_str, p, lev_dist);
+  if (dist == std::numeric_limits<std::uint8_t>::max()) {
+    return dist;
+  }
   return dist + ((normalized_str.size() - cut_normalized_str.size()) / 4) +
          static_cast<unsigned>(
              std::ceil(2.0F * (static_cast<float>(dist) /
                                static_cast<float>(cut_normalized_str.size()))));
 }
 
+template <bool Debug>
 void get_suggestions(typeahead const& t,
                      geo::latlng const& /* coord */,
                      std::string_view in,
                      unsigned n_suggestions,
                      guess_context& ctx) {
+  UTL_START_TIMING(t);
+
   auto tokens = std::vector<std::string>{};
   auto all_tokens_mask = std::uint8_t{0U};
   auto i = 0U;
@@ -111,14 +98,14 @@ void get_suggestions(typeahead const& t,
   });
   ctx.phrases_ = get_phrases(tokens);
 
-  t.guess(in, ctx);
+  t.guess<Debug>(normalize(in, ctx.tmp_), ctx);
 
   auto input_hashes = cista::raw::ankerl_set<cista::hash_t>{};
   auto input_vec = std::vector<std::string>{};
-  utl::for_each_token(utl::cstr{ctx.normalized_}, ' ', [&](utl::cstr s) {
+  utl::for_each_token(utl::cstr{ctx.tmp_}, ' ', [&](utl::cstr s) {
     input_hashes.emplace(cista::hash(s.view()));
     auto const start = &s.view()[0];
-    auto const size = ctx.normalized_.size() - (start - &ctx.normalized_[0]);
+    auto const size = ctx.tmp_.size() - (start - &ctx.tmp_[0]);
     input_vec.emplace_back(start, size);
   });
 
@@ -128,8 +115,9 @@ void get_suggestions(typeahead const& t,
                       data::vector_map<T, string_idx_t> const& names) {
         for (auto& m : matches) {
           for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
-            m.edit_dist_[j] = levenshtein_distance_normalize(
-                t.strings_[names[m.idx_]].view(), p.s_, ctx.lev_dist_);
+            m.edit_dist_[j] =
+                levenshtein_distance_normalize(t.strings_[names[m.idx_]].view(),
+                                               p.s_, ctx.lev_dist_, ctx.tmp_);
           }
         }
       };
@@ -146,53 +134,55 @@ void get_suggestions(typeahead const& t,
   for (auto const m : ctx.area_matches_) {
     area_edit_dist[m.idx_] = m.edit_dist_;
     area_active[to_idx(m.idx_)] = true;
+    trace("  AREA {} [edit_dist={}]\n",
+          t.strings_[t.area_names_[m.idx_]].view(),
+          std::span{begin(m.edit_dist_), ctx.phrases_.size()});
   }
 
   for (auto const& street_match : ctx.street_matches_) {
     auto const street = street_match.idx_;
 
-    auto zip_mask = std::uint8_t{0U};
-    std::set<area_idx_t> areas;
-    std::set<area_idx_t> zip_areas;
+    ctx.areas_.clear();
+
     for (auto const [area_set, pos] :
          utl::zip(t.street_areas_[street], t.street_pos_[street])) {
       for (auto const a : t.area_sets_[area_set]) {
         if (t.area_admin_level_[a] == kPostalCodeAdminLevel) {
           for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
             area_edit_dist[a][j] = levenshtein_distance_normalize(
-                t.strings_[t.area_names_[a]].view(), p.s_, ctx.lev_dist_);
+                t.strings_[t.area_names_[a]].view(), p.s_, ctx.lev_dist_,
+                ctx.tmp_);
           }
-          areas.emplace(a);
+          ctx.areas_.emplace(a);
           area_active[to_idx(a)] = true;
         }
         if (!area_active[to_idx(a)]) {
           continue;
         }
         auto const admin_lvl = t.area_admin_level_[a];
-        if (admin_lvl >= 6 && admin_lvl <= 8 ||
+        if (admin_lvl >= 6 && admin_lvl <= 9 ||
             admin_lvl == kPostalCodeAdminLevel) {
-          areas.emplace(a);
+          ctx.areas_.emplace(a);
         }
       }
     }
 
-    auto house_number_candidates = std::vector<std::uint16_t>{};
+    ctx.house_number_candidates_.clear();
     auto house_number_mask = std::uint8_t{0U};
     for (auto const [house_number_idx, str_and_pos] : utl::enumerate(utl::zip(
              t.house_numbers_[street], t.house_coordinates_[street]))) {
       auto const& [house_number, pos] = str_and_pos;
-      auto const normalized_hn =
-          normalize_alloc(t.strings_[house_number].view());
+      auto const normalized_hn = t.strings_[house_number].view();
       if (input_hashes.contains(cista::hash(normalized_hn))) {
         auto const token_it =
             std::find(begin(tokens), end(tokens), normalized_hn);
         auto const token_idx = std::distance(begin(tokens), token_it);
         house_number_mask |= 1U << token_idx;
-        house_number_candidates.emplace_back(house_number_idx);
+        ctx.house_number_candidates_.emplace_back(house_number_idx);
       }
     }
 
-    for (auto const a : areas) {
+    for (auto const a : ctx.areas_) {
       if (!area_active[to_idx(a)]) {
         continue;
       }
@@ -205,6 +195,13 @@ void get_suggestions(typeahead const& t,
            street_phrase_idx != ctx.phrases_.size(); ++street_phrase_idx) {
         for (auto area_phrase_idx = 0U; area_phrase_idx != ctx.phrases_.size();
              ++area_phrase_idx) {
+          if (street_match.edit_dist_[street_phrase_idx] ==
+                  std::numeric_limits<std::uint8_t>::max() ||
+              area_edit_dist[a][area_phrase_idx] ==
+                  std::numeric_limits<std::uint8_t>::max()) {
+            continue;
+          }
+
           if ((ctx.phrases_[street_phrase_idx].input_token_bits_ &
                ctx.phrases_[area_phrase_idx].input_token_bits_) != 0U) {
             continue;
@@ -235,7 +232,7 @@ void get_suggestions(typeahead const& t,
       if (min_street_phrase_idx != std::numeric_limits<std::uint8_t>::max() &&
           min_area_phrase_idx != std::numeric_limits<std::uint8_t>::max() &&
           min_score != std::numeric_limits<std::uint8_t>::max()) {
-        if (house_number_candidates.empty()) {
+        if (ctx.house_number_candidates_.empty()) {
           ctx.suggestions_.emplace_back(suggestion{
               .location_ = address{.street_ = street_match.idx_,
                                    .house_number_ = address::kNoHouseNumber},
@@ -247,7 +244,7 @@ void get_suggestions(typeahead const& t,
                   street_match.edit_dist_[min_street_phrase_idx],
               .area_edit_dist_ = area_edit_dist[a][min_area_phrase_idx]});
         } else {
-          for (auto const house_number_idx : house_number_candidates) {
+          for (auto const house_number_idx : ctx.house_number_candidates_) {
             auto const house_number_areas =
                 t.house_areas_[street][house_number_idx];
             auto area_found = false;
@@ -276,10 +273,14 @@ void get_suggestions(typeahead const& t,
     }
   }
 
+  UTL_STOP_TIMING(t);
+  trace("{} suggestions [{} ms]\n", ctx.suggestions_.size(), UTL_TIMING_MS(t));
+
   if (ctx.suggestions_.empty()) {
     return;
   }
 
+  UTL_START_TIMING(sort);
   auto const result_count = static_cast<std::ptrdiff_t>(
       std::min(std::size_t{n_suggestions}, ctx.suggestions_.size()));
   std::nth_element(begin(ctx.suggestions_),
@@ -287,6 +288,19 @@ void get_suggestions(typeahead const& t,
                    end(ctx.suggestions_));
   ctx.suggestions_.resize(result_count);
   std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
+  UTL_STOP_TIMING(sort);
+  trace("sort [{} us]\n", UTL_TIMING_US(sort));
 }
+
+template void get_suggestions<true>(typeahead const&,
+                                    geo::latlng const&,
+                                    std::string_view,
+                                    unsigned,
+                                    guess_context&);
+template void get_suggestions<false>(typeahead const&,
+                                     geo::latlng const&,
+                                     std::string_view,
+                                     unsigned,
+                                     guess_context&);
 
 }  // namespace adr

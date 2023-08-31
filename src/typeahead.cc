@@ -2,8 +2,12 @@
 
 #include "cista/mmap.h"
 
+#include "utl/timing.h"
+
 #include "osmium/geom/coordinates.hpp"
 #include "osmium/geom/haversine.hpp"
+
+#include "adr/trace.h"
 
 namespace adr {
 
@@ -253,22 +257,26 @@ std::uint64_t fast_log_2(std::uint64_t v) {
            58U];
 }
 
-void typeahead::guess(std::string_view in, guess_context& ctx) const {
+template <bool Debug>
+void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   ctx.reset();
-  normalize(in, ctx.normalized_);
-  if (ctx.normalized_.length() < 2U) {
+  if (ctx.tmp_.length() < 2U) {
     return;
   }
 
-  ctx.sqrt_len_vec_in_ =
-      static_cast<float>(std::sqrt(ctx.normalized_.size() - 1U));
-  auto const [in_ngrams_buf, n_in_ngrams] = split_ngrams(ctx.normalized_);
+  auto min_bigram_matches =
+      std::max(1U, static_cast<unsigned>(normalized.size() / 4U)) - 1U;
+
+  ctx.sqrt_len_vec_in_ = static_cast<float>(std::sqrt(ctx.tmp_.size() - 1U));
+  auto const [in_ngrams_buf, n_in_ngrams] = split_ngrams(ctx.tmp_);
 
   auto const match_bigrams =
       [&]<typename T>(data::vector_map<T, string_idx_t> const& names,
                       ngram_index_t<T> const& ngrams,
                       std::vector<match<T>>& matches,
                       cista::raw::vector_map<T, std::uint8_t>& match_counts) {
+        UTL_START_TIMING(t);
+
         // Collect candidate indices matched by the bigrams in the input
         // string.
         match_counts.clear();
@@ -281,23 +289,37 @@ void typeahead::guess(std::string_view in, guess_context& ctx) const {
 
         // Calculate cosine-similarity.
         for (auto i = T{0U}; i < match_counts.size(); ++i) {
-          if (match_counts[T{i}] == 0U) {
+          if (match_counts[T{i}] < min_bigram_matches) {
             continue;
           }
 
           auto const match_count = match_counts[i];
-          matches.emplace_back(
+          auto const m =
               match<T>{i, static_cast<float>(match_count) /
-                              (ctx.sqrt_len_vec_in_ * match_sqrts_[names[i]])});
+                              (ctx.sqrt_len_vec_in_ * match_sqrts_[names[i]])};
+          matches.emplace_back(m);
+
+          if (matches.size() > 20000) {
+            std::nth_element(begin(matches), begin(matches) + 4000,
+                             end(matches));
+            matches.resize(4000);
+          }
         }
+        UTL_STOP_TIMING(t);
+
+        trace("{}: {} matches [{}]\n", cista::type_str<T>(), matches.size(),
+              UTL_TIMING_MS(t));
 
         // Sort matches by cosine - similarity.
+        UTL_START_TIMING(sort);
         auto const result_count = static_cast<std::ptrdiff_t>(
-            std::min(std::size_t{5000}, matches.size()));
+            std::min(std::size_t{4000}, matches.size()));
         std::nth_element(begin(matches), begin(matches) + result_count,
                          end(matches));
         matches.resize(result_count);
         utl::sort(matches);
+        UTL_STOP_TIMING(sort);
+        trace("sort [{} us]\n", UTL_TIMING_MS(sort));
       };
 
   match_bigrams(place_names_, place_bigrams_, ctx.place_matches_,
@@ -316,5 +338,10 @@ cista::wrapped<typeahead> read(std::filesystem::path const& path_in) {
   auto const p = cista::deserialize<typeahead, kMode>(b);
   return cista::wrapped{std::move(b), p};
 }
+
+template void typeahead::guess<true>(std::string_view normalized,
+                                     guess_context&) const;
+template void typeahead::guess<false>(std::string_view normalized,
+                                      guess_context&) const;
 
 }  // namespace adr

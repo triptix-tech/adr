@@ -20,11 +20,13 @@ namespace fs = std::filesystem;
 int main(int ac, char** av) {
   auto in = fs::path{"adr.cista"};
   auto guess = std::string{""};
+  auto verbose = false;
 
   try {
     bpo::options_description desc{"Options"};
     desc.add_options()  //
         ("help,h", "Help screen")  //
+        ("verbose,v", "Print debug output")  //
         ("in,i", bpo::value<fs::path>(&in)->default_value(in),
          "OSM input file")  //
         ("guess,g", bpo::value<std::string>(&guess)->default_value(guess),
@@ -46,6 +48,10 @@ int main(int ac, char** av) {
       std::cout << desc << '\n';
       return 0;
     }
+
+    if (vm.count("verbose")) {
+      verbose = true;
+    }
   } catch (bpo::error const& ex) {
     std::cerr << ex.what() << '\n';
     return 1;
@@ -55,7 +61,11 @@ int main(int ac, char** av) {
 
   if (!guess.empty()) {
     auto ctx = adr::guess_context{};
-    adr::get_suggestions(*t, geo::latlng{0, 0}, guess, 10, ctx);
+    if (verbose) {
+      adr::get_suggestions<true>(*t, geo::latlng{0, 0}, guess, 10, ctx);
+    } else {
+      adr::get_suggestions<false>(*t, geo::latlng{0, 0}, guess, 10, ctx);
+    }
 
     for (auto const& s : ctx.suggestions_) {
       s.print(std::cout, *t, ctx.phrases_);
@@ -69,7 +79,7 @@ int main(int ac, char** av) {
 
     std::string first_name;
     auto const guesses = [&]() {
-      adr::get_suggestions(*t, geo::latlng{0, 0}, first_name, 10, ctx);
+      adr::get_suggestions<false>(*t, geo::latlng{0, 0}, first_name, 10, ctx);
 
       Elements list;
       for (auto const& s : ctx.suggestions_) {

@@ -19,6 +19,7 @@ void extract(std::filesystem::path const& in, std::filesystem::path const& out);
 
 cista::wrapped<typeahead> read(std::filesystem::path const&);
 
+template <bool Debug>
 void get_suggestions(typeahead const&,
                      geo::latlng const&,
                      std::string_view input,

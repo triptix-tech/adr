@@ -9,7 +9,6 @@ namespace adr {
 void suggestion::print(std::ostream& out,
                        adr::typeahead const& t,
                        std::vector<phrase> const& phrases) const {
-  out << "  ";
   std::visit(utl::overloaded{
                  [&](place_idx_t const p) {
                    out << t.strings_[t.place_names_[p]].view();

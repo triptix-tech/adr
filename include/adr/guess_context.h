@@ -6,10 +6,11 @@
 #include <variant>
 #include <vector>
 
+#include "ankerl/cista_adapter.h"
 #include "cista/containers/vector.h"
 
+#include "adr/normalize.h"
 #include "adr/types.h"
-#include "normalize.h"
 
 namespace adr {
 
@@ -28,6 +29,7 @@ constexpr std::array<std::uint8_t, kMaxInputPhrases> default_edit_dist() {
 
 template <typename T>
 struct match {
+  bool operator==(match const& o) const { return false; }
   bool operator<(match const& o) const { return cos_sim_ > o.cos_sim_; }
   T idx_;
   float cos_sim_;
@@ -64,8 +66,9 @@ struct guess_context {
     street_matches_.clear();
   }
 
-  std::string normalized_;
-  std::vector<unsigned> lev_dist_;
+  std::string tmp_;
+  std::vector<std::uint16_t> house_number_candidates_;
+  std::vector<std::uint8_t> lev_dist_;
   std::vector<match<place_idx_t>> place_matches_;
   cista::raw::vector_map<place_idx_t, std::uint8_t> place_match_counts_;
   std::vector<match<area_idx_t>> area_matches_;
@@ -74,6 +77,7 @@ struct guess_context {
   cista::raw::vector_map<street_idx_t, std::uint8_t> street_match_counts_;
   std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;
+  cista::raw::ankerl_set<area_idx_t> areas_;
   float sqrt_len_vec_in_;
 };
 

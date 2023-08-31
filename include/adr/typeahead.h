@@ -87,7 +87,8 @@ struct typeahead {
 
   void build_trigram_index();
 
-  void guess(std::string_view in, guess_context&) const;
+  template <bool Debug>
+  void guess(std::string_view normalized, guess_context&) const;
 
   void print_match(string_idx_t str_idx) const;
 
