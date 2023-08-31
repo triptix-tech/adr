@@ -46,7 +46,7 @@ struct import_context {
   raw_hash_map<string_idx_t, street_idx_t> street_lookup_;
   raw_vector_map<street_idx_t, string_idx_t> street_names_;
 
-  raw_mutable_vecvec<street_idx_t, coordinates> street_coordinates_;
+  raw_mutable_vecvec<street_idx_t, coordinates> street_pos_;
   raw_mutable_vecvec<street_idx_t, string_idx_t> house_numbers_;
   raw_mutable_vecvec<street_idx_t, coordinates> house_coordinates_;
   raw_mutable_vecvec<string_idx_t,
@@ -102,7 +102,7 @@ struct typeahead {
   data::bitvec place_is_way_;
 
   data::vector_map<street_idx_t, string_idx_t> street_names_;
-  data::vecvec<street_idx_t, coordinates> street_coordinates_;
+  data::vecvec<street_idx_t, coordinates> street_pos_;
   data::vecvec<street_idx_t, area_set_idx_t> street_areas_;
   data::vecvec<street_idx_t, string_idx_t> house_numbers_;
   data::vecvec<street_idx_t, coordinates> house_coordinates_;

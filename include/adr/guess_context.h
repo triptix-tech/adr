@@ -9,6 +9,7 @@
 #include "cista/containers/vector.h"
 
 #include "adr/types.h"
+#include "normalize.h"
 
 namespace adr {
 
@@ -17,10 +18,10 @@ struct typeahead;
 constexpr auto const kMaxInputTokens = 8U;
 constexpr auto const kMaxInputPhrases = 32U;
 
-constexpr std::array<float, kMaxInputPhrases> default_edit_dist() {
-  auto a = std::array<float, kMaxInputPhrases>{};
-  for (auto i = 0U; i != kMaxInputTokens; ++i) {
-    a[i] = std::numeric_limits<float>::max();
+constexpr std::array<std::uint8_t, kMaxInputPhrases> default_edit_dist() {
+  auto a = std::array<std::uint8_t, kMaxInputPhrases>{};
+  for (auto& x : a) {
+    x = std::numeric_limits<std::uint8_t>::max();
   }
   return a;
 }
@@ -30,7 +31,7 @@ struct match {
   bool operator<(match const& o) const { return cos_sim_ > o.cos_sim_; }
   T idx_;
   float cos_sim_;
-  std::array<float, kMaxInputPhrases> edit_dist_{default_edit_dist()};
+  std::array<std::uint8_t, kMaxInputPhrases> edit_dist_{default_edit_dist()};
 };
 
 struct address {
@@ -42,13 +43,17 @@ struct address {
 };
 
 struct suggestion {
-  void print(std::ostream&, typeahead const&) const;
+  void print(std::ostream&,
+             typeahead const&,
+             std::vector<phrase> const& phrases) const;
+  bool operator<(suggestion const& o) const { return score_ < o.score_; }
 
   std::variant<place_idx_t, address, area_idx_t> location_;
   coordinates coordinates_;
   area_idx_t area_;
   std::uint8_t score_;
-  std::string street_token_, area_token_;
+  std::uint8_t street_phase_idx_, area_phrase_idx_;
+  std::uint8_t street_edit_dist_, area_edit_dist_;
 };
 
 struct guess_context {
@@ -67,6 +72,7 @@ struct guess_context {
   cista::raw::vector_map<area_idx_t, std::uint8_t> area_match_counts_;
   std::vector<match<street_idx_t>> street_matches_;
   cista::raw::vector_map<street_idx_t, std::uint8_t> street_match_counts_;
+  std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;
   float sqrt_len_vec_in_;
 };

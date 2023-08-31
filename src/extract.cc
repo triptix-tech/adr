@@ -144,8 +144,8 @@ void extract(std::filesystem::path const& in_path,
             }
           }});
 
-  for (auto const b : ctx.street_coordinates_) {
-    t.street_coordinates_.emplace_back(b);
+  for (auto const b : ctx.street_pos_) {
+    t.street_pos_.emplace_back(b);
   }
   for (auto const b : ctx.house_numbers_) {
     t.house_numbers_.emplace_back(b);
@@ -177,8 +177,7 @@ void extract(std::filesystem::path const& in_path,
     t.place_areas_.emplace_back(t.get_or_create_area_set(ctx, geo_lookup(c)));
   }
 
-  for (auto const& [street_idx, coordinates] :
-       utl::enumerate(t.street_coordinates_)) {
+  for (auto const& [street_idx, coordinates] : utl::enumerate(t.street_pos_)) {
     t.street_areas_.add_back_sized(0);
     for (auto const& c : coordinates) {
       t.street_areas_[street_idx_t{street_idx}].push_back(

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "osmium/osm/location.hpp"
+
 #include "cista/strong.h"
 
 namespace cista::offset {}
@@ -25,6 +27,10 @@ enum class location_type_t : std::uint8_t {
 };
 
 struct coordinates {
+  friend std::ostream& operator<<(std::ostream& out, coordinates const& c) {
+    auto const l = osmium::Location{c.lat_, c.lng_};
+    return out << '(' << l.lat() << ", " << l.lon() << ')';
+  }
   std::int32_t lat_, lng_;
 };
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <iostream>
 #include <string>
 
 namespace adr {
@@ -38,7 +39,8 @@ inline std::string const& normalize(std::string_view v, std::string& s) {
     char c = s[i];
     bool is_lower_case_char = c >= 'a' && c <= 'z';
     bool is_upper_case_char = c >= 'A' && c <= 'Z';
-    if (!is_lower_case_char && !is_upper_case_char) {
+    bool is_number = c >= '0' && c <= '9';
+    if (!is_lower_case_char && !is_upper_case_char && !is_number) {
       s[i] = ' ';
     }
   }
@@ -73,9 +75,9 @@ inline std::vector<phrase> get_phrases(
     std::vector<std::string> const& in_tokens) {
   auto r = std::vector<phrase>{};
   for (auto from = 0U; from != in_tokens.size(); ++from) {
-    auto p = phrase{};
     for (auto length = 1U; from + length <= in_tokens.size() && length != 4U;
          ++length) {
+      auto p = phrase{};
       for (auto to = from; to < from + length && to < in_tokens.size(); ++to) {
         p.input_token_bits_ |= 1 << to;
         if (to != from) {

@@ -3,9 +3,10 @@
 
 #include "boost/program_options.hpp"
 
+#include "utl/enumerate.h"
+
 #include "ftxui/component/captured_mouse.hpp"  // for ftxui
 #include "ftxui/component/component.hpp"  // for Input, Renderer, Vertical
-#include "ftxui/component/component_base.hpp"  // for ComponentBase
 #include "ftxui/component/component_options.hpp"  // for InputOption
 #include "ftxui/component/screen_interactive.hpp"  // for Component, ScreenInteractive
 #include "ftxui/dom/elements.hpp"  // for text, hbox, separator, Element, operator|, vbox, border
@@ -55,8 +56,9 @@ int main(int ac, char** av) {
   if (!guess.empty()) {
     auto ctx = adr::guess_context{};
     adr::get_suggestions(*t, geo::latlng{0, 0}, guess, 10, ctx);
+
     for (auto const& s : ctx.suggestions_) {
-      s.print(std::cout, *t);
+      s.print(std::cout, *t, ctx.phrases_);
     }
     return 0;
   } else {
@@ -72,10 +74,10 @@ int main(int ac, char** av) {
       Elements list;
       for (auto const& s : ctx.suggestions_) {
         auto ss = std::stringstream{};
-        s.print(ss, *t);
+        s.print(ss, *t, ctx.phrases_);
         list.push_back(text(ss.str()));
       }
-      return vbox(std::move(list));
+      return vbox(std::move(list)) | bgcolor(Color::White);
     };
 
     InputOption options;
@@ -84,8 +86,8 @@ int main(int ac, char** av) {
     auto component = Container::Vertical({input_first_name});
 
     auto renderer = Renderer(component, [&] {
-      return bgcolor(Color::DeepPink1,
-                     vbox({input_first_name->Render(), hbox(guesses())}));
+      return vbox({input_first_name->Render(), guesses()}) |
+             bgcolor(Color::Black);
     });
 
     auto screen = ScreenInteractive::TerminalOutput();

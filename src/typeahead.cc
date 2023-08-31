@@ -68,8 +68,8 @@ void typeahead::add_address(import_context& ctx,
       });
 
   auto too_close = false;
-  if (!ctx.street_coordinates_[street_idx].empty()) {
-    auto const last = ctx.street_coordinates_[street_idx].back();
+  if (!ctx.street_pos_[street_idx].empty()) {
+    auto const last = ctx.street_pos_[street_idx].back();
     if (osmium::geom::haversine::distance(
             osmium::geom::Coordinates{l},
             osmium::geom::Coordinates{osmium::Location{last.lat_, last.lng_}}) <
@@ -106,8 +106,8 @@ void typeahead::add_street(import_context& ctx,
         return idx;
       });
 
-  if (!ctx.street_coordinates_[street_idx].empty()) {
-    auto const last = ctx.street_coordinates_[street_idx].back();
+  if (!ctx.street_pos_[street_idx].empty()) {
+    auto const last = ctx.street_pos_[street_idx].back();
     if (osmium::geom::haversine::distance(
             osmium::geom::Coordinates{l},
             osmium::geom::Coordinates{osmium::Location{last.lat_, last.lng_}}) <
@@ -116,7 +116,7 @@ void typeahead::add_street(import_context& ctx,
     }
   }
 
-  ctx.street_coordinates_[street_idx].emplace_back(coordinates{l.x(), l.y()});
+  ctx.street_pos_[street_idx].emplace_back(coordinates{l.x(), l.y()});
   utl::insert_sorted(ctx.string_to_location_[string_idx],
                      data::pair{to_idx(street_idx), location_type_t::kStreet});
 }
@@ -206,24 +206,6 @@ bool typeahead::verify() {
 void typeahead::build_trigram_index() {
   auto normalized = std::string{};
 
-  auto const build_trigram_index =
-      [&]<typename T>(data::vector_map<T, string_idx_t> const& strings,
-                      ngram_index_t<T>& trigram_index) {
-        auto tmp = std::vector<std::vector<T>>{};
-        tmp.resize(kNTrigrams);
-        for (auto const [i, str_idx] : utl::enumerate(strings)) {
-          normalize(strings_[str_idx].view(), normalized);
-          for_each_trigram(normalized, [&](std::string_view trigram) {
-            tmp[compress_trigram(trigram)].emplace_back(i);
-          });
-        }
-
-        for (auto& x : tmp) {
-          utl::erase_duplicates(x);
-          trigram_index.emplace_back(x);
-        }
-      };
-
   auto const build_bigram_index =
       [&]<typename T>(data::vector_map<T, string_idx_t> const& strings,
                       ngram_index_t<T>& trigram_index) {
@@ -241,10 +223,6 @@ void typeahead::build_trigram_index() {
           trigram_index.emplace_back(x);
         }
       };
-
-  //  build_trigram_index(area_names_, area_trigrams_);
-  //  build_trigram_index(street_names_, street_trigrams_);
-  //  build_trigram_index(place_names_, place_trigrams_);
 
   build_bigram_index(area_names_, area_bigrams_);
   build_bigram_index(street_names_, street_bigrams_);
@@ -296,11 +274,7 @@ void typeahead::guess(std::string_view in, guess_context& ctx) const {
         match_counts.clear();
         match_counts.resize(names.size());
         for (auto i = 0U; i != n_in_ngrams; ++i) {
-          //          auto const idf =
-          //              fast_log_2(names.size()) -
-          //              fast_log_2(ngrams[i].size());
           for (auto const item_idx : ngrams[in_ngrams_buf[i]]) {
-            //            match_counts[item_idx] += idf;
             ++match_counts[item_idx];
           }
         }
@@ -332,85 +306,6 @@ void typeahead::guess(std::string_view in, guess_context& ctx) const {
                 ctx.area_match_counts_);
   match_bigrams(street_names_, street_bigrams_, ctx.street_matches_,
                 ctx.street_match_counts_);
-}
-
-void typeahead::print_match(string_idx_t const str_idx) const {
-  using namespace std::string_view_literals;
-
-  auto const print_area = [&](area_idx_t const area) {
-    auto const admin_lvl = area_admin_level_[area];
-    std::cout << "          name=" << strings_[area_names_[area]].view()
-              << ", admin_lvl="
-              << (admin_lvl >= kAdminString.size()
-                      ? fmt::to_string(to_idx(admin_lvl))
-                      : kAdminString[to_idx(admin_lvl)])
-              << "\n";
-  };
-
-  auto const print_coordinate_and_areas = [&](coordinates const& c,
-                                              area_set_idx_t const area_set) {
-    std::cout << "        " << osmium::Location{c.lat_, c.lng_} << "\n";
-
-    for (auto const& area : area_sets_[area_set]) {
-      print_area(area);
-    }
-  };
-
-  auto const print_street = [&](street_idx_t const street_idx) {
-    auto const name_idx = street_names_[street_idx];
-    auto const area_sets = street_areas_[street_idx];
-    auto const coordinates = street_coordinates_[street_idx];
-    auto const house_numbers = house_numbers_[street_idx];
-    auto const house_coordinates = house_coordinates_[street_idx];
-    auto const house_areas = house_areas_[street_idx];
-
-    std::cout << "    " << strings_[name_idx].view() << "\n";
-
-    std::cout << "      HOUSE NUMBERS:\n";
-    for (auto const [house_number, house_coordinates, area_set] :
-         utl::zip(house_numbers, house_coordinates, house_areas)) {
-      std::cout << "        " << strings_[house_number].view() << "\n";
-      print_coordinate_and_areas(house_coordinates, area_set);
-    }
-
-    std::cout << "      COORDINATES [n_coordinates=" << coordinates.size()
-              << ", n_areas=" << area_sets.size() << "]:\n";
-    for (auto const& [c, area_set] : utl::zip(coordinates, area_sets)) {
-      print_coordinate_and_areas(c, area_set);
-    }
-  };
-
-  auto const locations = string_to_location_[str_idx];
-  auto const str = strings_[str_idx];
-  std::cout << "STR=" << str.view() << ": " << locations.size() << "\n";
-
-  for (auto const [l, type] : locations) {
-    switch (type) {
-      case location_type_t::kStreet:
-        std::cout << "  TYPE=STREET\n";
-        print_street(street_idx_t{l});
-        break;
-
-      case location_type_t::kPlace: {
-        std::cout << "  TYPE=PLACE " << l << " [way=" << place_is_way_.test(l)
-                  << ", osm_id=" << place_osm_ids_[place_idx_t{l}]
-                  << "] name=\""
-                  << strings_[place_names_[place_idx_t{l}]].view() << "\"\n";
-        print_coordinate_and_areas(place_coordinates_[place_idx_t{l}],
-                                   place_areas_[place_idx_t{l}]);
-        break;
-      }
-
-      case location_type_t::kHouseNumber:
-        std::cout << "  TYPE=HOUSENUMBER\n";
-        break;
-
-      case location_type_t::kArea:
-        std::cout << "  TYPE=AREA\n";
-        print_area(area_idx_t{l});
-        break;
-    }
-  }
 }
 
 cista::wrapped<typeahead> read(std::filesystem::path const& path_in) {
