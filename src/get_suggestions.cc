@@ -247,29 +247,19 @@ void get_suggestions(typeahead const& t,
                   street_match.edit_dist_[min_street_phrase_idx],
               .area_edit_dist_ = area_edit_dist[a][min_area_phrase_idx]});
         } else {
-          //          fmt::print("STREET {}\n",
-          //          t.strings_[t.street_names_[street]].view());
           for (auto const house_number_idx : house_number_candidates) {
-            auto const areas = t.house_areas_[street][house_number_idx];
-            auto county = std::string_view{};
+            auto const house_number_areas =
+                t.house_areas_[street][house_number_idx];
             auto area_found = false;
-            for (auto const house_number_area : t.area_sets_[areas]) {
+            for (auto const house_number_area :
+                 t.area_sets_[house_number_areas]) {
               if (house_number_area == a) {
                 area_found = true;
-              }
-              if (t.area_admin_level_[a] == 6) {
-                county = t.strings_[t.area_names_[a]].view();
               }
             }
             if (!area_found) {
               continue;
             }
-            //            fmt::print("  HOUSE NUMBER {}: {} @ {} [area_set={},
-            //            county={}]\n",
-            //                       house_number_idx,
-            //                       t.strings_[t.house_numbers_[street][house_number_idx]],
-            //                       t.house_coordinates_[street][house_number_idx],
-            //                       areas, county);
             ctx.suggestions_.emplace_back(suggestion{
                 .location_ = address{.street_ = street_match.idx_,
                                      .house_number_ = house_number_idx},
