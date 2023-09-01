@@ -8,6 +8,7 @@
 
 #include "adr/trace.h"
 #include "adr/typeahead.h"
+#include "utl/to_vec.h"
 
 namespace adr {
 
@@ -78,6 +79,27 @@ std::uint8_t levenshtein_distance_normalize(std::string_view s,
                                static_cast<float>(cut_normalized_str.size()))));
 }
 
+float cos_similarity(std::vector<ngram_t> const& a_grams,
+                     std::vector<ngram_t> const& b_grams) {
+  struct push_back_count {
+    using value_type = ngram_t;
+    void push_back(ngram_t) { ++count_; }
+    std::uint8_t count_;
+  };
+  auto counter = push_back_count{};
+  std::set_intersection(begin(a_grams), end(a_grams), begin(b_grams),
+                        end(b_grams), std::back_inserter(counter));
+  return static_cast<float>(counter.count_) /
+         static_cast<float>(std::sqrt(a_grams.size() * b_grams.size()));
+}
+
+void get_bigrams(std::string_view s, std::vector<ngram_t>& bigrams) {
+  for_each_bigram(s, [&](std::string_view bigram) {
+    bigrams.emplace_back(compress_bigram(bigram));
+  });
+  utl::erase_duplicates(bigrams);
+}
+
 template <bool Debug>
 void get_suggestions(typeahead const& t,
                      geo::latlng const& /* coord */,
@@ -97,6 +119,9 @@ void get_suggestions(typeahead const& t,
     all_tokens_mask |= 1U << (i++);
   });
   ctx.phrases_ = get_phrases(tokens);
+  for (auto const& [p_idx, p] : utl::enumerate(ctx.phrases_)) {
+    get_bigrams(p.s_, ctx.phrase_ngrams_[p_idx]);
+  }
 
   t.guess<Debug>(normalize(in, ctx.tmp_), ctx);
 
@@ -139,138 +164,34 @@ void get_suggestions(typeahead const& t,
           std::span{begin(m.edit_dist_), ctx.phrases_.size()});
   }
 
+  auto street_matches =
+      std::vector<std::tuple<float, street_idx_t, std::uint8_t>>{};
   for (auto const& street_match : ctx.street_matches_) {
     auto const street = street_match.idx_;
-
-    ctx.areas_.clear();
-
-    for (auto const [area_set, pos] :
-         utl::zip(t.street_areas_[street], t.street_pos_[street])) {
-      for (auto const a : t.area_sets_[area_set]) {
-        if (t.area_admin_level_[a] == kPostalCodeAdminLevel) {
-          for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
-            area_edit_dist[a][j] = levenshtein_distance_normalize(
-                t.strings_[t.area_names_[a]].view(), p.s_, ctx.lev_dist_,
-                ctx.tmp_);
-          }
-          ctx.areas_.emplace(a);
-          area_active[to_idx(a)] = true;
-        }
-        if (!area_active[to_idx(a)]) {
-          continue;
-        }
-        auto const admin_lvl = t.area_admin_level_[a];
-        if (admin_lvl >= 6 && admin_lvl <= 9 ||
-            admin_lvl == kPostalCodeAdminLevel) {
-          ctx.areas_.emplace(a);
-        }
-      }
+    auto const street_name = t.strings_[t.street_names_[street]].view();
+    auto const& normalized_street_name = normalize(street_name, ctx.tmp_);
+    get_bigrams(normalized_street_name, ctx.street_name_ngrams_);
+    for (auto p_idx = 0U; p_idx != ctx.phrases_.size(); ++p_idx) {
+      street_matches.emplace_back(
+          cos_similarity(ctx.street_name_ngrams_, ctx.phrase_ngrams_[p_idx]),
+          street, p_idx);
     }
+  }
 
-    ctx.house_number_candidates_.clear();
-    auto house_number_mask = std::uint8_t{0U};
-    for (auto const [house_number_idx, str_and_pos] : utl::enumerate(utl::zip(
-             t.house_numbers_[street], t.house_coordinates_[street]))) {
-      auto const& [house_number, pos] = str_and_pos;
-      auto const normalized_hn = t.strings_[house_number].view();
-      if (input_hashes.contains(cista::hash(normalized_hn))) {
-        auto const token_it =
-            std::find(begin(tokens), end(tokens), normalized_hn);
-        auto const token_idx = std::distance(begin(tokens), token_it);
-        house_number_mask |= 1U << token_idx;
-        ctx.house_number_candidates_.emplace_back(house_number_idx);
-      }
-    }
+  auto const result_count = static_cast<std::ptrdiff_t>(
+      std::min(std::size_t{200}, street_matches.size()));
+  std::nth_element(begin(street_matches), begin(street_matches) + result_count,
+                   end(street_matches), [](auto&& a, auto&& b) {
+                     return std::get<0>(a) > std::get<0>(b);
+                   });
+  street_matches.resize(result_count);
+  std::sort(begin(street_matches), end(street_matches),
+            [](auto&& a, auto&& b) { return std::get<0>(a) > std::get<0>(b); });
 
-    for (auto const a : ctx.areas_) {
-      if (!area_active[to_idx(a)]) {
-        continue;
-      }
-
-      auto min_score = std::numeric_limits<std::uint8_t>::max();
-      auto min_area_phrase_idx = std::numeric_limits<std::uint8_t>::max();
-      auto min_street_phrase_idx = std::numeric_limits<std::uint8_t>::max();
-
-      for (auto street_phrase_idx = 0U;
-           street_phrase_idx != ctx.phrases_.size(); ++street_phrase_idx) {
-        for (auto area_phrase_idx = 0U; area_phrase_idx != ctx.phrases_.size();
-             ++area_phrase_idx) {
-          if (street_match.edit_dist_[street_phrase_idx] ==
-                  std::numeric_limits<std::uint8_t>::max() ||
-              area_edit_dist[a][area_phrase_idx] ==
-                  std::numeric_limits<std::uint8_t>::max()) {
-            continue;
-          }
-
-          if ((ctx.phrases_[street_phrase_idx].input_token_bits_ &
-               ctx.phrases_[area_phrase_idx].input_token_bits_) != 0U) {
-            continue;
-          }
-
-          if ((ctx.phrases_[street_phrase_idx].input_token_bits_ |
-               ctx.phrases_[area_phrase_idx].input_token_bits_) !=
-              (all_tokens_mask & ~house_number_mask)) {
-            continue;
-          }
-
-          auto const worst_match_penalty =
-              std::max(street_match.edit_dist_[street_phrase_idx],
-                       area_edit_dist[a][area_phrase_idx]);
-          auto const total_edit_dist =
-              street_match.edit_dist_[street_phrase_idx] +
-              area_edit_dist[a][area_phrase_idx];
-          auto const score = total_edit_dist + worst_match_penalty;
-
-          if (score < min_score) {
-            min_score = score;
-            min_street_phrase_idx = street_phrase_idx;
-            min_area_phrase_idx = area_phrase_idx;
-          }
-        }
-      }
-
-      if (min_street_phrase_idx != std::numeric_limits<std::uint8_t>::max() &&
-          min_area_phrase_idx != std::numeric_limits<std::uint8_t>::max() &&
-          min_score != std::numeric_limits<std::uint8_t>::max()) {
-        if (ctx.house_number_candidates_.empty()) {
-          ctx.suggestions_.emplace_back(suggestion{
-              .location_ = address{.street_ = street_match.idx_,
-                                   .house_number_ = address::kNoHouseNumber},
-              .area_ = a,
-              .score_ = min_score,
-              .street_phase_idx_ = min_street_phrase_idx,
-              .area_phrase_idx_ = min_area_phrase_idx,
-              .street_edit_dist_ =
-                  street_match.edit_dist_[min_street_phrase_idx],
-              .area_edit_dist_ = area_edit_dist[a][min_area_phrase_idx]});
-        } else {
-          for (auto const house_number_idx : ctx.house_number_candidates_) {
-            auto const house_number_areas =
-                t.house_areas_[street][house_number_idx];
-            auto area_found = false;
-            for (auto const house_number_area :
-                 t.area_sets_[house_number_areas]) {
-              if (house_number_area == a) {
-                area_found = true;
-              }
-            }
-            if (!area_found) {
-              continue;
-            }
-            ctx.suggestions_.emplace_back(suggestion{
-                .location_ = address{.street_ = street_match.idx_,
-                                     .house_number_ = house_number_idx},
-                .area_ = a,
-                .score_ = min_score,
-                .street_phase_idx_ = min_street_phrase_idx,
-                .area_phrase_idx_ = min_area_phrase_idx,
-                .street_edit_dist_ =
-                    street_match.edit_dist_[min_street_phrase_idx],
-                .area_edit_dist_ = area_edit_dist[a][min_area_phrase_idx]});
-          }
-        }
-      }
-    }
+  auto l = 0U;
+  for (auto const [cos_sim, street, p_idx] : street_matches) {
+    std::cout << l++ << ": " << t.strings_[t.street_names_[street]].view()
+              << ": " << ctx.phrases_[p_idx].s_ << "  [" << cos_sim << "]\n";
   }
 
   UTL_STOP_TIMING(t);
@@ -280,16 +201,16 @@ void get_suggestions(typeahead const& t,
     return;
   }
 
-  UTL_START_TIMING(sort);
-  auto const result_count = static_cast<std::ptrdiff_t>(
-      std::min(std::size_t{n_suggestions}, ctx.suggestions_.size()));
-  std::nth_element(begin(ctx.suggestions_),
-                   begin(ctx.suggestions_) + result_count,
-                   end(ctx.suggestions_));
-  ctx.suggestions_.resize(result_count);
-  std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
-  UTL_STOP_TIMING(sort);
-  trace("sort [{} us]\n", UTL_TIMING_US(sort));
+  //  UTL_START_TIMING(sort);
+  //  auto const result_count = static_cast<std::ptrdiff_t>(
+  //      std::min(std::size_t{n_suggestions}, ctx.suggestions_.size()));
+  //  std::nth_element(begin(ctx.suggestions_),
+  //                   begin(ctx.suggestions_) + result_count,
+  //                   end(ctx.suggestions_));
+  //  ctx.suggestions_.resize(result_count);
+  //  std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
+  //  UTL_STOP_TIMING(sort);
+  //  trace("sort [{} us]\n", UTL_TIMING_US(sort));
 }
 
 template void get_suggestions<true>(typeahead const&,

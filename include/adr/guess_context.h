@@ -11,6 +11,7 @@
 
 #include "adr/normalize.h"
 #include "adr/types.h"
+#include "ngram.h"
 
 namespace adr {
 
@@ -67,6 +68,8 @@ struct guess_context {
   }
 
   std::string tmp_;
+  std::vector<ngram_t> street_name_ngrams_;
+  std::array<std::vector<ngram_t>, 32> phrase_ngrams_;
   std::vector<std::uint16_t> house_number_candidates_;
   std::vector<std::uint8_t> lev_dist_;
   std::vector<match<place_idx_t>> place_matches_;
