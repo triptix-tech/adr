@@ -21,9 +21,9 @@ struct area {
   float cos_sim_{0.0};
 };
 
-std::uint8_t levenshtein_distance(std::string_view source,
-                                  std::string_view target,
-                                  std::vector<std::uint8_t>& lev_dist) {
+edit_dist_t levenshtein_distance(std::string_view source,
+                                 std::string_view target,
+                                 std::vector<edit_dist_t>& lev_dist) {
   if (source.size() > target.size()) {
     return levenshtein_distance(target, source, lev_dist);
   }
@@ -55,49 +55,30 @@ std::uint8_t levenshtein_distance(std::string_view source,
     }
 
     if (lev_dist[j] > source.size() / 2 + 1) {
-      return std::numeric_limits<std::uint8_t>::max();
+      return kMaxEditDist;
     }
   }
 
   return lev_dist[min_size];
 }
 
-std::uint8_t levenshtein_distance_normalize(std::string_view s,
-                                            std::string_view p,
-                                            std::vector<std::uint8_t>& lev_dist,
-                                            std::string& tmp) {
+float levenshtein_distance_normalize(std::string_view s,
+                                     std::string_view p,
+                                     std::vector<edit_dist_t>& lev_dist,
+                                     std::string& tmp) {
   auto const normalized_str = std::string_view{normalize(s, tmp)};
   auto const cut_normalized_str =
       normalized_str.substr(0U, std::min(normalized_str.size(), p.size()));
   auto const dist = levenshtein_distance(cut_normalized_str, p, lev_dist);
-  if (dist == std::numeric_limits<std::uint8_t>::max()) {
-    return dist;
+  if (dist >= cut_normalized_str.size()) {
+    return std::numeric_limits<float>::max();
   }
-  return dist + ((normalized_str.size() - cut_normalized_str.size()) / 4) +
-         static_cast<unsigned>(
-             std::ceil(2.0F * (static_cast<float>(dist) /
-                               static_cast<float>(cut_normalized_str.size()))));
-}
-
-float cos_similarity(std::vector<ngram_t> const& a_grams,
-                     std::vector<ngram_t> const& b_grams) {
-  struct push_back_count {
-    using value_type = ngram_t;
-    void push_back(ngram_t) { ++count_; }
-    std::uint8_t count_;
-  };
-  auto counter = push_back_count{};
-  std::set_intersection(begin(a_grams), end(a_grams), begin(b_grams),
-                        end(b_grams), std::back_inserter(counter));
-  return static_cast<float>(counter.count_) /
-         static_cast<float>(std::sqrt(a_grams.size() * b_grams.size()));
-}
-
-void get_bigrams(std::string_view s, std::vector<ngram_t>& bigrams) {
-  for_each_bigram(s, [&](std::string_view bigram) {
-    bigrams.emplace_back(compress_bigram(bigram));
-  });
-  utl::erase_duplicates(bigrams);
+  return dist +
+         (static_cast<float>(normalized_str.size() -
+                             cut_normalized_str.size()) /
+          4.0F) +
+         2.0F * (static_cast<float>(dist) /
+                 static_cast<float>(cut_normalized_str.size()));
 }
 
 template <bool Debug>
@@ -110,8 +91,7 @@ void get_suggestions(typeahead const& t,
 
   auto tokens = std::vector<std::string>{};
   auto all_tokens_mask = std::uint8_t{0U};
-  auto i = 0U;
-  utl::for_each_token(utl::cstr{in}, ' ', [&](utl::cstr token) {
+  utl::for_each_token(utl::cstr{in}, ' ', [&, i = 0U](utl::cstr token) mutable {
     if (token.empty()) {
       return;
     }
@@ -119,9 +99,6 @@ void get_suggestions(typeahead const& t,
     all_tokens_mask |= 1U << (i++);
   });
   ctx.phrases_ = get_phrases(tokens);
-  for (auto const& [p_idx, p] : utl::enumerate(ctx.phrases_)) {
-    get_bigrams(p.s_, ctx.phrase_ngrams_[p_idx]);
-  }
 
   t.guess<Debug>(normalize(in, ctx.tmp_), ctx);
 
@@ -151,11 +128,10 @@ void get_suggestions(typeahead const& t,
   get_edit_dist(ctx.area_match_counts_, ctx.area_matches_, t.area_names_);
 
   auto area_edit_dist =
-      cista::raw::vector_map<area_idx_t,
-                             std::array<std::uint8_t, kMaxInputPhrases>>{};
+      cista::raw::vector_map<area_idx_t, std::array<float, kMaxInputPhrases>>{};
   auto area_active = std::vector<bool>{};
   area_active.resize(t.area_names_.size());
-  area_edit_dist.resize(t.area_names_.size(), default_edit_dist());
+  area_edit_dist.resize(t.area_names_.size(), inf_edit_dist<float>());
   for (auto const m : ctx.area_matches_) {
     area_edit_dist[m.idx_] = m.edit_dist_;
     area_active[to_idx(m.idx_)] = true;
@@ -164,34 +140,65 @@ void get_suggestions(typeahead const& t,
           std::span{begin(m.edit_dist_), ctx.phrases_.size()});
   }
 
+  constexpr auto const kMaxMatches = std::size_t{1000U};
+
   auto street_matches =
-      std::vector<std::tuple<float, street_idx_t, std::uint8_t>>{};
+      std::vector<std::tuple<float, std::uint8_t, street_idx_t>>{};
   for (auto const& street_match : ctx.street_matches_) {
     auto const street = street_match.idx_;
     auto const street_name = t.strings_[t.street_names_[street]].view();
     auto const& normalized_street_name = normalize(street_name, ctx.tmp_);
-    get_bigrams(normalized_street_name, ctx.street_name_ngrams_);
     for (auto p_idx = 0U; p_idx != ctx.phrases_.size(); ++p_idx) {
-      street_matches.emplace_back(
-          cos_similarity(ctx.street_name_ngrams_, ctx.phrase_ngrams_[p_idx]),
-          street, p_idx);
+      auto const edit_dist = street_match.edit_dist_[p_idx];
+      if (edit_dist != std::numeric_limits<std::uint8_t>::max() &&
+          (street_matches.size() != kMaxMatches ||
+           std::get<0>(street_matches.back()) >= edit_dist)) {
+        utl::insert_sorted(
+            street_matches, {edit_dist, p_idx, street},
+            [](auto&& a, auto&& b) { return std::get<0>(a) < std::get<0>(b); });
+        street_matches.resize(std::min(kMaxMatches, street_matches.size()));
+      }
     }
   }
 
-  auto const result_count = static_cast<std::ptrdiff_t>(
-      std::min(std::size_t{200}, street_matches.size()));
-  std::nth_element(begin(street_matches), begin(street_matches) + result_count,
-                   end(street_matches), [](auto&& a, auto&& b) {
-                     return std::get<0>(a) > std::get<0>(b);
-                   });
-  street_matches.resize(result_count);
-  std::sort(begin(street_matches), end(street_matches),
-            [](auto&& a, auto&& b) { return std::get<0>(a) > std::get<0>(b); });
+  ctx.areas_.clear();
+  for (auto const [edit_dist, street_p_idx, street] : street_matches) {
+    auto const hn_areas_base = t.street_areas_[street].size();
 
-  auto l = 0U;
-  for (auto const [cos_sim, street, p_idx] : street_matches) {
-    std::cout << l++ << ": " << t.strings_[t.street_names_[street]].view()
-              << ": " << ctx.phrases_[p_idx].s_ << "  [" << cos_sim << "]\n";
+    std::cout << t.strings_[t.street_names_[street]].view()
+              << ", edit_dist=" << edit_dist
+              << ", phrase=" << ctx.phrases_[street_p_idx].s_ << "\n";
+
+    for (auto const [i, area_set] : utl::enumerate(t.street_areas_[street])) {
+      ctx.areas_[area_set].emplace_back(i, area_src::kStreet);
+    }
+
+    auto i = 0U;
+    auto best_hn_dist = std::numeric_limits<float>::max();
+    auto best_hn = 0U;
+    for (auto const [hn, pos, areas_idx] :
+         utl::zip(t.house_numbers_[street], t.house_coordinates_[street],
+                  t.house_areas_[street])) {
+      for (auto const& [hn_p_idx, p] : utl::enumerate(ctx.phrases_)) {
+        auto const overlap =
+            (p.input_token_bits_ &
+             ctx.phrases_[street_p_idx].input_token_bits_) != 0U;
+        if (overlap) {
+          continue;
+        }
+
+        auto const hn_edit_dist = levenshtein_distance_normalize(
+            t.strings_[hn].view(), p.s_, ctx.lev_dist_, ctx.tmp_);
+        if (hn_edit_dist < best_hn_dist) {
+          ctx.areas_[areas_idx].emplace_back(i, area_src::kHouseNumber);
+          std::cout << "  HOUSENUMBER MATCH: pos=" << pos
+                    << ", name=" << t.strings_[hn].view() << ", phrase=\""
+                    << ctx.phrases_[hn_p_idx].s_
+                    << "\", edit_dist=" << hn_edit_dist
+                    << " , areas: " << area_set{t, areas_idx} << "\n";
+        }
+      }
+    }
   }
 
   UTL_STOP_TIMING(t);

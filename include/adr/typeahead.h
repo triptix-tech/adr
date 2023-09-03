@@ -118,13 +118,31 @@ struct typeahead {
 
   data::vector_map<string_idx_t, float> match_sqrts_;
 
-  //  ngram_index_t<area_idx_t> area_trigrams_;
-  //  ngram_index_t<place_idx_t> place_trigrams_;
-  //  ngram_index_t<street_idx_t> street_trigrams_;
-
   ngram_index_t<area_idx_t> area_bigrams_;
   ngram_index_t<place_idx_t> place_bigrams_;
   ngram_index_t<street_idx_t> street_bigrams_;
+};
+
+struct area_set {
+  friend std::ostream& operator<<(std::ostream& out, area_set const& s) {
+    auto first = true;
+    out << s.areas_ << " [";
+    for (auto const& a : s.t_.area_sets_[s.areas_]) {
+      if (!first) {
+        out << ", ";
+      }
+      first = false;
+      auto const name = s.t_.strings_[s.t_.area_names_[a]].view();
+      out << "(" << name.substr(std::max(static_cast<int>(name.size()) - 16, 0))
+          << ", " << static_cast<unsigned>(to_idx(s.t_.area_admin_level_[a]))
+          << ")";
+    }
+    out << "]";
+    return out;
+  }
+
+  typeahead const& t_;
+  area_set_idx_t areas_;
 };
 
 }  // namespace adr
