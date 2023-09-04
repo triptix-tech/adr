@@ -49,9 +49,6 @@ struct import_context {
   raw_mutable_vecvec<street_idx_t, coordinates> street_pos_;
   raw_mutable_vecvec<street_idx_t, string_idx_t> house_numbers_;
   raw_mutable_vecvec<street_idx_t, coordinates> house_coordinates_;
-  raw_mutable_vecvec<string_idx_t,
-                     cista::raw::pair<std::uint32_t, location_type_t>>
-      string_to_location_;
 };
 
 struct typeahead {
@@ -72,11 +69,6 @@ struct typeahead {
                  bool is_way,
                  osmium::TagList const&,
                  osmium::Location const&);
-
-  string_idx_t get_or_create_string(import_context&,
-                                    std::string_view,
-                                    std::uint32_t location,
-                                    location_type_t t);
 
   string_idx_t get_or_create_string(import_context&, std::string_view s);
 

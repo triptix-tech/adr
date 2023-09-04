@@ -21,8 +21,7 @@ area_idx_t typeahead::add_postal_code_area(import_context& ctx,
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(kPostalCodeAdminLevel);
   area_population_.emplace_back(0U);
-  area_names_.emplace_back(get_or_create_string(ctx, postal_code, to_idx(idx),
-                                                location_type_t::kArea));
+  area_names_.emplace_back(get_or_create_string(ctx, postal_code));
   return idx;
 }
 
@@ -45,8 +44,7 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
       admin_level_t{utl::parse<unsigned>(admin_lvl)});
   area_population_.emplace_back(
       population == nullptr ? 0U : utl::parse<unsigned>(population));
-  area_names_.emplace_back(
-      get_or_create_string(ctx, name, to_idx(idx), location_type_t::kArea));
+  area_names_.emplace_back(get_or_create_string(ctx, name));
   return idx;
 }
 
@@ -71,25 +69,7 @@ void typeahead::add_address(import_context& ctx,
         return idx;
       });
 
-  auto too_close = false;
-  if (!ctx.street_pos_[street_idx].empty()) {
-    auto const last = ctx.street_pos_[street_idx].back();
-    if (osmium::geom::haversine::distance(
-            osmium::geom::Coordinates{l},
-            osmium::geom::Coordinates{osmium::Location{last.lat_, last.lng_}}) <
-        1000.0) {
-      too_close = true;
-    }
-  }
-
-  if (!too_close) {
-    utl::insert_sorted(
-        ctx.string_to_location_[string_idx],
-        data::pair{to_idx(street_idx), location_type_t::kStreet});
-  }
-
-  auto const house_number_idx = get_or_create_string(
-      ctx, house_number, to_idx(street_idx), location_type_t::kHouseNumber);
+  auto const house_number_idx = get_or_create_string(ctx, house_number);
   ctx.house_numbers_[street_idx].emplace_back(house_number_idx);
   ctx.house_coordinates_[street_idx].emplace_back(coordinates{l.x(), l.y()});
 }
@@ -110,19 +90,16 @@ void typeahead::add_street(import_context& ctx,
         return idx;
       });
 
-  if (!ctx.street_pos_[street_idx].empty()) {
-    auto const last = ctx.street_pos_[street_idx].back();
+  for (auto const p : ctx.street_pos_[street_idx]) {
     if (osmium::geom::haversine::distance(
             osmium::geom::Coordinates{l},
-            osmium::geom::Coordinates{osmium::Location{last.lat_, last.lng_}}) <
-        100.0) {
+            osmium::geom::Coordinates{osmium::Location{p.lat_, p.lng_}}) <
+        5000.0) {
       return;
     }
   }
 
   ctx.street_pos_[street_idx].emplace_back(coordinates{l.x(), l.y()});
-  utl::insert_sorted(ctx.string_to_location_[string_idx],
-                     data::pair{to_idx(street_idx), location_type_t::kStreet});
 }
 
 void typeahead::add_place(import_context& ctx,
@@ -136,21 +113,11 @@ void typeahead::add_place(import_context& ctx,
   }
 
   auto const idx = place_names_.size();
-  place_names_.emplace_back(
-      get_or_create_string(ctx, name, idx, location_type_t::kPlace));
+  place_names_.emplace_back(get_or_create_string(ctx, name));
   place_coordinates_.emplace_back(l.x(), l.y());
   place_osm_ids_.emplace_back(id);
   place_is_way_.resize(place_is_way_.size() + 1U);
   place_is_way_.set(idx, is_way);
-}
-
-string_idx_t typeahead::get_or_create_string(import_context& ctx,
-                                             std::string_view s,
-                                             std::uint32_t const location,
-                                             location_type_t const t) {
-  auto const string_idx = get_or_create_string(ctx, s);
-  ctx.string_to_location_[string_idx].emplace_back(location, t);
-  return string_idx;
 }
 
 string_idx_t typeahead::get_or_create_string(import_context& ctx,
@@ -163,9 +130,16 @@ string_idx_t typeahead::get_or_create_string(import_context& ctx,
 
 area_set_idx_t typeahead::get_or_create_area_set(
     import_context& ctx, std::basic_string<area_idx_t> const& p) {
+  auto const sort_by_str_length = [&](std::basic_string<area_idx_t> x) {
+    std::sort(begin(x), end(x), [&](auto&& a, auto&& b) {
+      return strings_[area_names_[a]].size() > strings_[area_names_[b]].size();
+    });
+    return x;
+  };
+
   return utl::get_or_create(ctx.area_set_lookup_, p, [&]() {
     auto const set_idx = area_set_idx_t{area_sets_.size()};
-    area_sets_.emplace_back(p);
+    area_sets_.emplace_back(sort_by_str_length(p));
     return set_idx;
   });
 }
@@ -265,7 +239,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   }
 
   auto min_bigram_matches =
-      std::max(1U, static_cast<unsigned>(normalized.size() / 4U)) - 1U;
+      std::max(1U, static_cast<unsigned>(normalized.size() / 5U)) - 1U;
 
   ctx.sqrt_len_vec_in_ = static_cast<float>(std::sqrt(ctx.tmp_.size() - 1U));
   auto const [in_ngrams_buf, n_in_ngrams] = split_ngrams(ctx.tmp_);

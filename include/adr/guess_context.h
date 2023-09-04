@@ -17,12 +17,6 @@ namespace adr {
 
 struct typeahead;
 
-constexpr auto const kMaxInputTokens = 8U;
-constexpr auto const kMaxInputPhrases = 32U;
-
-using edit_dist_t = std::uint8_t;
-constexpr auto const kMaxEditDist = std::numeric_limits<edit_dist_t>::max();
-
 template <typename T>
 constexpr std::array<T, kMaxInputPhrases> inf_edit_dist() {
   auto a = std::array<T, kMaxInputPhrases>{};
@@ -46,7 +40,7 @@ struct address {
       std::numeric_limits<std::uint16_t>::max();
 
   street_idx_t street_;
-  std::uint16_t house_number_;
+  std::uint32_t house_number_;
 };
 
 struct suggestion {
@@ -57,24 +51,17 @@ struct suggestion {
 
   std::variant<place_idx_t, address, area_idx_t> location_;
   coordinates coordinates_;
-  area_idx_t area_;
-  edit_dist_t score_;
-  std::uint8_t street_phase_idx_, area_phrase_idx_;
-  edit_dist_t street_edit_dist_, area_edit_dist_;
+  area_set_idx_t area_set_;
+  std::uint32_t matched_areas_;
+  float score_;
 };
 
 struct area_src {
-  enum type : std::uint8_t { kStreet, kHouseNumber, kPlace };
-
-  area_src(std::uint8_t const idx, type const src)
-      : idx_{idx}, src_{static_cast<std::uint8_t>(src)} {}
-
-  type src() const { return static_cast<type>(src_); }
-  unsigned idx() const { return idx_; }
-
-private:
-  std::uint8_t idx_ : 6U;
-  std::uint8_t src_ : 2U;
+  enum class type { kStreet, kHouseNumber, kPlace } type_;
+  float dist_;
+  std::uint32_t index_;
+  std::uint8_t house_number_p_idx_;
+  std::uint8_t matched_mask_;
 };
 
 struct guess_context {
@@ -99,6 +86,7 @@ struct guess_context {
   std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;
   cista::raw::ankerl_map<area_set_idx_t, std::vector<area_src>> areas_;
+  cista::raw::ankerl_set<std::uint8_t> item_tabu_masks_;
   float sqrt_len_vec_in_;
 };
 

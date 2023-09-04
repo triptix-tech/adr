@@ -52,4 +52,10 @@ inline std::string_view to_str(admin_level_t const x) {
   return x >= kAdminString.size() ? "" : kAdminString[to_idx(x)];
 }
 
+constexpr auto const kMaxInputTokens = 8U;
+constexpr auto const kMaxInputPhrases = 32U;
+
+using edit_dist_t = std::uint8_t;
+constexpr auto const kMaxEditDist = std::numeric_limits<edit_dist_t>::max();
+
 }  // namespace adr

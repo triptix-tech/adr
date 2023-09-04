@@ -21,6 +21,7 @@ int main(int ac, char** av) {
   auto in = fs::path{"adr.cista"};
   auto guess = std::string{""};
   auto verbose = false;
+  auto n = 15U;
 
   try {
     bpo::options_description desc{"Options"};
@@ -30,7 +31,8 @@ int main(int ac, char** av) {
         ("in,i", bpo::value<fs::path>(&in)->default_value(in),
          "OSM input file")  //
         ("guess,g", bpo::value<std::string>(&guess)->default_value(guess),
-         "guess input string");
+         "guess input string")  //
+        (",n", bpo::value<unsigned>(&n)->default_value(n));
 
     auto const pos_desc =
         bpo::positional_options_description{}.add("in", 1).add("guess", -1);
@@ -62,9 +64,9 @@ int main(int ac, char** av) {
   if (!guess.empty()) {
     auto ctx = adr::guess_context{};
     if (verbose) {
-      adr::get_suggestions<true>(*t, geo::latlng{0, 0}, guess, 10, ctx);
+      adr::get_suggestions<true>(*t, geo::latlng{0, 0}, guess, n, ctx);
     } else {
-      adr::get_suggestions<false>(*t, geo::latlng{0, 0}, guess, 10, ctx);
+      adr::get_suggestions<false>(*t, geo::latlng{0, 0}, guess, n, ctx);
     }
 
     for (auto const& s : ctx.suggestions_) {
@@ -79,7 +81,7 @@ int main(int ac, char** av) {
 
     std::string first_name;
     auto const guesses = [&]() {
-      adr::get_suggestions<false>(*t, geo::latlng{0, 0}, first_name, 10, ctx);
+      adr::get_suggestions<false>(*t, geo::latlng{0, 0}, first_name, n, ctx);
 
       Elements list;
       for (auto const& s : ctx.suggestions_) {

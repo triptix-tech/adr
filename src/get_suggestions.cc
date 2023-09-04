@@ -3,12 +3,13 @@
 #include "fmt/ranges.h"
 
 #include "utl/timing.h"
+#include "utl/to_vec.h"
 
 #include "cista/containers/flat_matrix.h"
 
+#include "adr/score.h"
 #include "adr/trace.h"
 #include "adr/typeahead.h"
-#include "utl/to_vec.h"
 
 namespace adr {
 
@@ -20,66 +21,6 @@ struct area {
   coordinates coordinates_;
   float cos_sim_{0.0};
 };
-
-edit_dist_t levenshtein_distance(std::string_view source,
-                                 std::string_view target,
-                                 std::vector<edit_dist_t>& lev_dist) {
-  if (source.size() > target.size()) {
-    return levenshtein_distance(target, source, lev_dist);
-  }
-
-  auto const min_size = source.size();
-  auto const max_size = target.size();
-  lev_dist.resize(min_size + 1);
-
-  for (auto i = 0; i <= min_size; ++i) {
-    lev_dist[i] = i;
-  }
-
-  for (auto j = 1; j <= max_size; ++j) {
-    auto previous_diagonal = lev_dist[0];
-    auto previous_diagonal_save = 0U;
-    ++lev_dist[0];
-
-    for (auto i = 1; i <= min_size; ++i) {
-      previous_diagonal_save = lev_dist[i];
-      if (source[i - 1] == target[j - 1]) {
-        lev_dist[i] = previous_diagonal;
-      } else {
-        lev_dist[i] = std::min(std::min(lev_dist[i - 1], lev_dist[i]),
-                               previous_diagonal) +
-                      1U;
-      }
-
-      previous_diagonal = previous_diagonal_save;
-    }
-
-    if (lev_dist[j] > source.size() / 2 + 1) {
-      return kMaxEditDist;
-    }
-  }
-
-  return lev_dist[min_size];
-}
-
-float levenshtein_distance_normalize(std::string_view s,
-                                     std::string_view p,
-                                     std::vector<edit_dist_t>& lev_dist,
-                                     std::string& tmp) {
-  auto const normalized_str = std::string_view{normalize(s, tmp)};
-  auto const cut_normalized_str =
-      normalized_str.substr(0U, std::min(normalized_str.size(), p.size()));
-  auto const dist = levenshtein_distance(cut_normalized_str, p, lev_dist);
-  if (dist >= cut_normalized_str.size()) {
-    return std::numeric_limits<float>::max();
-  }
-  return dist +
-         (static_cast<float>(normalized_str.size() -
-                             cut_normalized_str.size()) /
-          4.0F) +
-         2.0F * (static_cast<float>(dist) /
-                 static_cast<float>(cut_normalized_str.size()));
-}
 
 template <bool Debug>
 void get_suggestions(typeahead const& t,
@@ -121,6 +62,9 @@ void get_suggestions(typeahead const& t,
                 levenshtein_distance_normalize(t.strings_[names[m.idx_]].view(),
                                                p.s_, ctx.lev_dist_, ctx.tmp_);
           }
+          trace("  {} {} [edit_dist={}]\n", cista::type_str<T>(),
+                t.strings_[names[m.idx_]].view(),
+                std::span{begin(m.edit_dist_), ctx.phrases_.size()});
         }
       };
   get_edit_dist(ctx.street_match_counts_, ctx.street_matches_, t.street_names_);
@@ -135,13 +79,11 @@ void get_suggestions(typeahead const& t,
   for (auto const m : ctx.area_matches_) {
     area_edit_dist[m.idx_] = m.edit_dist_;
     area_active[to_idx(m.idx_)] = true;
-    trace("  AREA {} [edit_dist={}]\n",
-          t.strings_[t.area_names_[m.idx_]].view(),
-          std::span{begin(m.edit_dist_), ctx.phrases_.size()});
   }
 
   constexpr auto const kMaxMatches = std::size_t{1000U};
 
+  auto const numeric_tokens_mask = get_numeric_tokens_mask(tokens);
   auto street_matches =
       std::vector<std::tuple<float, std::uint8_t, street_idx_t>>{};
   for (auto const& street_match : ctx.street_matches_) {
@@ -149,6 +91,10 @@ void get_suggestions(typeahead const& t,
     auto const street_name = t.strings_[t.street_names_[street]].view();
     auto const& normalized_street_name = normalize(street_name, ctx.tmp_);
     for (auto p_idx = 0U; p_idx != ctx.phrases_.size(); ++p_idx) {
+      if ((ctx.phrases_[p_idx].token_bits_ & numeric_tokens_mask) != 0U) {
+        continue;
+      }
+
       auto const edit_dist = street_match.edit_dist_[p_idx];
       if (edit_dist != std::numeric_limits<std::uint8_t>::max() &&
           (street_matches.size() != kMaxMatches ||
@@ -161,41 +107,146 @@ void get_suggestions(typeahead const& t,
     }
   }
 
-  ctx.areas_.clear();
-  for (auto const [edit_dist, street_p_idx, street] : street_matches) {
-    auto const hn_areas_base = t.street_areas_[street].size();
+  for (auto const [street_edit_dist, street_p_idx, street] : street_matches) {
+    ctx.areas_.clear();
 
     std::cout << t.strings_[t.street_names_[street]].view()
-              << ", edit_dist=" << edit_dist
+              << ", edit_dist=" << street_edit_dist
               << ", phrase=" << ctx.phrases_[street_p_idx].s_ << "\n";
 
     for (auto const [i, area_set] : utl::enumerate(t.street_areas_[street])) {
-      ctx.areas_[area_set].emplace_back(i, area_src::kStreet);
+      ctx.areas_[area_set].emplace_back(
+          area_src{.type_ = area_src::type::kStreet,
+                   .dist_ = 0.0F,
+                   .index_ = static_cast<std::uint32_t>(i),
+                   .matched_mask_ = ctx.phrases_[street_p_idx].token_bits_});
     }
 
     auto i = 0U;
-    auto best_hn_dist = std::numeric_limits<float>::max();
-    auto best_hn = 0U;
-    for (auto const [hn, pos, areas_idx] :
-         utl::zip(t.house_numbers_[street], t.house_coordinates_[street],
-                  t.house_areas_[street])) {
+    for (auto const [hn, areas_idx] :
+         utl::zip(t.house_numbers_[street], t.house_areas_[street])) {
       for (auto const& [hn_p_idx, p] : utl::enumerate(ctx.phrases_)) {
-        auto const overlap =
-            (p.input_token_bits_ &
-             ctx.phrases_[street_p_idx].input_token_bits_) != 0U;
-        if (overlap) {
+        if ((p.token_bits_ & numeric_tokens_mask) != p.token_bits_) {
           continue;
         }
 
         auto const hn_edit_dist = levenshtein_distance_normalize(
             t.strings_[hn].view(), p.s_, ctx.lev_dist_, ctx.tmp_);
-        if (hn_edit_dist < best_hn_dist) {
-          ctx.areas_[areas_idx].emplace_back(i, area_src::kHouseNumber);
-          std::cout << "  HOUSENUMBER MATCH: pos=" << pos
-                    << ", name=" << t.strings_[hn].view() << ", phrase=\""
-                    << ctx.phrases_[hn_p_idx].s_
-                    << "\", edit_dist=" << hn_edit_dist
-                    << " , areas: " << area_set{t, areas_idx} << "\n";
+        if (hn_edit_dist < std::numeric_limits<float>::max()) {
+          ctx.areas_[areas_idx].emplace_back(area_src{
+              .type_ = area_src::type::kHouseNumber,
+              .dist_ = hn_edit_dist,
+              .index_ = i,
+              .house_number_p_idx_ = static_cast<std::uint8_t>(hn_p_idx),
+              .matched_mask_ = static_cast<std::uint8_t>(
+                  ctx.phrases_[street_p_idx].token_bits_ |
+                  ctx.phrases_[hn_p_idx].token_bits_)});
+        }
+      }
+      ++i;
+    }
+
+    for (auto const& [area_set_idx, items] : ctx.areas_) {
+      // Activate postal code areas.
+      for (auto const area : t.area_sets_[area_set_idx]) {
+        if (!area_active[to_idx(area)] &&
+            t.area_admin_level_[area] == kPostalCodeAdminLevel) {
+          auto const area_name = t.strings_[t.area_names_[area]].view();
+          area_active[to_idx(area)] = true;
+          for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
+            area_edit_dist[area][j] =
+                ((p.token_bits_ & numeric_tokens_mask) == p.token_bits_)
+                    ? levenshtein_distance_normalize(area_name, p.s_,
+                                                     ctx.lev_dist_, ctx.tmp_)
+                    : std::numeric_limits<float>::max();
+          }
+        }
+      }
+
+      ctx.item_tabu_masks_.clear();
+      for (auto const& item : items) {
+        ctx.item_tabu_masks_.emplace(item.matched_mask_);
+      }
+
+      // For each phrase: greedily match an area name
+      // IF matching distance is below the no-match-penalty threshold.
+      for (auto const item_matched_mask : ctx.item_tabu_masks_) {
+        auto matched_mask = item_matched_mask;
+        auto matched_areas = std::uint32_t{0U};
+        auto areas_edit_dist = 0.0F;
+        for (auto const& [area_p_idx, area_p] : utl::enumerate(ctx.phrases_)) {
+          auto best_edit_dist = std::numeric_limits<float>::max();
+          auto best_area_idx = 0U;
+
+          if ((area_p.token_bits_ & matched_mask) != 0U) {
+            continue;
+          }
+
+          for (auto const [area_idx, area] :
+               utl::enumerate(t.area_sets_[area_set_idx])) {
+            auto const area_name = t.strings_[t.area_names_[area]].view();
+
+            auto const match_allowed =
+                (  // Zip-code areas only match numeric tokens.
+                    (((area_p.token_bits_ & numeric_tokens_mask) ==
+                      area_p.token_bits_) &&
+                     t.area_admin_level_[area] == kPostalCodeAdminLevel) ||
+                    // No-zip-code areas only match non-numeric tokens.
+                    (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
+                     t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
+                    ) &&
+                // Area matched by bi-grams.
+                area_active[to_idx(area)];
+
+            if (!match_allowed) {
+              continue;
+            }
+
+            auto const edit_dist = area_edit_dist[area][area_p_idx];
+            if (best_edit_dist > edit_dist) {
+              std::cout << t.strings_[t.street_names_[street]].view()
+                        << "      matched " << area_p.s_ << " vs " << area_name
+                        << ": score=" << edit_dist << "\n";
+              best_edit_dist = edit_dist;
+              best_area_idx = area_idx;
+            } else {
+              std::cout << t.strings_[t.street_names_[street]].view()
+                        << "      NOT MATCHED " << area_p.s_ << " vs "
+                        << area_name << ": score=" << edit_dist << "\n";
+            }
+          }
+
+          if (best_edit_dist < std::numeric_limits<float>::max()) {
+            matched_areas |= (1U << best_area_idx);
+            areas_edit_dist += best_edit_dist;
+            matched_mask |= area_p.token_bits_;
+          }
+        }
+
+        for (auto const item : items) {
+          if (item.matched_mask_ == item_matched_mask) {
+            auto total_score = street_edit_dist + areas_edit_dist + item.dist_;
+            for (auto const [t_idx, token] : utl::enumerate(tokens)) {
+              if ((matched_mask & (1U << t_idx)) == 0U) {
+                total_score += token.size();
+              }
+            }
+            ctx.suggestions_.emplace_back(suggestion{
+                .location_ =
+                    address{
+                        .street_ = street,
+                        .house_number_ =
+                            item.type_ == area_src::type::kHouseNumber
+                                ? item.index_
+                                : address::kNoHouseNumber,
+                    },
+                .coordinates_ = item.type_ == area_src::type::kHouseNumber
+                                    ? t.house_coordinates_[street][item.index_]
+                                    : t.street_pos_[street][item.index_],
+                .area_set_ = area_set_idx,
+                .matched_areas_ = matched_areas,
+                .score_ = total_score});
+          }
         }
       }
     }
@@ -208,16 +259,16 @@ void get_suggestions(typeahead const& t,
     return;
   }
 
-  //  UTL_START_TIMING(sort);
-  //  auto const result_count = static_cast<std::ptrdiff_t>(
-  //      std::min(std::size_t{n_suggestions}, ctx.suggestions_.size()));
-  //  std::nth_element(begin(ctx.suggestions_),
-  //                   begin(ctx.suggestions_) + result_count,
-  //                   end(ctx.suggestions_));
-  //  ctx.suggestions_.resize(result_count);
-  //  std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
-  //  UTL_STOP_TIMING(sort);
-  //  trace("sort [{} us]\n", UTL_TIMING_US(sort));
+  UTL_START_TIMING(sort);
+  auto const result_count = static_cast<std::ptrdiff_t>(
+      std::min(std::size_t{n_suggestions}, ctx.suggestions_.size()));
+  std::nth_element(begin(ctx.suggestions_),
+                   begin(ctx.suggestions_) + result_count,
+                   end(ctx.suggestions_));
+  ctx.suggestions_.resize(result_count);
+  std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
+  UTL_STOP_TIMING(sort);
+  trace("sort [{} us]\n", UTL_TIMING_US(sort));
 }
 
 template void get_suggestions<true>(typeahead const&,

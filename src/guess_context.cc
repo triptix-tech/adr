@@ -26,13 +26,8 @@ void suggestion::print(std::ostream& out,
                    out << t.strings_[t.area_names_[area]].view();
                  }},
              location_);
-  out << ", street_phrase=" << phrases[street_phase_idx_].s_
-      << " [dist=" << static_cast<unsigned>(street_edit_dist_) << "]"
-      << ", area_phrase=" << phrases[area_phrase_idx_].s_
-      << " [dist=" << static_cast<unsigned>(area_edit_dist_) << "]"
-      << ", area=" << t.strings_[t.area_names_[area_]].view() << " ("
-      << to_str(t.area_admin_level_[area_])
-      << ") -> score=" << static_cast<float>(score_) << "\n";
+  out << ", areas=" << area_set{t, area_set_}
+      << " -> score=" << static_cast<float>(score_) << "\n";
 }
 
 }  // namespace adr

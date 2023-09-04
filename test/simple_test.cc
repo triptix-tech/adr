@@ -1,9 +1,11 @@
 #include "gtest/gtest.h"
 
+#include "utl/to_vec.h"
+
 #include "adr/adr.h"
 #include "adr/ngram.h"
 #include "adr/normalize.h"
-#include "utl/to_vec.h"
+#include "adr/score.h"
 
 TEST(adr, simple) {
   adr::extract("test/Darmstadt.osm.pbf", "adr_darmstadt.cista");
@@ -67,8 +69,19 @@ TEST(adr, phrase) {
       {"illme", "00000100"}};
   auto i = 0U;
   for (auto const& p : phrases) {
-    EXPECT_EQ((std::pair{p.s_, adr::bit_mask_to_str(p.input_token_bits_)}),
+    EXPECT_EQ((std::pair{p.s_, adr::bit_mask_to_str(p.token_bits_)}),
               (expected[i]));
     ++i;
   }
+}
+
+TEST(adr, numeric_tokens) {
+  EXPECT_EQ("01100000", adr::bit_mask_to_str(adr::get_numeric_tokens_mask(
+                            {"abc", "98", "9a", "0aa"})));
+}
+
+TEST(adr, score_test) {
+  auto lev_dist = std::vector<adr::edit_dist_t>{};
+  auto tmp = std::string{};
+  EXPECT_EQ(1, adr::levenshtein_distance_normalize("44", "4", lev_dist, tmp));
 }

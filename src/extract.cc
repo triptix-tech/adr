@@ -153,9 +153,6 @@ void extract(std::filesystem::path const& in_path,
   for (auto const b : ctx.house_coordinates_) {
     t.house_coordinates_.emplace_back(b);
   }
-  for (auto const b : ctx.string_to_location_) {
-    t.string_to_location_.emplace_back(b);
-  }
 
   t.house_coordinates_.resize(t.street_names_.size());
 

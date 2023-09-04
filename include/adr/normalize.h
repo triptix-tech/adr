@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 
+#include "utl/enumerate.h"
+
 namespace adr {
 
 inline void replace_all(std::string& s,
@@ -59,7 +61,7 @@ inline std::string normalize_alloc(std::string_view in) {
 }
 
 struct phrase {
-  std::uint8_t input_token_bits_;
+  std::uint8_t token_bits_;
   std::string s_;
 };
 
@@ -79,7 +81,7 @@ inline std::vector<phrase> get_phrases(
          ++length) {
       auto p = phrase{};
       for (auto to = from; to < from + length && to < in_tokens.size(); ++to) {
-        p.input_token_bits_ |= 1 << to;
+        p.token_bits_ |= 1 << to;
         if (to != from) {
           p.s_ += ' ';
         }
@@ -88,7 +90,24 @@ inline std::vector<phrase> get_phrases(
       r.emplace_back(std::move(p));
     }
   }
+  std::sort(begin(r), end(r),
+            [](auto&& a, auto&& b) { return a.s_.size() < b.s_.size(); });
   return r;
+}
+
+inline std::uint8_t get_numeric_tokens_mask(
+    std::vector<std::string> const& tokens) {
+  auto const number_count = [](std::string_view s) {
+    return std::count_if(begin(s), end(s),
+                         [](auto&& c) { return c >= '0' && c <= '9'; });
+  };
+  auto mask = std::uint8_t{0U};
+  for (auto const [i, token] : utl::enumerate(tokens)) {
+    if (number_count(token) >= token.size() / 2.0) {
+      mask |= 1U << i;
+    }
+  }
+  return mask;
 }
 
 }  // namespace adr
