@@ -43,10 +43,8 @@ void get_suggestions(typeahead const& t,
 
   t.guess<Debug>(normalize(in, ctx.tmp_), ctx);
 
-  auto input_hashes = cista::raw::ankerl_set<cista::hash_t>{};
   auto input_vec = std::vector<std::string>{};
   utl::for_each_token(utl::cstr{ctx.tmp_}, ' ', [&](utl::cstr s) {
-    input_hashes.emplace(cista::hash(s.view()));
     auto const start = &s.view()[0];
     auto const size = ctx.tmp_.size() - (start - &ctx.tmp_[0]);
     input_vec.emplace_back(start, size);
@@ -109,10 +107,6 @@ void get_suggestions(typeahead const& t,
 
   for (auto const [street_edit_dist, street_p_idx, street] : street_matches) {
     ctx.areas_.clear();
-
-    std::cout << t.strings_[t.street_names_[street]].view()
-              << ", edit_dist=" << street_edit_dist
-              << ", phrase=" << ctx.phrases_[street_p_idx].s_ << "\n";
 
     for (auto const [i, area_set] : utl::enumerate(t.street_areas_[street])) {
       ctx.areas_[area_set].emplace_back(
@@ -204,15 +198,8 @@ void get_suggestions(typeahead const& t,
 
             auto const edit_dist = area_edit_dist[area][area_p_idx];
             if (best_edit_dist > edit_dist) {
-              std::cout << t.strings_[t.street_names_[street]].view()
-                        << "      matched " << area_p.s_ << " vs " << area_name
-                        << ": score=" << edit_dist << "\n";
               best_edit_dist = edit_dist;
               best_area_idx = area_idx;
-            } else {
-              std::cout << t.strings_[t.street_names_[street]].view()
-                        << "      NOT MATCHED " << area_p.s_ << " vs "
-                        << area_name << ": score=" << edit_dist << "\n";
             }
           }
 

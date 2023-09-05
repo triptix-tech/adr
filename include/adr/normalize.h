@@ -91,7 +91,7 @@ inline std::vector<phrase> get_phrases(
     }
   }
   std::sort(begin(r), end(r),
-            [](auto&& a, auto&& b) { return a.s_.size() < b.s_.size(); });
+            [](auto&& a, auto&& b) { return a.s_.size() > b.s_.size(); });
   return r;
 }
 

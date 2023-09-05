@@ -37,11 +37,14 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
     return area_idx_t::invalid();
   }
 
-  auto const population = tags["population"];
+  auto const admin_lvl_int = utl::parse<unsigned>(admin_lvl);
+  if (admin_lvl_int < 2 || admin_lvl_int >= 10) {
+    return area_idx_t::invalid();
+  }
 
+  auto const population = tags["population"];
   auto const idx = area_idx_t{area_admin_level_.size()};
-  area_admin_level_.emplace_back(
-      admin_level_t{utl::parse<unsigned>(admin_lvl)});
+  area_admin_level_.emplace_back(admin_level_t{admin_lvl_int});
   area_population_.emplace_back(
       population == nullptr ? 0U : utl::parse<unsigned>(population));
   area_names_.emplace_back(get_or_create_string(ctx, name));
