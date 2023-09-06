@@ -17,22 +17,21 @@ namespace adr {
 
 struct typeahead;
 
-template <typename T>
-constexpr std::array<T, kMaxInputPhrases> inf_edit_dist() {
-  auto a = std::array<T, kMaxInputPhrases>{};
+constexpr auto const kNoMatchScores = []() {
+  auto a = phrase_match_scores_t{};
   for (auto& x : a) {
-    x = std::numeric_limits<T>::max();
+    x = kNoMatch;
   }
   return a;
-}
+}();
 
 template <typename T>
-struct match {
-  bool operator==(match const& o) const { return false; }
-  bool operator<(match const& o) const { return cos_sim_ > o.cos_sim_; }
+struct cos_sim_match {
+  bool operator==(cos_sim_match const& o) const { return false; }
+  bool operator<(cos_sim_match const& o) const { return cos_sim_ > o.cos_sim_; }
   T idx_;
-  float cos_sim_;
-  std::array<float, kMaxInputPhrases> edit_dist_{inf_edit_dist<float>()};
+  score_t cos_sim_;
+  phrase_match_scores_t phrase_match_scores_{kNoMatchScores};
 };
 
 struct address {
@@ -58,10 +57,21 @@ struct suggestion {
 
 struct area_src {
   enum class type { kStreet, kHouseNumber, kPlace } type_;
-  float dist_;
+  score_t score_;
   std::uint32_t index_;
-  std::uint8_t house_number_p_idx_;
+  phrase_idx_t house_number_p_idx_;
   std::uint8_t matched_mask_;
+};
+
+template <typename T>
+struct scored_match {
+  bool operator==(scored_match const& o) const noexcept { return false; }
+  bool operator<(scored_match const& o) const noexcept {
+    return score_ < o.score_;
+  }
+  score_t score_;
+  phrase_idx_t phrase_idx_;
+  T idx_;
 };
 
 struct guess_context {
@@ -73,20 +83,22 @@ struct guess_context {
   }
 
   std::string tmp_;
-  std::vector<ngram_t> street_name_ngrams_;
-  std::array<std::vector<ngram_t>, 32> phrase_ngrams_;
-  std::vector<std::uint16_t> house_number_candidates_;
   std::vector<std::uint8_t> lev_dist_;
-  std::vector<match<place_idx_t>> place_matches_;
+  std::vector<cos_sim_match<place_idx_t>> place_matches_;
   cista::raw::vector_map<place_idx_t, std::uint8_t> place_match_counts_;
-  std::vector<match<area_idx_t>> area_matches_;
+  std::vector<cos_sim_match<area_idx_t>> area_matches_;
   cista::raw::vector_map<area_idx_t, std::uint8_t> area_match_counts_;
-  std::vector<match<street_idx_t>> street_matches_;
+  std::vector<cos_sim_match<street_idx_t>> street_matches_;
   cista::raw::vector_map<street_idx_t, std::uint8_t> street_match_counts_;
   std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;
   cista::raw::ankerl_map<area_set_idx_t, std::vector<area_src>> areas_;
-  cista::raw::ankerl_set<std::uint8_t> item_tabu_masks_;
+  cista::raw::ankerl_set<std::uint8_t> item_matched_masks_;
+  std::vector<scored_match<street_idx_t>> scored_street_matches_;
+  std::vector<scored_match<place_idx_t>> scored_place_matches_;
+  cista::raw::vector_map<area_idx_t, phrase_match_scores_t>
+      area_phrase_match_scores_;
+  std::vector<bool> area_active_;
   float sqrt_len_vec_in_;
 };
 

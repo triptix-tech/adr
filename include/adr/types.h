@@ -58,4 +58,11 @@ constexpr auto const kMaxInputPhrases = 32U;
 using edit_dist_t = std::uint8_t;
 constexpr auto const kMaxEditDist = std::numeric_limits<edit_dist_t>::max();
 
+using score_t = float;
+constexpr auto const kNoMatch = std::numeric_limits<score_t>::max();
+
+using phrase_idx_t = std::uint8_t;
+
+using phrase_match_scores_t = std::array<score_t, kMaxInputPhrases>;
+
 }  // namespace adr

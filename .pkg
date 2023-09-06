@@ -22,10 +22,6 @@
   url=git@github.com:motis-project/protozero.git
   branch=master
   commit=8c9f3fa97c2cfdceef86d0b61818ae98e9328f29
-[guess]
-  url=git@github.com:motis-project/guess.git
-  branch=master
-  commit=5acaeaacca154bd20987806f9626be5e3b87e1c5
 [boost]
   url=git@github.com:motis-project/boost.git
   branch=master

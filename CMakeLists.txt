@@ -7,7 +7,7 @@ file(GLOB_RECURSE adr-files src/*.cc)
 add_library(adr ${adr-files})
 target_compile_features(adr PRIVATE cxx_std_23)
 target_include_directories(adr PUBLIC include)
-target_link_libraries(adr osmium geo cista utl protozero guess boost zlibstatic unordered_dense)
+target_link_libraries(adr osmium geo cista utl protozero boost zlibstatic unordered_dense)
 
 add_executable(adr-extract exe/extract.cc)
 target_link_libraries(adr-extract adr boost-program_options)

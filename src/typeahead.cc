@@ -250,7 +250,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   auto const match_bigrams =
       [&]<typename T>(data::vector_map<T, string_idx_t> const& names,
                       ngram_index_t<T> const& ngrams,
-                      std::vector<match<T>>& matches,
+                      std::vector<cos_sim_match<T>>& matches,
                       cista::raw::vector_map<T, std::uint8_t>& match_counts) {
         UTL_START_TIMING(t);
 
@@ -271,9 +271,9 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
           }
 
           auto const match_count = match_counts[i];
-          auto const m =
-              match<T>{i, static_cast<float>(match_count) /
-                              (ctx.sqrt_len_vec_in_ * match_sqrts_[names[i]])};
+          auto const m = cos_sim_match<T>{
+              i, static_cast<float>(match_count) /
+                     (ctx.sqrt_len_vec_in_ * match_sqrts_[names[i]])};
           matches.emplace_back(m);
 
           if (matches.size() > 20000) {

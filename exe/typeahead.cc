@@ -76,11 +76,17 @@ int main(int ac, char** av) {
   } else {
     using namespace ftxui;
 
+    auto screen = ScreenInteractive::TerminalOutput();
+
     std::string line;
     auto ctx = adr::guess_context{};
 
     std::string first_name;
     auto const guesses = [&]() {
+      if (first_name == "quit!") {
+        screen.Exit();
+      }
+
       adr::get_suggestions<false>(*t, geo::latlng{0, 0}, first_name, n, ctx);
 
       Elements list;
@@ -102,7 +108,6 @@ int main(int ac, char** av) {
              bgcolor(Color::Black);
     });
 
-    auto screen = ScreenInteractive::TerminalOutput();
     screen.Loop(renderer);
   }
 }
