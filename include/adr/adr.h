@@ -15,7 +15,9 @@ namespace adr {
 
 struct typeahead;
 
-void extract(std::filesystem::path const& in, std::filesystem::path const& out);
+void extract(std::filesystem::path const& in,
+             std::filesystem::path const& out,
+             std::filesystem::path const& tmp_dname);
 
 cista::wrapped<typeahead> read(std::filesystem::path const&);
 

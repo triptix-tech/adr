@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <span>
 #include <variant>
 
@@ -49,6 +50,8 @@ struct import_context {
   raw_mutable_vecvec<street_idx_t, coordinates> street_pos_;
   raw_mutable_vecvec<street_idx_t, string_idx_t> house_numbers_;
   raw_mutable_vecvec<street_idx_t, coordinates> house_coordinates_;
+
+  std::mutex mutex_;
 };
 
 struct typeahead {

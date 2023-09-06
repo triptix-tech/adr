@@ -11,10 +11,11 @@ namespace bpo = boost::program_options;
 namespace fs = std::filesystem;
 
 int main(int ac, char** av) {
-  utl::get_active_progress_tracker_or_activate("");
+  auto const progress_bars = utl::global_progress_bars{false};
 
   auto in = fs::path{"osm.pbf"};
   auto out = fs::path{"adr.cista"};
+  auto tmp = fs::path{"."};
 
   try {
     bpo::options_description desc{"Options"};
@@ -23,7 +24,9 @@ int main(int ac, char** av) {
         ("in,i", bpo::value<fs::path>(&in)->default_value(in),
          "OSM input file")  //
         ("out,o", bpo::value<fs::path>(&out)->default_value(out),
-         "output file");
+         "output file")  //
+        ("tmp_dir,t", bpo::value<fs::path>(&tmp)->default_value(tmp),
+         "directory for temporary files");
 
     auto const pos_desc =
         bpo::positional_options_description{}.add("in", 1).add("out", -1);
@@ -47,6 +50,7 @@ int main(int ac, char** av) {
   }
 
   std::cout << "IN: " << in << "\n"
-            << "OUT: " << out << "\n";
-  adr::extract(in, out);
+            << "OUT: " << out << "\n"
+            << "TMP: " << tmp << "\n";
+  adr::extract(in, out, tmp);
 }

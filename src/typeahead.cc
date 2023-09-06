@@ -18,6 +18,7 @@ area_idx_t typeahead::add_postal_code_area(import_context& ctx,
     return area_idx_t::invalid();
   }
 
+  auto const lock = std::lock_guard{ctx.mutex_};
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(kPostalCodeAdminLevel);
   area_population_.emplace_back(0U);
@@ -42,6 +43,7 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
     return area_idx_t::invalid();
   }
 
+  auto const lock = std::lock_guard{ctx.mutex_};
   auto const population = tags["population"];
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(admin_level_t{admin_lvl_int});
@@ -64,6 +66,7 @@ void typeahead::add_address(import_context& ctx,
     return;
   }
 
+  auto const lock = std::lock_guard{ctx.mutex_};
   auto const string_idx = get_or_create_string(ctx, street);
   auto const street_idx =
       utl::get_or_create(ctx.street_lookup_, string_idx, [&]() {
@@ -85,6 +88,7 @@ void typeahead::add_street(import_context& ctx,
     return;
   }
 
+  auto const lock = std::lock_guard{ctx.mutex_};
   auto const string_idx = get_or_create_string(ctx, name);
   auto const street_idx =
       utl::get_or_create(ctx.street_lookup_, string_idx, [&]() {
@@ -115,6 +119,7 @@ void typeahead::add_place(import_context& ctx,
     return;
   }
 
+  auto const lock = std::lock_guard{ctx.mutex_};
   auto const idx = place_names_.size();
   place_names_.emplace_back(get_or_create_string(ctx, name));
   place_coordinates_.emplace_back(l.x(), l.y());
