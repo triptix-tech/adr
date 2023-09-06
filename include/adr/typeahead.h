@@ -117,17 +117,39 @@ struct typeahead {
 
 struct area_set {
   friend std::ostream& operator<<(std::ostream& out, area_set const& s) {
+
+    auto const areas = s.t_.area_sets_[s.areas_];
+    auto const city_it =
+        std::min_element(begin(areas), end(areas), [&](auto&& a, auto&& b) {
+          return (s.t_.area_admin_level_[a] - 8U) <
+                 (s.t_.area_admin_level_[b] - 8U);
+        });
+    auto const city_idx =
+        city_it == end(areas) ? -1 : std::distance(begin(areas), city_it);
+
     auto first = true;
     out << s.areas_ << " [";
-    for (auto const& a : s.t_.area_sets_[s.areas_]) {
+    for (auto const& [i, a] : utl::enumerate(s.t_.area_sets_[s.areas_])) {
+      auto const admin_lvl =
+          static_cast<unsigned>(to_idx(s.t_.area_admin_level_[a]));
+      auto const matched = (((1U << i) & s.matched_mask_) != 0U);
+      auto const print_city =
+          city_idx != -1 &&
+          s.t_.area_admin_level_[areas[city_idx]] == admin_lvl;
+      if (!print_city && !matched) {
+        continue;
+      }
+
       if (!first) {
         out << ", ";
       }
       first = false;
       auto const name = s.t_.strings_[s.t_.area_names_[a]].view();
+      if (matched) {
+        out << "*";
+      }
       out << "(" << name.substr(std::max(static_cast<int>(name.size()) - 16, 0))
-          << ", " << static_cast<unsigned>(to_idx(s.t_.area_admin_level_[a]))
-          << ")";
+          << ", " << admin_lvl << ")";
     }
     out << "]";
     return out;
@@ -135,6 +157,7 @@ struct area_set {
 
   typeahead const& t_;
   area_set_idx_t areas_;
+  std::uint32_t matched_mask_{std::numeric_limits<std::uint32_t>::max()};
 };
 
 }  // namespace adr

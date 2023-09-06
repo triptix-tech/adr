@@ -38,6 +38,25 @@ void get_match_score(guess_context& ctx,
   }
 }
 
+void activate_postal_code_areas(typeahead const& t,
+                                guess_context& ctx,
+                                std::uint8_t const numeric_tokens_mask,
+                                area_set_idx_t const area_set_idx) {
+  for (auto const area : t.area_sets_[area_set_idx]) {
+    if (!ctx.area_active_[to_idx(area)] &&
+        t.area_admin_level_[area] == kPostalCodeAdminLevel) {
+      auto const area_name = t.strings_[t.area_names_[area]].view();
+      ctx.area_active_[to_idx(area)] = true;
+      for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
+        ctx.area_phrase_match_scores_[area][j] =
+            ((p.token_bits_ & numeric_tokens_mask) == p.token_bits_)
+                ? get_match_score(area_name, p.s_, ctx.lev_dist_, ctx.tmp_)
+                : std::numeric_limits<float>::max();
+      }
+    }
+  }
+}
+
 void match_streets(std::uint8_t const numeric_tokens_mask,
                    typeahead const& t,
                    guess_context& ctx,
@@ -81,20 +100,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
     }
 
     for (auto const& [area_set_idx, items] : ctx.areas_) {
-      // Activate postal code areas.
-      for (auto const area : t.area_sets_[area_set_idx]) {
-        if (!ctx.area_active_[to_idx(area)] &&
-            t.area_admin_level_[area] == kPostalCodeAdminLevel) {
-          auto const area_name = t.strings_[t.area_names_[area]].view();
-          ctx.area_active_[to_idx(area)] = true;
-          for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
-            ctx.area_phrase_match_scores_[area][j] =
-                ((p.token_bits_ & numeric_tokens_mask) == p.token_bits_)
-                    ? get_match_score(area_name, p.s_, ctx.lev_dist_, ctx.tmp_)
-                    : std::numeric_limits<float>::max();
-          }
-        }
-      }
+      activate_postal_code_areas(t, ctx, numeric_tokens_mask, area_set_idx);
 
       ctx.item_matched_masks_.clear();
       for (auto const& item : items) {
@@ -143,7 +149,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
             }
           }
 
-          if (best_edit_dist < std::numeric_limits<float>::max()) {
+          if (best_edit_dist != kNoMatch) {
             matched_areas |= (1U << best_area_idx);
             areas_edit_dist += best_edit_dist;
             matched_mask |= area_p.token_bits_;
@@ -151,32 +157,104 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
         }
 
         for (auto const item : items) {
-          if (item.matched_mask_ == item_matched_mask) {
-            auto total_score = street_edit_dist + areas_edit_dist + item.score_;
-            for (auto const [t_idx, token] : utl::enumerate(tokens)) {
-              if ((matched_mask & (1U << t_idx)) == 0U) {
-                total_score += token.size();
-              }
-            }
-            ctx.suggestions_.emplace_back(suggestion{
-                .location_ =
-                    address{
-                        .street_ = street,
-                        .house_number_ =
-                            item.type_ == area_src::type::kHouseNumber
-                                ? item.index_
-                                : address::kNoHouseNumber,
-                    },
-                .coordinates_ = item.type_ == area_src::type::kHouseNumber
-                                    ? t.house_coordinates_[street][item.index_]
-                                    : t.street_pos_[street][item.index_],
-                .area_set_ = area_set_idx,
-                .matched_areas_ = matched_areas,
-                .score_ = total_score});
+          if (item.matched_mask_ != item_matched_mask) {
+            continue;
           }
+
+          auto total_score = street_edit_dist + areas_edit_dist + item.score_;
+          for (auto const [t_idx, token] : utl::enumerate(tokens)) {
+            if ((matched_mask & (1U << t_idx)) == 0U) {
+              total_score += token.size();
+            }
+          }
+          ctx.suggestions_.emplace_back(suggestion{
+              .location_ =
+                  address{
+                      .street_ = street,
+                      .house_number_ =
+                          item.type_ == area_src::type::kHouseNumber
+                              ? item.index_
+                              : address::kNoHouseNumber,
+                  },
+              .coordinates_ = item.type_ == area_src::type::kHouseNumber
+                                  ? t.house_coordinates_[street][item.index_]
+                                  : t.street_pos_[street][item.index_],
+              .area_set_ = area_set_idx,
+              .matched_areas_ = matched_areas,
+              .score_ = total_score});
         }
       }
     }
+  }
+}
+
+void match_places(std::uint8_t const numeric_tokens_mask,
+                  typeahead const& t,
+                  guess_context& ctx,
+                  std::vector<std::string> const& tokens) {
+  for (auto const [place_edit_dist, place_p_idx, place] :
+       ctx.scored_place_matches_) {
+    auto const area_set_idx = t.place_areas_[place];
+
+    activate_postal_code_areas(t, ctx, numeric_tokens_mask, area_set_idx);
+
+    auto matched_mask = ctx.phrases_[place_p_idx].token_bits_;
+    auto matched_areas = std::uint32_t{0U};
+    auto areas_edit_dist = 0.0F;
+    for (auto const& [area_p_idx, area_p] : utl::enumerate(ctx.phrases_)) {
+      auto best_edit_dist = std::numeric_limits<float>::max();
+      auto best_area_idx = 0U;
+
+      if ((area_p.token_bits_ & matched_mask) != 0U) {
+        continue;
+      }
+
+      for (auto const [area_idx, area] :
+           utl::enumerate(t.area_sets_[area_set_idx])) {
+        auto const area_name = t.strings_[t.area_names_[area]].view();
+
+        auto const match_allowed =
+            (  // Zip-code areas only match numeric tokens.
+                (((area_p.token_bits_ & numeric_tokens_mask) ==
+                  area_p.token_bits_) &&
+                 t.area_admin_level_[area] == kPostalCodeAdminLevel) ||
+                // No-zip-code areas only match non-numeric tokens.
+                (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
+                 t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
+                ) &&
+            // Area matched by bi-grams.
+            ctx.area_active_[to_idx(area)];
+
+        if (!match_allowed) {
+          continue;
+        }
+
+        auto const edit_dist = ctx.area_phrase_match_scores_[area][area_p_idx];
+        if (best_edit_dist > edit_dist) {
+          best_edit_dist = edit_dist;
+          best_area_idx = area_idx;
+        }
+      }
+
+      if (best_edit_dist != kNoMatch) {
+        matched_areas |= (1U << best_area_idx);
+        areas_edit_dist += best_edit_dist;
+        matched_mask |= area_p.token_bits_;
+      }
+    }
+
+    auto total_score = place_edit_dist + areas_edit_dist;
+    for (auto const [t_idx, token] : utl::enumerate(tokens)) {
+      if ((matched_mask & (1U << t_idx)) == 0U) {
+        total_score += token.size();
+      }
+    }
+    ctx.suggestions_.emplace_back(
+        suggestion{.location_ = place,
+                   .coordinates_ = t.place_coordinates_[place],
+                   .area_set_ = area_set_idx,
+                   .matched_areas_ = matched_areas,
+                   .score_ = total_score});
   }
 }
 
@@ -254,6 +332,7 @@ void get_suggestions(typeahead const& t,
                      ctx.place_matches_, ctx.scored_place_matches_);
 
   match_streets(numeric_tokens_mask, t, ctx, tokens);
+  match_places(numeric_tokens_mask, t, ctx, tokens);
 
   UTL_STOP_TIMING(t);
   trace("{} suggestions [{} ms]\n", ctx.suggestions_.size(), UTL_TIMING_MS(t));

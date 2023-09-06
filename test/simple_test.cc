@@ -83,5 +83,5 @@ TEST(adr, numeric_tokens) {
 TEST(adr, score_test) {
   auto lev_dist = std::vector<adr::edit_dist_t>{};
   auto tmp = std::string{};
-  EXPECT_EQ(1, adr::levenshtein_distance_normalize("44", "4", lev_dist, tmp));
+  EXPECT_EQ(1, adr::get_match_score("44", "4", lev_dist, tmp));
 }

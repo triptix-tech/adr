@@ -97,7 +97,7 @@ void typeahead::add_street(import_context& ctx,
     if (osmium::geom::haversine::distance(
             osmium::geom::Coordinates{l},
             osmium::geom::Coordinates{osmium::Location{p.lat_, p.lng_}}) <
-        5000.0) {
+        1500.0) {
       return;
     }
   }

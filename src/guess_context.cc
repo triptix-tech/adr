@@ -11,10 +11,11 @@ void suggestion::print(std::ostream& out,
                        std::vector<phrase> const& phrases) const {
   std::visit(utl::overloaded{
                  [&](place_idx_t const p) {
-                   out << t.strings_[t.place_names_[p]].view();
+                   out << "place=" << t.strings_[t.place_names_[p]].view();
                  },
                  [&](address const addr) {
-                   out << t.strings_[t.street_names_[addr.street_]].view();
+                   out << "street="
+                       << t.strings_[t.street_names_[addr.street_]].view();
                    if (addr.house_number_ != address::kNoHouseNumber) {
                      out << ", house_number="
                          << t.strings_[t.house_numbers_[addr.street_]
@@ -23,10 +24,11 @@ void suggestion::print(std::ostream& out,
                    }
                  },
                  [&](area_idx_t const area) {
-                   out << t.strings_[t.area_names_[area]].view();
+                   out << "area=" << t.strings_[t.area_names_[area]].view();
                  }},
              location_);
-  out << ", areas=" << area_set{t, area_set_}
+  out << ", pos=" << coordinates_
+      << ", areas=" << area_set{t, area_set_, matched_areas_}
       << " -> score=" << static_cast<float>(score_) << "\n";
 }
 
