@@ -42,3 +42,7 @@
   url=git@github.com:ArthurSonzogni/FTXUI.git
   branch=main
   commit=dd6a5d371fd7a3e2937bb579955003c54b727233
+[mimalloc]
+  url=git@github.com:motis-project/mimalloc.git
+  branch=master
+  commit=0087f000848de31b0090cb6f282348bd2fd3a9b8

@@ -14,6 +14,7 @@
 #include "utl/enumerate.h"
 #include "utl/helpers/algorithm.h"
 #include "utl/progress_tracker.h"
+#include "utl/timing.h"
 #include "utl/zip.h"
 
 #include "tiles/osm/hybrid_node_idx.h"
@@ -126,11 +127,14 @@ void extract(std::filesystem::path const& in_path,
   auto file_size = std::size_t{0U};
   try {
     input_file = osm_io::File{in_path};
-    file_size = osm_io::Reader{input_file}.file_size();
+    file_size =
+        osm_io::Reader{input_file, osmium::io::read_meta::no}.file_size();
   } catch (...) {
     fmt::print("load_osm failed [file={}]\n", in_path);
     throw;
   }
+
+  std::cout << "size=" << file_size << "\n";
 
   auto pt = utl::get_active_progress_tracker_or_activate("import");
   pt->status("Load OSM").out_mod(3.F).in_high(2 * file_size);
@@ -153,7 +157,8 @@ void extract(std::filesystem::path const& in_path,
     pt->status("Load OSM / Pass 1");
     auto node_idx_builder = tiles::hybrid_node_idx_builder{node_idx};
 
-    auto reader = osm_io::Reader{input_file, osm_eb::node | osm_eb::relation};
+    auto reader = osm_io::Reader{input_file, osm_eb::node | osm_eb::relation,
+                                 osmium::io::read_meta::no};
     while (auto buffer = reader.read()) {
       pt->update(reader.offset());
       osm::apply(buffer, node_idx_builder, mp_manager);
@@ -203,7 +208,7 @@ void extract(std::filesystem::path const& in_path,
     auto pool = osmium::thread::Pool{thread_count,
                                      static_cast<size_t>(thread_count * 8)};
 
-    auto reader = osm_io::Reader{input_file, pool};
+    auto reader = osm_io::Reader{input_file, pool, osmium::io::read_meta::no};
     auto seq_reader = tiles::sequential_until_finish<osm_mem::Buffer>{[&] {
       pt->update(reader.file_size() + reader.offset());
       return reader.read();
@@ -222,7 +227,7 @@ void extract(std::filesystem::path const& in_path,
             }
 
             auto& [idx, buf] = *opt;
-            update_locations(node_idx, buf);
+            tiles::update_locations(node_idx, buf);
             osm::apply(buf, get_handler());
 
             mp_queue.process_in_order(idx, std::move(buf), [&](auto buf2) {
@@ -263,6 +268,7 @@ void extract(std::filesystem::path const& in_path,
 
   {  // Copy data from context to typeahead (not possible before, because vecvec
      // requires to build indices 0, ..., N in order).
+    UTL_START_TIMING(copy_data);
     for (auto const b : ctx.street_pos_) {
       t.street_pos_.emplace_back(b);
     }
@@ -272,9 +278,13 @@ void extract(std::filesystem::path const& in_path,
     for (auto const b : ctx.house_coordinates_) {
       t.house_coordinates_.emplace_back(b);
     }
+    UTL_STOP_TIMING(copy_data);
+    std::cout << "copy data timing: " << UTL_TIMING_MS(copy_data) << "\n";
   }
 
   {  // Assign place/street/housenumber coordinates to areas.
+    UTL_START_TIMING(coordinate_areas);
+
     t.house_coordinates_.resize(t.street_names_.size());
 
     auto rtree_results = std::basic_string<area_idx_t>{};
@@ -310,9 +320,15 @@ void extract(std::filesystem::path const& in_path,
             t.get_or_create_area_set(ctx, geo_lookup(c)));
       }
     }
+
+    UTL_STOP_TIMING(coordinate_areas);
+    std::cout << "coordinate area timing: " << UTL_TIMING_MS(coordinate_areas)
+              << "\n";
   }
 
   {  // Finalize.
+    UTL_START_TIMING(trigram_index);
+
     t.house_numbers_[street_idx_t{t.street_names_.size() - 1}];
     t.house_coordinates_[street_idx_t{t.street_names_.size() - 1}];
 
@@ -321,6 +337,10 @@ void extract(std::filesystem::path const& in_path,
     ctx.street_names_ = {};
 
     t.build_trigram_index();
+
+    UTL_STOP_TIMING(trigram_index);
+    std::cout << "trigram index timing: " << UTL_TIMING_MS(trigram_index)
+              << "\n";
   }
 
   {  // Write to disk.

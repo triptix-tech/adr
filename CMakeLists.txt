@@ -3,6 +3,19 @@ project(adr)
 
 include(cmake/pkg.cmake)
 
+option(ADR_MIMALLOC "use mimalloc" ON)
+if (ADR_MIMALLOC)
+    if(WIN32)
+        set(adr-mimalloc-lib mimalloc)
+        target_link_libraries(cista INTERFACE mimalloc)
+    else()
+        set(adr-mimalloc-lib mimalloc-obj)
+        target_link_libraries(cista INTERFACE mimalloc-static)
+    endif()
+    target_compile_definitions(cista INTERFACE CISTA_USE_MIMALLOC=1)
+    target_compile_definitions(boost INTERFACE BOOST_ASIO_DISABLE_STD_ALIGNED_ALLOC=1)
+endif()
+
 file(GLOB_RECURSE adr-files src/*.cc)
 add_library(adr ${adr-files})
 target_compile_features(adr PRIVATE cxx_std_23)
@@ -20,7 +33,7 @@ target_link_libraries(adr
 )
 
 add_executable(adr-extract exe/extract.cc)
-target_link_libraries(adr-extract adr boost-program_options)
+target_link_libraries(adr-extract adr boost-program_options ${adr-mimalloc-lib})
 
 add_executable(adr-typeahead exe/typeahead.cc)
 target_link_libraries(adr-typeahead
@@ -29,7 +42,39 @@ target_link_libraries(adr-typeahead
     ftxui::screen
     ftxui::dom
     ftxui::component
+    ${adr-mimalloc-lib}
 )
+
+if (MOTIS_MIMALLOC AND WIN32)
+    add_custom_command(
+            TARGET adr-extract POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy
+            $<TARGET_FILE:mimalloc>
+            $<TARGET_FILE_DIR:adr-extract>
+            COMMENT "Copy mimalloc.dll to output directory"
+    )
+    add_custom_command(
+            TARGET adr-extract POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy
+            "${CMAKE_CURRENT_BINARY_DIR}/deps/mimalloc/mimalloc-redirect.dll"
+            $<TARGET_FILE_DIR:adr-extract>
+            COMMENT "Copy mimalloc-redirect.dll to output directory"
+    )
+    add_custom_command(
+            TARGET adr-typeahead POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy
+            $<TARGET_FILE:mimalloc>
+            $<TARGET_FILE_DIR:adr-typeahead>
+            COMMENT "Copy mimalloc.dll to output directory"
+    )
+    add_custom_command(
+            TARGET adr-typeahead POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy
+            "${CMAKE_CURRENT_BINARY_DIR}/deps/mimalloc/mimalloc-redirect.dll"
+            $<TARGET_FILE_DIR:adr-typeahead>
+            COMMENT "Copy mimalloc-redirect.dll to output directory"
+    )
+endif()
 
 file(GLOB_RECURSE adr-test-files test/*cc)
 configure_file (
