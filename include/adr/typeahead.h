@@ -73,20 +73,19 @@ struct typeahead {
                  osmium::TagList const&,
                  osmium::Location const&);
 
-  string_idx_t get_or_create_string(import_context&, std::string_view s);
+  void build_trigram_index();
+  bool verify();
 
   area_set_idx_t get_or_create_area_set(import_context&,
                                         std::basic_string<area_idx_t> const& p);
 
-  bool verify();
-
-  void build_trigram_index();
-
   template <bool Debug>
   void guess(std::string_view normalized, guess_context&) const;
 
-  void print_match(string_idx_t str_idx) const;
+private:
+  string_idx_t get_or_create_string(import_context&, std::string_view s);
 
+public:
   data::vector_map<area_idx_t, string_idx_t> area_names_;
   data::vector_map<area_idx_t, admin_level_t> area_admin_level_;
   data::vector_map<area_idx_t, std::uint32_t> area_population_;

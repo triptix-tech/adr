@@ -43,21 +43,12 @@ using box = bg::model::box<point>;
 using area_rtree_value = std::pair<box, adr::area_idx_t>;
 using rtree = bgi::rtree<area_rtree_value, bgi::rstar<16>>;
 
-template <typename Fn>
-struct area_handler : public osmium::handler::Handler {
-  explicit area_handler(Fn&& fn) : fn_(std::move(fn)) {}
-  void area(osmium::Area const& a) { fn_(a); }
-  Fn fn_;
-};
-
-template <typename Fn>
-area_handler(Fn&&) -> area_handler<std::decay_t<Fn>>;
-
 struct feature_handler : public osmium::handler::Handler {
   feature_handler(typeahead& t,
                   import_context& ctx,
-                  std::vector<area_rtree_value>& areas)
-      : t_{t}, ctx_{ctx}, areas_{areas} {}
+                  std::vector<area_rtree_value>& areas,
+                  std::mutex& areas_mutex)
+      : t_{t}, ctx_{ctx}, areas_{areas}, areas_mutex_{areas_mutex} {}
 
   void way(osmium::Way const& w) {
     if (!w.nodes().empty()) {
@@ -107,10 +98,12 @@ struct feature_handler : public osmium::handler::Handler {
     bg::envelope(bbox, env_box);
 
     if (admin_area_idx != area_idx_t::invalid()) {
+      auto const lock = std::scoped_lock{areas_mutex_};
       areas_.emplace_back(bbox, admin_area_idx);
     }
 
     if (postal_code_area_idx != area_idx_t::invalid()) {
+      auto const lock = std::scoped_lock{areas_mutex_};
       areas_.emplace_back(bbox, postal_code_area_idx);
     }
   }
@@ -118,6 +111,7 @@ struct feature_handler : public osmium::handler::Handler {
   typeahead& t_;
   import_context& ctx_;
   std::vector<area_rtree_value>& areas_;
+  std::mutex& areas_mutex_;
 };
 
 void extract(std::filesystem::path const& in_path,
@@ -177,6 +171,7 @@ void extract(std::filesystem::path const& in_path,
   auto ctx = import_context{};
   auto t = typeahead{};
   auto areas = std::vector<area_rtree_value>{};
+  auto areas_mutex = std::mutex{};
   auto mp_queue = tiles::in_order_queue<osm_mem::Buffer>{};
   {  // Extract streets, places, and areas.
     pt->status("Load OSM / Pass 2");
@@ -188,7 +183,8 @@ void extract(std::filesystem::path const& in_path,
     auto handlers = std::vector<std::pair<std::thread::id, feature_handler>>{};
     handlers.reserve(thread_count);
     for (auto i = 0; i < thread_count; ++i) {
-      handlers.emplace_back(std::thread::id{}, feature_handler{t, ctx, areas});
+      handlers.emplace_back(std::thread::id{},
+                            feature_handler{t, ctx, areas, areas_mutex});
     }
     auto const get_handler = [&]() -> feature_handler& {
       auto const thread_id = std::this_thread::get_id();
