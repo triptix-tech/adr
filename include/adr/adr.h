@@ -19,7 +19,7 @@ void extract(std::filesystem::path const& in,
              std::filesystem::path const& out,
              std::filesystem::path const& tmp_dname);
 
-cista::wrapped<typeahead> read(std::filesystem::path const&);
+cista::wrapped<typeahead> read(std::filesystem::path const&, bool mapped);
 
 template <bool Debug>
 void get_suggestions(typeahead const&,

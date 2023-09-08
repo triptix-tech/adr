@@ -4,6 +4,7 @@
 #include "boost/program_options.hpp"
 
 #include "utl/enumerate.h"
+#include "utl/timing.h"
 
 #include "ftxui/component/captured_mouse.hpp"  // for ftxui
 #include "ftxui/component/component.hpp"  // for Input, Renderer, Vertical
@@ -22,6 +23,8 @@ int main(int ac, char** av) {
   auto guess = std::string{""};
   auto verbose = false;
   auto n = 15U;
+  auto mapped = false;
+  auto runs = 1U;
 
   try {
     bpo::options_description desc{"Options"};
@@ -32,7 +35,11 @@ int main(int ac, char** av) {
          "OSM input file")  //
         ("guess,g", bpo::value<std::string>(&guess)->default_value(guess),
          "guess input string")  //
-        (",n", bpo::value<unsigned>(&n)->default_value(n));
+        (",n", bpo::value<unsigned>(&n)->default_value(n),
+         "number of suggestions")  //
+        ("runs,r", bpo::value<unsigned>(&runs)->default_value(runs),
+         "number of runs (for benchmarking)")  //
+        ("mmap,m", "use memory mapping");
 
     auto const pos_desc =
         bpo::positional_options_description{}.add("in", 1).add("guess", -1);
@@ -54,20 +61,33 @@ int main(int ac, char** av) {
     if (vm.count("verbose")) {
       verbose = true;
     }
+    if (vm.count("mmap")) {
+      mapped = true;
+    }
   } catch (bpo::error const& ex) {
     std::cerr << ex.what() << '\n';
     return 1;
   }
 
-  auto const t = adr::read(in);
+  auto const t = adr::read(in, mapped);
 
   if (!guess.empty()) {
     auto ctx = adr::guess_context{};
-    if (verbose) {
-      adr::get_suggestions<true>(*t, geo::latlng{0, 0}, guess, n, ctx);
-    } else {
-      adr::get_suggestions<false>(*t, geo::latlng{0, 0}, guess, n, ctx);
+
+    UTL_START_TIMING(timer);
+    for (auto i = 0U; i != runs; ++i) {
+      if (verbose) {
+        adr::get_suggestions<true>(*t, geo::latlng{0, 0}, guess, n, ctx);
+      } else {
+        adr::get_suggestions<false>(*t, geo::latlng{0, 0}, guess, n, ctx);
+      }
     }
+    UTL_STOP_TIMING(timer);
+    std::cout << "\n" << UTL_TIMING_MS(timer) << " ms";
+    if (runs != 1U) {
+      std::cout << ", average=" << (UTL_TIMING_MS(timer) / runs) << " ms";
+    }
+    std::cout << "\n";
 
     for (auto const& s : ctx.suggestions_) {
       s.print(std::cout, *t, ctx.phrases_);

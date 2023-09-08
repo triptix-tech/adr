@@ -312,13 +312,20 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
                 ctx.street_match_counts_);
 }
 
-cista::wrapped<typeahead> read(std::filesystem::path const& path_in) {
+cista::wrapped<typeahead> read(std::filesystem::path const& path_in,
+                               bool const mapped) {
   constexpr auto const kMode =
       cista::mode::UNCHECKED | cista::mode::WITH_STATIC_VERSION;
-  auto b = cista::buf{
-      cista::mmap{path_in.string().c_str(), cista::mmap::protection::READ}};
-  auto const p = cista::deserialize<typeahead, kMode>(b);
-  return cista::wrapped{std::move(b), p};
+  if (mapped) {
+    auto b = cista::buf{
+        cista::mmap{path_in.string().c_str(), cista::mmap::protection::READ}};
+    auto const p = cista::deserialize<typeahead, kMode>(b);
+    return cista::wrapped{std::move(b), p};
+  } else {
+    auto b = cista::file{path_in.c_str(), "r"}.content();
+    auto const p = cista::deserialize<typeahead, kMode>(b);
+    return cista::wrapped{std::move(b), p};
+  }
 }
 
 template void typeahead::guess<true>(std::string_view normalized,
