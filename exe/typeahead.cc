@@ -83,13 +83,14 @@ int main(int ac, char** av) {
       }
     }
     UTL_STOP_TIMING(timer);
-    std::cout << "\n" << UTL_TIMING_MS(timer) << " ms";
+    std::cout << UTL_TIMING_MS(timer) << " ms";
     if (runs != 1U) {
       std::cout << ", average=" << (UTL_TIMING_MS(timer) / runs) << " ms";
     }
     std::cout << "\n";
 
-    for (auto const& s : ctx.suggestions_) {
+    for (auto const& [i, s] : utl::enumerate(ctx.suggestions_)) {
+      std::cout << "[" << i << "]\t";
       s.print(std::cout, *t, ctx.phrases_);
     }
     return 0;

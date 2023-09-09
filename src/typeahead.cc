@@ -239,6 +239,63 @@ std::uint64_t fast_log_2(std::uint64_t v) {
            58U];
 }
 
+template <bool Debug, typename T>
+void match_bigrams(typeahead const& t,
+                   guess_context const& ctx,
+                   std::array<ngram_t, 128U> const in_ngrams_buf,
+                   unsigned const n_in_ngrams,
+                   unsigned const min_bigram_matches,
+                   data::vector_map<T, string_idx_t> const& names,
+                   ngram_index_t<T> const& ngrams,
+                   std::vector<cos_sim_match<T>>& matches,
+                   cista::raw::vector_map<T, std::uint8_t>& match_counts) {
+  // Collect candidate indices matched by the bigrams in the input
+  // string.
+  UTL_START_TIMING(t1);
+  match_counts.clear();
+  match_counts.resize(names.size());
+  for (auto i = 0U; i != n_in_ngrams; ++i) {
+    for (auto const item_idx : ngrams[in_ngrams_buf[i]]) {
+      ++match_counts[item_idx];
+    }
+  }
+  UTL_STOP_TIMING(t1);
+  trace("{}: counting matches [{} ms]\n", cista::type_str<T>(),
+        UTL_TIMING_MS(t1));
+
+  // Calculate cosine-similarity.
+  UTL_START_TIMING(t2);
+  for (auto i = T{0U}; i < match_counts.size(); ++i) {
+    if (match_counts[T{i}] < min_bigram_matches) {
+      continue;
+    }
+
+    auto const match_count = match_counts[i];
+    auto const m = cos_sim_match<T>{
+        i, static_cast<float>(match_count) /
+               (ctx.sqrt_len_vec_in_ * t.match_sqrts_[names[i]])};
+    matches.emplace_back(m);
+
+    if (matches.size() > 20000) {
+      std::nth_element(begin(matches), begin(matches) + 3000, end(matches));
+      matches.resize(3000);
+    }
+  }
+  UTL_STOP_TIMING(t2);
+  trace("{}: {} matches [{} ms]\n", cista::type_str<T>(), matches.size(),
+        UTL_TIMING_MS(t2));
+
+  // Sort matches by cosine - similarity.
+  UTL_START_TIMING(sort);
+  auto const result_count =
+      static_cast<std::ptrdiff_t>(std::min(std::size_t{3000}, matches.size()));
+  std::nth_element(begin(matches), begin(matches) + result_count, end(matches));
+  matches.resize(result_count);
+  utl::sort(matches);
+  UTL_STOP_TIMING(sort);
+  trace("sort [{} us]\n", UTL_TIMING_MS(sort));
+}
+
 template <bool Debug>
 void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   ctx.reset();
@@ -252,64 +309,15 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   ctx.sqrt_len_vec_in_ = static_cast<float>(std::sqrt(ctx.tmp_.size() - 1U));
   auto const [in_ngrams_buf, n_in_ngrams] = split_ngrams(ctx.tmp_);
 
-  auto const match_bigrams =
-      [&]<typename T>(data::vector_map<T, string_idx_t> const& names,
-                      ngram_index_t<T> const& ngrams,
-                      std::vector<cos_sim_match<T>>& matches,
-                      cista::raw::vector_map<T, std::uint8_t>& match_counts) {
-        UTL_START_TIMING(t);
-
-        // Collect candidate indices matched by the bigrams in the input
-        // string.
-        match_counts.clear();
-        match_counts.resize(names.size());
-        for (auto i = 0U; i != n_in_ngrams; ++i) {
-          for (auto const item_idx : ngrams[in_ngrams_buf[i]]) {
-            ++match_counts[item_idx];
-          }
-        }
-
-        // Calculate cosine-similarity.
-        for (auto i = T{0U}; i < match_counts.size(); ++i) {
-          if (match_counts[T{i}] < min_bigram_matches) {
-            continue;
-          }
-
-          auto const match_count = match_counts[i];
-          auto const m = cos_sim_match<T>{
-              i, static_cast<float>(match_count) /
-                     (ctx.sqrt_len_vec_in_ * match_sqrts_[names[i]])};
-          matches.emplace_back(m);
-
-          if (matches.size() > 20000) {
-            std::nth_element(begin(matches), begin(matches) + 4000,
-                             end(matches));
-            matches.resize(4000);
-          }
-        }
-        UTL_STOP_TIMING(t);
-
-        trace("{}: {} matches [{}]\n", cista::type_str<T>(), matches.size(),
-              UTL_TIMING_MS(t));
-
-        // Sort matches by cosine - similarity.
-        UTL_START_TIMING(sort);
-        auto const result_count = static_cast<std::ptrdiff_t>(
-            std::min(std::size_t{4000}, matches.size()));
-        std::nth_element(begin(matches), begin(matches) + result_count,
-                         end(matches));
-        matches.resize(result_count);
-        utl::sort(matches);
-        UTL_STOP_TIMING(sort);
-        trace("sort [{} us]\n", UTL_TIMING_MS(sort));
-      };
-
-  match_bigrams(place_names_, place_bigrams_, ctx.place_matches_,
-                ctx.place_match_counts_);
-  match_bigrams(area_names_, area_bigrams_, ctx.area_matches_,
-                ctx.area_match_counts_);
-  match_bigrams(street_names_, street_bigrams_, ctx.street_matches_,
-                ctx.street_match_counts_);
+  match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams,
+                       min_bigram_matches, place_names_, place_bigrams_,
+                       ctx.place_matches_, ctx.place_match_counts_);
+  match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams,
+                       min_bigram_matches, area_names_, area_bigrams_,
+                       ctx.area_matches_, ctx.area_match_counts_);
+  match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams,
+                       min_bigram_matches, street_names_, street_bigrams_,
+                       ctx.street_matches_, ctx.street_match_counts_);
 }
 
 cista::wrapped<typeahead> read(std::filesystem::path const& path_in,
