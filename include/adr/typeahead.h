@@ -107,9 +107,6 @@ public:
 
   data::vecvec<string_idx_t, char> strings_;
 
-  data::vecvec<string_idx_t, data::pair<std::uint32_t, location_type_t>>
-      string_to_location_;
-
   data::vector_map<string_idx_t, float> match_sqrts_;
 
   ngram_index_t<area_idx_t> area_bigrams_;

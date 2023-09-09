@@ -152,43 +152,6 @@ area_set_idx_t typeahead::get_or_create_area_set(
   });
 }
 
-bool typeahead::verify() {
-  auto i = 0U;
-  for (auto const [str, locations] : utl::zip(strings_, string_to_location_)) {
-    for (auto const& [l, type] : locations) {
-      switch (type) {
-        case location_type_t::kStreet:
-          if (street_names_[street_idx_t{l}] != i) {
-            std::cerr << "ERROR: street " << l
-                      << ": street_name=" << street_names_[street_idx_t{l}]
-                      << " != i=" << i << "\n";
-            return false;
-          }
-          break;
-        case location_type_t::kPlace:
-          if (place_names_[place_idx_t{l}] != i) {
-            std::cerr << "ERROR: place " << l
-                      << ": place_name=" << place_names_[place_idx_t{l}]
-                      << " != i=" << i << "\n";
-            return false;
-          }
-          break;
-        case location_type_t::kHouseNumber: break;
-        case location_type_t::kArea:
-          if (area_names_[area_idx_t{l}] != i) {
-            std::cerr << "ERROR: area " << l
-                      << ": area_name=" << area_names_[area_idx_t{l}]
-                      << " != i=" << i << "\n";
-            return false;
-          }
-          break;
-      }
-    }
-    ++i;
-  }
-  return true;
-}
-
 void typeahead::build_trigram_index() {
   auto normalized = std::string{};
 
@@ -220,23 +183,6 @@ void typeahead::build_trigram_index() {
     match_sqrts_[string_idx_t{i}] =
         static_cast<float>(std::sqrt(normalized.size() - 1U));
   }
-}
-
-std::uint64_t fast_log_2(std::uint64_t v) {
-  constexpr std::uint8_t t[64] = {
-      63, 0,  58, 1,  59, 47, 53, 2,  60, 39, 48, 27, 54, 33, 42, 3,
-      61, 51, 37, 40, 49, 18, 28, 20, 55, 30, 34, 11, 43, 14, 22, 4,
-      62, 57, 46, 52, 38, 26, 32, 41, 50, 36, 17, 19, 29, 10, 13, 21,
-      56, 45, 25, 31, 35, 16, 9,  12, 44, 24, 15, 8,  23, 7,  6,  5};
-
-  v |= v >> 1;
-  v |= v >> 2;
-  v |= v >> 4;
-  v |= v >> 8;
-  v |= v >> 16;
-  v |= v >> 32;
-  return t[(static_cast<std::uint64_t>((v - (v >> 1U)) * 0x07EDD5E59A4E28C2)) >>
-           58U];
 }
 
 template <bool Debug, typename T>
