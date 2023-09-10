@@ -4,6 +4,10 @@
 #include "boost/geometry/geometries/box.hpp"
 #include "boost/geometry/geometries/point.hpp"
 #include "boost/iterator/function_output_iterator.hpp"
+#include "boost/thread/tss.hpp"
+
+#include "taskflow/algorithm/data_pipeline.hpp"
+#include "taskflow/taskflow.hpp"
 
 #include "osmium/area/assembler.hpp"
 #include "osmium/area/multipolygon_manager.hpp"
@@ -282,13 +286,12 @@ void extract(std::filesystem::path const& in_path,
     UTL_START_TIMING(coordinate_areas);
 
     t.house_coordinates_.resize(t.street_names_.size());
+    t.street_pos_.resize(t.street_names_.size());
 
-    auto rtree_results = std::basic_string<area_idx_t>{};
     auto area_bbox_rtree = rtree{areas};
 
-    auto const geo_lookup =
-        [&](coordinates const c) -> std::basic_string<area_idx_t> const& {
-      rtree_results.clear();
+    auto const geo_lookup = [&](coordinates const c) {
+      auto rtree_results = std::basic_string<area_idx_t>{};
       area_bbox_rtree.query(
           bgi::covers(point{c.lat_, c.lng_}),
           boost::make_function_output_iterator(
@@ -297,25 +300,141 @@ void extract(std::filesystem::path const& in_path,
       return rtree_results;
     };
 
-    for (auto const& c : t.place_coordinates_) {
-      t.place_areas_.emplace_back(t.get_or_create_area_set(ctx, geo_lookup(c)));
+    {
+      auto taskflow = tf::Taskflow{};
+      auto executor = tf::Executor{};
+      auto pl = tf::DataPipeline{
+          std::thread::hardware_concurrency(),
+          tf::make_data_pipe<void, place_idx_t>(
+              tf::PipeType::SERIAL,
+              [&](tf::Pipeflow& pf) {
+                if (pf.token() == t.place_coordinates_.size()) {
+                  pf.stop();
+                }
+                return static_cast<place_idx_t>(pf.token());
+              }),
+          tf::make_data_pipe<place_idx_t, std::basic_string<area_idx_t>>(
+              tf::PipeType::PARALLEL,
+              [&](place_idx_t const place_idx) {
+                return geo_lookup(t.place_coordinates_[place_idx]);
+              }),
+          tf::make_data_pipe<std::basic_string<area_idx_t>, void>(
+              tf::PipeType::SERIAL,
+              [&](std::basic_string<area_idx_t> const& areas,
+                  tf::Pipeflow& pf) {
+                utl_verify(t.place_areas_.size() == pf.token(),
+                           "token mismatch: place_areas.size={} vs token={}",
+                           t.place_areas_.size(), pf.token());
+                t.place_areas_.emplace_back(
+                    t.get_or_create_area_set(ctx, areas));
+              })};
+      taskflow.composed_of(pl);
+      executor.run(taskflow).wait();
+    }
+    utl::verify(t.place_names_.size() == t.place_areas_.size(),
+                "place_areas={} vs place_names={}", t.place_areas_.size(),
+                t.place_names_.size());
+
+    {
+      auto taskflow = tf::Taskflow{};
+      auto executor = tf::Executor{};
+      auto
+          pl =
+              tf::DataPipeline{
+                  std::thread::hardware_concurrency(),
+                  tf::make_data_pipe<void, street_idx_t>(
+                      tf::PipeType::SERIAL,
+                      [&](tf::Pipeflow& pf) {
+                        if (pf.token() == t.street_pos_.size()) {
+                          pf.stop();
+                        }
+                        return static_cast<street_idx_t>(pf.token());
+                      }),
+                  tf::make_data_pipe<
+                      street_idx_t,
+                      std::tuple<
+                          street_idx_t,
+                          cista::raw::vecvec<std::uint32_t, area_idx_t>,
+                          cista::raw::vecvec<std::uint32_t, area_idx_t>>>(
+                      tf::PipeType::PARALLEL,
+                      [&](street_idx_t const street_idx) {
+                        auto street_areas =
+                            cista::raw::vecvec<std::uint32_t, area_idx_t>{};
+                        for (auto const& c : t.street_pos_[street_idx]) {
+                          street_areas.emplace_back(geo_lookup(c));
+                        }
+
+                        auto house_areas =
+                            cista::raw::vecvec<std::uint32_t, area_idx_t>{};
+                        for (auto const& c : t.house_coordinates_[street_idx]) {
+                          house_areas.emplace_back(geo_lookup(c));
+                        }
+
+                        return std::tuple{street_idx, std::move(street_areas),
+                                          std::move(house_areas)};
+                      }),
+                  tf::make_data_pipe<
+                      std::tuple<street_idx_t,
+                                 cista::raw::vecvec<std::uint32_t, area_idx_t>,
+                                 cista::raw::vecvec<std::uint32_t, area_idx_t>>,
+                      void>(
+                      tf::PipeType::SERIAL,
+                      [&](std::tuple<
+                              street_idx_t,
+                              cista::raw::vecvec<std::uint32_t, area_idx_t>,
+                              cista::raw::vecvec<std::uint32_t,
+                                                 area_idx_t>> const& p,
+                          tf::Pipeflow& pf) {
+                        auto const& [street_idx, street_areas, house_areas] = p;
+
+                        t.street_areas_.add_back_sized(0);
+                        for (auto const& areas : street_areas) {
+                          t.street_areas_[street_idx].push_back(
+                              t.get_or_create_area_set(
+                                  ctx, {begin(areas), end(areas)}));
+                        }
+
+                        t.house_areas_.add_back_sized(0);
+                        for (auto const& areas : house_areas) {
+                          t.house_areas_[street_idx].push_back(
+                              t.get_or_create_area_set(
+                                  ctx, {begin(areas), end(areas)}));
+                        }
+                      })};
+      taskflow.composed_of(pl);
+      executor.run(taskflow).wait();
     }
 
-    for (auto const& [street_idx, coordinates] :
-         utl::enumerate(t.street_pos_)) {
-      t.street_areas_.add_back_sized(0);
-      for (auto const& c : coordinates) {
-        t.street_areas_[street_idx_t{street_idx}].push_back(
-            t.get_or_create_area_set(ctx, geo_lookup(c)));
-      }
+    utl::verify(t.house_areas_.size() == t.street_names_.size(),
+                "house_areas={} vs street_names={} vs house_coordinates={}",
+                t.house_areas_.size(), t.street_names_.size(),
+                t.house_coordinates_.size());
+    utl::verify(t.street_areas_.size() == t.street_names_.size(),
+                "street_areas={} vs street_names={} vs street_coordinates={}",
+                t.street_areas_.size(), t.street_names_.size(),
+                t.street_pos_.size());
 
-      assert(t.house_areas_.size() == street_idx);
-      t.house_areas_.add_back_sized(0);
-      for (auto const& c : t.house_coordinates_[street_idx_t{street_idx}]) {
-        t.house_areas_[street_idx_t{street_idx}].push_back(
-            t.get_or_create_area_set(ctx, geo_lookup(c)));
-      }
-    }
+    //    for (auto const& c : t.place_coordinates_) {
+    //      t.place_areas_.emplace_back(t.get_or_create_area_set(ctx,
+    //      geo_lookup(c)));
+    //    }
+    //
+    //    for (auto const& [street_idx, coordinates] :
+    //         utl::enumerate(t.street_pos_)) {
+    //      t.street_areas_.add_back_sized(0);
+    //      for (auto const& c : coordinates) {
+    //        t.street_areas_[street_idx_t{street_idx}].push_back(
+    //            t.get_or_create_area_set(ctx, geo_lookup(c)));
+    //      }
+    //
+    //      assert(t.house_areas_.size() == street_idx);
+    //      t.house_areas_.add_back_sized(0);
+    //      for (auto const& c : t.house_coordinates_[street_idx_t{street_idx}])
+    //      {
+    //        t.house_areas_[street_idx_t{street_idx}].push_back(
+    //            t.get_or_create_area_set(ctx, geo_lookup(c)));
+    //      }
+    //    }
 
     UTL_STOP_TIMING(coordinate_areas);
     std::cout << "coordinate area timing: " << UTL_TIMING_MS(coordinate_areas)

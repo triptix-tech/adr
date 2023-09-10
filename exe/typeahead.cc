@@ -3,6 +3,8 @@
 
 #include "boost/program_options.hpp"
 
+#include "fmt/format.h"
+
 #include "utl/enumerate.h"
 #include "utl/timing.h"
 
@@ -25,12 +27,14 @@ int main(int ac, char** av) {
   auto n = 15U;
   auto mapped = false;
   auto runs = 1U;
+  auto warmup = false;
 
   try {
     bpo::options_description desc{"Options"};
     desc.add_options()  //
         ("help,h", "Help screen")  //
         ("verbose,v", "Print debug output")  //
+        ("warmup,w", "warm up with test query")  //
         ("in,i", bpo::value<fs::path>(&in)->default_value(in),
          "OSM input file")  //
         ("guess,g", bpo::value<std::string>(&guess)->default_value(guess),
@@ -64,15 +68,24 @@ int main(int ac, char** av) {
     if (vm.count("mmap")) {
       mapped = true;
     }
+    if (vm.count("warmup")) {
+      warmup = true;
+    }
   } catch (bpo::error const& ex) {
     std::cerr << ex.what() << '\n';
     return 1;
   }
 
   auto const t = adr::read(in, mapped);
+  auto ctx = adr::guess_context{};
+
+  if (warmup) {
+    adr::get_suggestions<false>(
+        *t, geo::latlng{0, 0}, "Willy Brandt Platz 64289 Darmstadt Deutschland",
+        n, ctx);
+  }
 
   if (!guess.empty()) {
-    auto ctx = adr::guess_context{};
 
     UTL_START_TIMING(timer);
     for (auto i = 0U; i != runs; ++i) {
@@ -100,17 +113,18 @@ int main(int ac, char** av) {
     auto screen = ScreenInteractive::TerminalOutput();
 
     std::string line;
-    auto ctx = adr::guess_context{};
-
     std::string first_name;
     auto const guesses = [&]() {
       if (first_name == "quit!") {
         screen.Exit();
       }
 
+      UTL_START_TIMING(timer);
       adr::get_suggestions<false>(*t, geo::latlng{0, 0}, first_name, n, ctx);
+      UTL_STOP_TIMING(timer);
 
       Elements list;
+      list.emplace_back(text(fmt::format("{} ms", UTL_TIMING_MS(timer))));
       for (auto const& s : ctx.suggestions_) {
         auto ss = std::stringstream{};
         s.print(ss, *t, ctx.phrases_);

@@ -77,7 +77,7 @@ struct typeahead {
   bool verify();
 
   area_set_idx_t get_or_create_area_set(import_context&,
-                                        std::basic_string<area_idx_t> const& p);
+                                        std::basic_string_view<area_idx_t>);
 
   template <bool Debug>
   void guess(std::string_view normalized, guess_context&) const;

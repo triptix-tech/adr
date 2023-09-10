@@ -31,7 +31,6 @@ struct cos_sim_match {
   bool operator<(cos_sim_match const& o) const { return cos_sim_ > o.cos_sim_; }
   T idx_;
   score_t cos_sim_;
-  phrase_match_scores_t phrase_match_scores_{kNoMatchScores};
 };
 
 struct address {
@@ -96,6 +95,10 @@ struct guess_context {
   cista::raw::ankerl_set<std::uint8_t> item_matched_masks_;
   std::vector<scored_match<street_idx_t>> scored_street_matches_;
   std::vector<scored_match<place_idx_t>> scored_place_matches_;
+  cista::raw::vector_map<place_idx_t, phrase_match_scores_t>
+      place_phrase_match_scores_;
+  cista::raw::vector_map<street_idx_t, phrase_match_scores_t>
+      street_phrase_match_scores_;
   cista::raw::vector_map<area_idx_t, phrase_match_scores_t>
       area_phrase_match_scores_;
   std::vector<bool> area_active_;

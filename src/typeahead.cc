@@ -137,17 +137,10 @@ string_idx_t typeahead::get_or_create_string(import_context& ctx,
 }
 
 area_set_idx_t typeahead::get_or_create_area_set(
-    import_context& ctx, std::basic_string<area_idx_t> const& p) {
-  auto const sort_by_str_length = [&](std::basic_string<area_idx_t> x) {
-    std::sort(begin(x), end(x), [&](auto&& a, auto&& b) {
-      return strings_[area_names_[a]].size() > strings_[area_names_[b]].size();
-    });
-    return x;
-  };
-
+    import_context& ctx, std::basic_string_view<area_idx_t> p) {
   return utl::get_or_create(ctx.area_set_lookup_, p, [&]() {
     auto const set_idx = area_set_idx_t{area_sets_.size()};
-    area_sets_.emplace_back(sort_by_str_length(p));
+    area_sets_.emplace_back(p);
     return set_idx;
   });
 }
@@ -195,6 +188,8 @@ void match_bigrams(typeahead const& t,
                    ngram_index_t<T> const& ngrams,
                    std::vector<cos_sim_match<T>>& matches,
                    cista::raw::vector_map<T, std::uint8_t>& match_counts) {
+  matches.clear();
+
   // Collect candidate indices matched by the bigrams in the input
   // string.
   UTL_START_TIMING(t1);
@@ -212,7 +207,8 @@ void match_bigrams(typeahead const& t,
   // Calculate cosine-similarity.
   UTL_START_TIMING(t2);
   for (auto i = T{0U}; i < match_counts.size(); ++i) {
-    if (match_counts[T{i}] < min_bigram_matches) {
+    if (match_counts[T{i}] < min_bigram_matches ||
+        t.match_sqrts_[names[i]] == 0) {
       continue;
     }
 
@@ -220,6 +216,7 @@ void match_bigrams(typeahead const& t,
     auto const m = cos_sim_match<T>{
         i, static_cast<float>(match_count) /
                (ctx.sqrt_len_vec_in_ * t.match_sqrts_[names[i]])};
+
     matches.emplace_back(m);
 
     if (matches.size() > 20000) {
