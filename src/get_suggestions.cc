@@ -371,7 +371,7 @@ void get_scored_matches(
   UTL_START_TIMING(t);
 
   scored_matches.clear();
-  auto i = 0U;
+  //  auto i = 0U;
   for (auto const& m : filtered) {
     for (auto p_idx = phrase_idx_t{0U}; p_idx != ctx.phrases_.size(); ++p_idx) {
       if ((ctx.phrases_[p_idx].token_bits_ & numeric_tokens_mask) != 0U) {
@@ -379,7 +379,7 @@ void get_scored_matches(
       }
 
       auto const p_match_score = phrase_match_scores[m.idx_][p_idx];
-      //      std::cout << cista::type_str<T>() << " " << i++
+      //      std::cout << cista::type_str<T>() << " " << i
       //                << ": name=" << t.strings_[names[m.idx_]].view()
       //                << ", cos_sim=" << m.cos_sim_ << ", score=" <<
       //                p_match_score
@@ -400,6 +400,8 @@ void get_scored_matches(
 
       //      std::cout << "\n";
     }
+
+    //    ++i;
   }
 
   UTL_STOP_TIMING(t);

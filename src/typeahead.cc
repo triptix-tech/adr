@@ -236,12 +236,12 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   ctx.place_matches_.clear();
   ctx.street_matches_.clear();
 
-  if (ctx.tmp_.length() < 2U) {
+  if (normalized.size() < 2U) {
     return;
   }
 
-  ctx.sqrt_len_vec_in_ = static_cast<float>(std::sqrt(ctx.tmp_.size() - 1U));
-  auto const [in_ngrams_buf, n_in_ngrams] = split_ngrams(ctx.tmp_);
+  ctx.sqrt_len_vec_in_ = static_cast<float>(std::sqrt(normalized.size() - 1U));
+  auto const [in_ngrams_buf, n_in_ngrams] = split_ngrams(normalized);
 
   match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams, place_names_,
                        place_bigrams_, ctx.place_matches_,
