@@ -38,7 +38,6 @@ void guess_context::resize(const adr::typeahead& t) {
   auto const n_streets = t.street_names_.size();
 
   place_match_counts_.resize(n_places);
-  area_match_counts_.resize(n_areas);
   street_match_counts_.resize(n_streets);
 
   place_phrase_match_scores_.resize(n_places);

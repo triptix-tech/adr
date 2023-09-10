@@ -234,7 +234,6 @@ void match_bigrams(typeahead const& t,
 template <bool Debug>
 void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   ctx.place_matches_.clear();
-  ctx.area_matches_.clear();
   ctx.street_matches_.clear();
 
   if (ctx.tmp_.length() < 2U) {
@@ -247,9 +246,6 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams, place_names_,
                        place_bigrams_, ctx.place_matches_,
                        ctx.place_match_counts_);
-  match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams, area_names_,
-                       area_bigrams_, ctx.area_matches_,
-                       ctx.area_match_counts_);
   match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams, street_names_,
                        street_bigrams_, ctx.street_matches_,
                        ctx.street_match_counts_);

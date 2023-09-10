@@ -134,9 +134,9 @@ struct area_set {
       auto const print_city =
           city_idx != -1 &&
           s.t_.area_admin_level_[areas[city_idx]] == admin_lvl;
-      //      if (!print_city && !matched) {
-      //        continue;
-      //      }
+      if (!print_city && !matched) {
+        continue;
+      }
 
       if (!first) {
         out << ", ";
