@@ -17,8 +17,11 @@
 
 #include "utl/enumerate.h"
 #include "utl/helpers/algorithm.h"
+#include "utl/parallel_for.h"
 #include "utl/progress_tracker.h"
+#include "utl/timer.h"
 #include "utl/timing.h"
+#include "utl/to_vec.h"
 #include "utl/zip.h"
 
 #include "tiles/osm/hybrid_node_idx.h"
@@ -57,8 +60,11 @@ struct feature_handler : public osmium::handler::Handler {
   void way(osmium::Way const& w) {
     if (!w.nodes().empty()) {
       auto const& tags = w.tags();
-      if (!tags.has_key("public_transport") &&
+      if (!tags.has_key("public_transport") && !tags.has_key("electrified") &&
+          !tags.has_key("railway") && !tags.has_key("waterway") &&
+          !tags.has_tag("information", "board") && !tags.has_key("tunnel") &&
           !tags.has_tag("amenity", "toilets") &&
+          !tags.has_tag("natural", "wood") &&
           !tags.has_tag("building", "industrial") &&
           !tags.has_tag("leisure", "playground") &&
           !tags.has_tag("access", "false") &&
@@ -77,7 +83,10 @@ struct feature_handler : public osmium::handler::Handler {
     if (!tags.has_tag("emergency", "fire_hydrant") &&
         !tags.has_key("public_transport") && /* stops from timetable */
         !tags.has_key("highway") && /* named motorway_junction */
-        !tags.has_key("traffic_sign") &&
+        !tags.has_key("electrified") && !tags.has_key("railway") &&
+        !tags.has_tag("information", "board") && !tags.has_key("waterway") &&
+        !tags.has_key("tunnel") && !tags.has_tag("amenity", "toilets") &&
+        !tags.has_tag("natural", "wood") && !tags.has_key("traffic_sign") &&
         !tags.has_tag("building", "industrial") &&
         !tags.has_tag("amenity", "bicycle_rental") &&
         !tags.has_tag("leisure", "playground") &&
@@ -182,28 +191,6 @@ void extract(std::filesystem::path const& in_path,
     auto const thread_count =
         std::max(2, static_cast<int>(std::thread::hardware_concurrency()));
 
-    // poor mans thread local (we dont know the threads themselves)
-    std::atomic_size_t next_handlers_slot{0};
-    auto handlers = std::vector<std::pair<std::thread::id, feature_handler>>{};
-    handlers.reserve(thread_count);
-    for (auto i = 0; i < thread_count; ++i) {
-      handlers.emplace_back(std::thread::id{},
-                            feature_handler{t, ctx, areas, areas_mutex});
-    }
-    auto const get_handler = [&]() -> feature_handler& {
-      auto const thread_id = std::this_thread::get_id();
-      if (auto it = std::find_if(
-              begin(handlers), end(handlers),
-              [&](auto const& pair) { return pair.first == thread_id; });
-          it != end(handlers)) {
-        return it->second;
-      }
-      auto slot = next_handlers_slot.fetch_add(1);
-      utl::verify(slot < handlers.size(), "more threads than expected");
-      handlers[slot].first = thread_id;
-      return handlers[slot].second;
-    };
-
     // pool must be destructed before handlers!
     auto pool = osmium::thread::Pool{thread_count,
                                      static_cast<size_t>(thread_count * 8)};
@@ -216,6 +203,7 @@ void extract(std::filesystem::path const& in_path,
 
     std::atomic_bool has_exception{false};
     std::vector<std::future<void>> workers;
+    auto handler = feature_handler{t, ctx, areas, areas_mutex};
     workers.reserve(thread_count / 2);
     for (auto i = 0; i < thread_count / 2; ++i) {
       workers.emplace_back(pool.submit([&] {
@@ -228,14 +216,13 @@ void extract(std::filesystem::path const& in_path,
 
             auto& [idx, buf] = *opt;
             tiles::update_locations(node_idx, buf);
-            osm::apply(buf, get_handler());
+            osm::apply(buf, handler);
 
             mp_queue.process_in_order(idx, std::move(buf), [&](auto buf2) {
               osm::apply(buf2, mp_manager.handler([&](auto&& mp_buffer) {
                 auto p = std::make_shared<osm_mem::Buffer>(
                     std::forward<decltype(mp_buffer)>(mp_buffer));
-                pool.submit(
-                    [p, &get_handler] { osm::apply(*p, get_handler()); });
+                pool.submit([&, p] { osm::apply(*p, handler); });
               }));
             });
           }
@@ -266,6 +253,12 @@ void extract(std::filesystem::path const& in_path,
     osm_rel::print_used_memory(std::clog, mp_manager.used_memory());
   }
 
+  //  auto stats = utl::to_vec(ctx.place_stats_, [](auto&& x) { return x; });
+  //  utl::sort(stats, [](auto&& a, auto&& b) { return a.second > b.second; });
+  //  for (auto const& [k, v] : stats) {
+  //    std::cout << k << ": " << v << "\n";
+  //  }
+
   {  // Copy data from context to typeahead (not possible before, because vecvec
      // requires to build indices 0, ..., N in order).
     UTL_START_TIMING(copy_data);
@@ -283,14 +276,13 @@ void extract(std::filesystem::path const& in_path,
   }
 
   {  // Assign place/street/housenumber coordinates to areas.
-    UTL_START_TIMING(coordinate_areas);
+    auto timer = utl::scoped_timer{"coordinate to area mapping"};
 
     t.house_coordinates_.resize(t.street_names_.size());
-    t.street_pos_.resize(t.street_names_.size());
 
     auto area_bbox_rtree = rtree{areas};
-
-    auto const geo_lookup = [&](coordinates const c) {
+    auto const geo_lookup =
+        [&](coordinates const c) -> std::basic_string<area_idx_t> {
       auto rtree_results = std::basic_string<area_idx_t>{};
       area_bbox_rtree.query(
           bgi::covers(point{c.lat_, c.lng_}),
@@ -301,144 +293,64 @@ void extract(std::filesystem::path const& in_path,
     };
 
     {
-      auto taskflow = tf::Taskflow{};
-      auto executor = tf::Executor{};
-      auto pl = tf::DataPipeline{
-          std::thread::hardware_concurrency(),
-          tf::make_data_pipe<void, place_idx_t>(
-              tf::PipeType::SERIAL,
-              [&](tf::Pipeflow& pf) {
-                if (pf.token() == t.place_coordinates_.size()) {
-                  pf.stop();
-                }
-                return static_cast<place_idx_t>(pf.token());
-              }),
-          tf::make_data_pipe<place_idx_t, std::basic_string<area_idx_t>>(
-              tf::PipeType::PARALLEL,
-              [&](place_idx_t const place_idx) {
-                return geo_lookup(t.place_coordinates_[place_idx]);
-              }),
-          tf::make_data_pipe<std::basic_string<area_idx_t>, void>(
-              tf::PipeType::SERIAL,
-              [&](std::basic_string<area_idx_t> const& areas,
-                  tf::Pipeflow& pf) {
-                utl_verify(t.place_areas_.size() == pf.token(),
-                           "token mismatch: place_areas.size={} vs token={}",
-                           t.place_areas_.size(), pf.token());
-                t.place_areas_.emplace_back(
-                    t.get_or_create_area_set(ctx, areas));
-              })};
-      taskflow.composed_of(pl);
-      executor.run(taskflow).wait();
+      auto place_areas = std::vector<std::basic_string<area_idx_t>>{};
+      place_areas.resize(t.place_coordinates_.size());
+      utl::parallel_for_run(
+          t.place_coordinates_.size(), [&](std::size_t const i) {
+            place_areas[i] = geo_lookup(t.place_coordinates_[place_idx_t{i}]);
+          });
+      for (auto const& x : place_areas) {
+        t.place_areas_.emplace_back(t.get_or_create_area_set(ctx, x));
+      }
     }
-    utl::verify(t.place_names_.size() == t.place_areas_.size(),
-                "place_areas={} vs place_names={}", t.place_areas_.size(),
-                t.place_names_.size());
 
     {
-      auto taskflow = tf::Taskflow{};
-      auto executor = tf::Executor{};
-      auto
-          pl =
-              tf::DataPipeline{
-                  std::thread::hardware_concurrency(),
-                  tf::make_data_pipe<void, street_idx_t>(
-                      tf::PipeType::SERIAL,
-                      [&](tf::Pipeflow& pf) {
-                        if (pf.token() == t.street_pos_.size()) {
-                          pf.stop();
-                        }
-                        return static_cast<street_idx_t>(pf.token());
-                      }),
-                  tf::make_data_pipe<
-                      street_idx_t,
-                      std::tuple<
-                          street_idx_t,
-                          cista::raw::vecvec<std::uint32_t, area_idx_t>,
-                          cista::raw::vecvec<std::uint32_t, area_idx_t>>>(
-                      tf::PipeType::PARALLEL,
-                      [&](street_idx_t const street_idx) {
-                        auto street_areas =
-                            cista::raw::vecvec<std::uint32_t, area_idx_t>{};
-                        for (auto const& c : t.street_pos_[street_idx]) {
-                          street_areas.emplace_back(geo_lookup(c));
-                        }
+      auto street_areas =
+          std::vector<cista::raw::vecvec<std::uint32_t, area_idx_t>>{};
+      street_areas.resize(t.street_pos_.size());
 
-                        auto house_areas =
-                            cista::raw::vecvec<std::uint32_t, area_idx_t>{};
-                        for (auto const& c : t.house_coordinates_[street_idx]) {
-                          house_areas.emplace_back(geo_lookup(c));
-                        }
+      utl::parallel_for_run(t.street_pos_.size(), [&](std::size_t const i) {
+        auto const street_idx = street_idx_t{i};
+        auto const& coordinates = t.street_pos_[street_idx];
 
-                        return std::tuple{street_idx, std::move(street_areas),
-                                          std::move(house_areas)};
-                      }),
-                  tf::make_data_pipe<
-                      std::tuple<street_idx_t,
-                                 cista::raw::vecvec<std::uint32_t, area_idx_t>,
-                                 cista::raw::vecvec<std::uint32_t, area_idx_t>>,
-                      void>(
-                      tf::PipeType::SERIAL,
-                      [&](std::tuple<
-                              street_idx_t,
-                              cista::raw::vecvec<std::uint32_t, area_idx_t>,
-                              cista::raw::vecvec<std::uint32_t,
-                                                 area_idx_t>> const& p,
-                          tf::Pipeflow& pf) {
-                        auto const& [street_idx, street_areas, house_areas] = p;
+        for (auto const& c : coordinates) {
+          street_areas[i].emplace_back(geo_lookup(c));
+        }
+      });
 
-                        t.street_areas_.add_back_sized(0);
-                        for (auto const& areas : street_areas) {
-                          t.street_areas_[street_idx].push_back(
-                              t.get_or_create_area_set(
-                                  ctx, {begin(areas), end(areas)}));
-                        }
-
-                        t.house_areas_.add_back_sized(0);
-                        for (auto const& areas : house_areas) {
-                          t.house_areas_[street_idx].push_back(
-                              t.get_or_create_area_set(
-                                  ctx, {begin(areas), end(areas)}));
-                        }
-                      })};
-      taskflow.composed_of(pl);
-      executor.run(taskflow).wait();
+      for (auto const& [i, x] : utl::enumerate(street_areas)) {
+        t.street_areas_.add_back_sized(0);
+        for (auto const& a : x) {
+          t.street_areas_[street_idx_t{i}].push_back(t.get_or_create_area_set(
+              ctx, std::basic_string_view<area_idx_t>{begin(a), end(a)}));
+        }
+      }
     }
 
-    utl::verify(t.house_areas_.size() == t.street_names_.size(),
-                "house_areas={} vs street_names={} vs house_coordinates={}",
-                t.house_areas_.size(), t.street_names_.size(),
-                t.house_coordinates_.size());
-    utl::verify(t.street_areas_.size() == t.street_names_.size(),
-                "street_areas={} vs street_names={} vs street_coordinates={}",
-                t.street_areas_.size(), t.street_names_.size(),
-                t.street_pos_.size());
+    {
+      auto house_areas =
+          std::vector<cista::raw::vecvec<std::uint32_t, area_idx_t>>{};
+      house_areas.resize(t.house_coordinates_.size());
 
-    //    for (auto const& c : t.place_coordinates_) {
-    //      t.place_areas_.emplace_back(t.get_or_create_area_set(ctx,
-    //      geo_lookup(c)));
-    //    }
-    //
-    //    for (auto const& [street_idx, coordinates] :
-    //         utl::enumerate(t.street_pos_)) {
-    //      t.street_areas_.add_back_sized(0);
-    //      for (auto const& c : coordinates) {
-    //        t.street_areas_[street_idx_t{street_idx}].push_back(
-    //            t.get_or_create_area_set(ctx, geo_lookup(c)));
-    //      }
-    //
-    //      assert(t.house_areas_.size() == street_idx);
-    //      t.house_areas_.add_back_sized(0);
-    //      for (auto const& c : t.house_coordinates_[street_idx_t{street_idx}])
-    //      {
-    //        t.house_areas_[street_idx_t{street_idx}].push_back(
-    //            t.get_or_create_area_set(ctx, geo_lookup(c)));
-    //      }
-    //    }
+      utl::parallel_for_run(
+          t.house_coordinates_.size(), [&](std::size_t const i) {
+            auto const street_idx = street_idx_t{i};
+            auto const& coordinates = t.street_pos_[street_idx];
 
-    UTL_STOP_TIMING(coordinate_areas);
-    std::cout << "coordinate area timing: " << UTL_TIMING_MS(coordinate_areas)
-              << "\n";
+            for (auto const& c :
+                 t.house_coordinates_[street_idx_t{street_idx}]) {
+              house_areas[i].emplace_back(geo_lookup(c));
+            }
+          });
+
+      for (auto const& [i, x] : utl::enumerate(house_areas)) {
+        t.house_areas_.add_back_sized(0);
+        for (auto const& a : x) {
+          t.house_areas_[street_idx_t{i}].push_back(t.get_or_create_area_set(
+              ctx, std::basic_string_view<area_idx_t>{begin(a), end(a)}));
+        }
+      }
+    }
   }
 
   {  // Finalize.

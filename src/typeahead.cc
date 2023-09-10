@@ -119,6 +119,13 @@ void typeahead::add_place(import_context& ctx,
     return;
   }
 
+  //  {
+  //    auto const lock = std::scoped_lock{ctx.place_stats_mutex_};
+  //    for (auto const& tag : tags) {
+  //      ++ctx.place_stats_[fmt::format("{}__{}", tag.key(), tag.value())];
+  //    }
+  //  }
+
   auto const lock = std::scoped_lock{ctx.mutex_};
   auto const idx = place_names_.size();
   place_names_.emplace_back(get_or_create_string(ctx, name));

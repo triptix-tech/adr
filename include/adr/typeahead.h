@@ -51,6 +51,9 @@ struct import_context {
   raw_mutable_vecvec<street_idx_t, string_idx_t> house_numbers_;
   raw_mutable_vecvec<street_idx_t, coordinates> house_coordinates_;
 
+  std::mutex place_stats_mutex_;
+  raw_hash_map<std::string, std::uint32_t> place_stats_;
+
   std::mutex mutex_;
 };
 
