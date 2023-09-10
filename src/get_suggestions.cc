@@ -14,7 +14,7 @@
 
 namespace adr {
 
-constexpr auto const kMaxScoredMatches = std::size_t{450};
+constexpr auto const kMaxScoredMatches = std::size_t{250};
 
 struct area {
   friend bool operator==(area const& a, area const& b) {
