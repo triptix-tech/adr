@@ -241,7 +241,10 @@ void match_bigrams(typeahead const& t,
 
 template <bool Debug>
 void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
-  ctx.reset();
+  ctx.place_matches_.clear();
+  ctx.area_matches_.clear();
+  ctx.street_matches_.clear();
+
   if (ctx.tmp_.length() < 2U) {
     return;
   }

@@ -1,17 +1,17 @@
 #pragma once
 
-#include <array>
-#include <ostream>
+#include <iosfwd>
 #include <string>
 #include <variant>
 #include <vector>
 
-#include "ankerl/cista_adapter.h"
 #include "cista/containers/vector.h"
 
+#include "ankerl/cista_adapter.h"
+
+#include "adr/ngram.h"
 #include "adr/normalize.h"
 #include "adr/types.h"
-#include "ngram.h"
 
 namespace adr {
 
@@ -74,34 +74,37 @@ struct scored_match {
 };
 
 struct guess_context {
-  void reset() {
-    suggestions_.clear();
-    place_matches_.clear();
-    area_matches_.clear();
-    street_matches_.clear();
-  }
+  void resize(typeahead const&);
 
-  std::string tmp_;
-  std::vector<std::uint8_t> lev_dist_;
-  std::vector<cos_sim_match<place_idx_t>> place_matches_;
-  cista::raw::vector_map<place_idx_t, std::uint8_t> place_match_counts_;
-  std::vector<cos_sim_match<area_idx_t>> area_matches_;
-  cista::raw::vector_map<area_idx_t, std::uint8_t> area_match_counts_;
-  std::vector<cos_sim_match<street_idx_t>> street_matches_;
-  cista::raw::vector_map<street_idx_t, std::uint8_t> street_match_counts_;
+  std::string tmp_;  // for normalize
+  std::vector<std::uint8_t> lev_dist_;  // levenshtein distance table
+
   std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;
-  cista::raw::ankerl_map<area_set_idx_t, std::vector<area_src>> areas_;
-  cista::raw::ankerl_set<std::uint8_t> item_matched_masks_;
-  std::vector<scored_match<street_idx_t>> scored_street_matches_;
-  std::vector<scored_match<place_idx_t>> scored_place_matches_;
+
+  cista::raw::vector_map<place_idx_t, std::uint8_t> place_match_counts_;
+  cista::raw::vector_map<area_idx_t, std::uint8_t> area_match_counts_;
+  cista::raw::vector_map<street_idx_t, std::uint8_t> street_match_counts_;
+
+  std::vector<cos_sim_match<area_idx_t>> area_matches_;
+  std::vector<cos_sim_match<street_idx_t>> street_matches_;
+  std::vector<cos_sim_match<place_idx_t>> place_matches_;
+
+  std::vector<bool> area_active_;
+
   cista::raw::vector_map<place_idx_t, phrase_match_scores_t>
       place_phrase_match_scores_;
   cista::raw::vector_map<street_idx_t, phrase_match_scores_t>
       street_phrase_match_scores_;
   cista::raw::vector_map<area_idx_t, phrase_match_scores_t>
       area_phrase_match_scores_;
-  std::vector<bool> area_active_;
+
+  cista::raw::ankerl_map<area_set_idx_t, std::vector<area_src>> areas_;
+  cista::raw::ankerl_set<std::uint8_t> item_matched_masks_;
+
+  std::vector<scored_match<street_idx_t>> scored_street_matches_;
+  std::vector<scored_match<place_idx_t>> scored_place_matches_;
+
   float sqrt_len_vec_in_;
 };
 

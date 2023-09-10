@@ -2,6 +2,7 @@
 
 #include "fmt/ranges.h"
 
+#include "utl/helpers/algorithm.h"
 #include "utl/timing.h"
 #include "utl/to_vec.h"
 
@@ -279,9 +280,7 @@ void get_match_score(
     cista::offset::vector_map<T, string_idx_t> const& names,
     cista::raw::vector_map<T, phrase_match_scores_t>& phrase_match_scores) {
   UTL_START_TIMING(t);
-  phrase_match_scores.clear();
-  phrase_match_scores.resize(names.size(), kNoMatchScores);
-  for (auto& m : matches) {
+  for (auto const& m : matches) {
     for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
       phrase_match_scores[m.idx_][j] = get_match_score(
           t.strings_[names[m.idx_]].view(), p.s_, ctx.lev_dist_, ctx.tmp_);
@@ -334,6 +333,8 @@ void get_suggestions(typeahead const& t,
                      guess_context& ctx) {
   UTL_START_TIMING(t);
 
+  ctx.suggestions_.clear();
+
   auto tokens = std::vector<std::string>{};
   auto all_tokens_mask = std::uint8_t{0U};
   utl::for_each_token(utl::cstr{in}, ' ', [&, i = 0U](utl::cstr token) mutable {
@@ -354,8 +355,7 @@ void get_suggestions(typeahead const& t,
   get_match_score<Debug>(ctx, t, ctx.area_match_counts_, ctx.area_matches_,
                          t.area_names_, ctx.area_phrase_match_scores_);
 
-  ctx.area_active_.clear();
-  ctx.area_active_.resize(t.area_names_.size());
+  utl::fill(ctx.area_active_, false);
   for (auto const m : ctx.area_matches_) {
     ctx.area_active_[to_idx(m.idx_)] = true;
   }

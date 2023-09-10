@@ -78,6 +78,7 @@ int main(int ac, char** av) {
 
   auto const t = adr::read(in, mapped);
   auto ctx = adr::guess_context{};
+  ctx.resize(*t);
 
   if (warmup) {
     adr::get_suggestions<false>(
