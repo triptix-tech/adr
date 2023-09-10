@@ -80,6 +80,8 @@ int main(int ac, char** av) {
   auto ctx = adr::guess_context{};
   ctx.resize(*t);
 
+  adr::print_stats(*t);
+
   if (warmup) {
     adr::get_suggestions<false>(
         *t, geo::latlng{0, 0}, "Willy Brandt Platz 64289 Darmstadt Deutschland",
@@ -87,7 +89,6 @@ int main(int ac, char** av) {
   }
 
   if (!guess.empty()) {
-
     UTL_START_TIMING(timer);
     for (auto i = 0U; i != runs; ++i) {
       if (verbose) {

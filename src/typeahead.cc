@@ -183,7 +183,6 @@ void match_bigrams(typeahead const& t,
                    guess_context const& ctx,
                    std::array<ngram_t, 128U> const in_ngrams_buf,
                    unsigned const n_in_ngrams,
-                   unsigned const min_bigram_matches,
                    data::vector_map<T, string_idx_t> const& names,
                    ngram_index_t<T> const& ngrams,
                    std::vector<cos_sim_match<T>>& matches,
@@ -205,9 +204,15 @@ void match_bigrams(typeahead const& t,
 
   // Calculate cosine-similarity.
   UTL_START_TIMING(t2);
+  auto const min_match_count = 2U + n_in_ngrams / 10U;
+  trace("{}: n_in_ngrams={}, min_match_count={}\n", cista::type_str<T>(),
+        n_in_ngrams, min_match_count);
   for (auto i = T{0U}; i < match_counts.size(); ++i) {
-    if (match_counts[T{i}] < min_bigram_matches ||
-        t.match_sqrts_[names[i]] == 0) {
+    if (match_counts[T{i}] < min_match_count) {
+      continue;
+    }
+
+    if (t.match_sqrts_[names[i]] == 0) {
       continue;
     }
 
@@ -216,9 +221,9 @@ void match_bigrams(typeahead const& t,
         i, static_cast<float>(match_count) /
                (ctx.sqrt_len_vec_in_ * t.match_sqrts_[names[i]])};
 
-    if (matches.size() != 3000U || matches.back().cos_sim_ < m.cos_sim_) {
+    if (matches.size() != 8000U || matches.back().cos_sim_ < m.cos_sim_) {
       utl::insert_sorted(matches, m);
-      matches.resize(std::min(std::size_t{3000U}, matches.size()));
+      matches.resize(std::min(std::size_t{8000U}, matches.size()));
     }
   }
   UTL_STOP_TIMING(t2);
@@ -236,21 +241,18 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
     return;
   }
 
-  auto min_bigram_matches =
-      std::max(1U, static_cast<unsigned>(normalized.size() / 5U)) - 1U;
-
   ctx.sqrt_len_vec_in_ = static_cast<float>(std::sqrt(ctx.tmp_.size() - 1U));
   auto const [in_ngrams_buf, n_in_ngrams] = split_ngrams(ctx.tmp_);
 
-  match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams,
-                       min_bigram_matches, place_names_, place_bigrams_,
-                       ctx.place_matches_, ctx.place_match_counts_);
-  match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams,
-                       min_bigram_matches, area_names_, area_bigrams_,
-                       ctx.area_matches_, ctx.area_match_counts_);
-  match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams,
-                       min_bigram_matches, street_names_, street_bigrams_,
-                       ctx.street_matches_, ctx.street_match_counts_);
+  match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams, place_names_,
+                       place_bigrams_, ctx.place_matches_,
+                       ctx.place_match_counts_);
+  match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams, area_names_,
+                       area_bigrams_, ctx.area_matches_,
+                       ctx.area_match_counts_);
+  match_bigrams<Debug>(*this, ctx, in_ngrams_buf, n_in_ngrams, street_names_,
+                       street_bigrams_, ctx.street_matches_,
+                       ctx.street_match_counts_);
 }
 
 cista::wrapped<typeahead> read(std::filesystem::path const& path_in,

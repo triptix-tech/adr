@@ -28,4 +28,6 @@ void get_suggestions(typeahead const&,
                      unsigned names,
                      guess_context&);
 
+void print_stats(typeahead const&);
+
 }  // namespace adr

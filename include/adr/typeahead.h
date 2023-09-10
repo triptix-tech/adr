@@ -116,12 +116,11 @@ public:
 
 struct area_set {
   friend std::ostream& operator<<(std::ostream& out, area_set const& s) {
-
     auto const areas = s.t_.area_sets_[s.areas_];
     auto const city_it =
         std::min_element(begin(areas), end(areas), [&](auto&& a, auto&& b) {
-          return (s.t_.area_admin_level_[a] - 8U) <
-                 (s.t_.area_admin_level_[b] - 8U);
+          return std::abs(to_idx(s.t_.area_admin_level_[a]) - 7) <
+                 std::abs(to_idx(s.t_.area_admin_level_[b]) - 7);
         });
     auto const city_idx =
         city_it == end(areas) ? -1 : std::distance(begin(areas), city_it);
@@ -135,9 +134,9 @@ struct area_set {
       auto const print_city =
           city_idx != -1 &&
           s.t_.area_admin_level_[areas[city_idx]] == admin_lvl;
-      if (!print_city && !matched) {
-        continue;
-      }
+      //      if (!print_city && !matched) {
+      //        continue;
+      //      }
 
       if (!first) {
         out << ", ";

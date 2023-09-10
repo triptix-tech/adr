@@ -25,14 +25,6 @@ constexpr auto const kNoMatchScores = []() {
   return a;
 }();
 
-template <typename T>
-struct cos_sim_match {
-  bool operator==(cos_sim_match const& o) const { return false; }
-  bool operator<(cos_sim_match const& o) const { return cos_sim_ > o.cos_sim_; }
-  T idx_;
-  score_t cos_sim_;
-};
-
 struct address {
   static constexpr auto const kNoHouseNumber =
       std::numeric_limits<std::uint16_t>::max();
@@ -54,12 +46,12 @@ struct suggestion {
   float score_;
 };
 
-struct area_src {
-  enum class type { kStreet, kHouseNumber, kPlace } type_;
-  score_t score_;
-  std::uint32_t index_;
-  phrase_idx_t house_number_p_idx_;
-  std::uint8_t matched_mask_;
+template <typename T>
+struct cos_sim_match {
+  bool operator==(cos_sim_match const& o) const { return false; }
+  bool operator<(cos_sim_match const& o) const { return cos_sim_ > o.cos_sim_; }
+  T idx_;
+  score_t cos_sim_;
 };
 
 template <typename T>
@@ -71,6 +63,14 @@ struct scored_match {
   score_t score_;
   phrase_idx_t phrase_idx_;
   T idx_;
+};
+
+struct area_src {
+  enum class type { kStreet, kHouseNumber, kPlace } type_;
+  score_t score_;
+  std::uint32_t index_;
+  phrase_idx_t house_number_p_idx_;
+  std::uint8_t matched_mask_;
 };
 
 struct guess_context {

@@ -8,7 +8,7 @@
 #include "adr/score.h"
 
 TEST(adr, simple) {
-  adr::extract("test/Darmstadt.osm.pbf", "adr_darmstadt.cista");
+  adr::extract("test/Darmstadt.osm.pbf", "adr_darmstadt.cista", "/tmp");
 }
 
 TEST(adr, trigram_no_overflow) {
@@ -83,5 +83,33 @@ TEST(adr, numeric_tokens) {
 TEST(adr, score_test) {
   auto lev_dist = std::vector<adr::edit_dist_t>{};
   auto tmp = std::string{};
-  EXPECT_EQ(1, adr::get_match_score("44", "4", lev_dist, tmp));
+  //  EXPECT_EQ(
+  //      1, adr::get_match_score("Spießstraße", "spessartrasse", lev_dist,
+  //      tmp));
+  //  EXPECT_EQ(1, adr::get_match_score("Spessartstraße", "spessartrasse",
+  //  lev_dist,
+  //                                    tmp));
+  //  EXPECT_EQ(1, adr::get_match_score("64747", "647", lev_dist, tmp));
+  //  EXPECT_EQ(1, adr::get_match_score("76437", "647", lev_dist, tmp));
+
+  //  EXPECT_EQ(1, adr::get_match_score("Albert-Einstein-Straße", "abert
+  //  einstein",
+  //                                    lev_dist, tmp));
+  //  EXPECT_EQ(1, adr::get_match_score("Rennsteig", "einstein", lev_dist,
+  //  tmp));
+
+  //  EXPECT_EQ(1, adr::get_match_score("Albert-Einstein-Straße",
+  //                                    "abert einstein ilmenau", lev_dist,
+  //                                    tmp));
+  //  EXPECT_EQ(1, adr::get_match_score("Albert-Einstein-Straße", "abert
+  //  einstein",
+  //                                    lev_dist, tmp));
+
+  //  EXPECT_EQ(1, adr::get_match_score("Almere", "ilme", lev_dist, tmp));
+
+  //  EXPECT_EQ(1, adr::get_match_score("Landwehrstraße", "ladnwerhstrae",
+  //  lev_dist,
+  //                                    tmp));
+
+  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "dar", lev_dist, tmp));
 }
