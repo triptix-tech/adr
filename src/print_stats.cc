@@ -5,6 +5,7 @@
 namespace adr {
 
 void print_stats(typeahead const& t) {
+  std::cout << "strings: " << t.strings_.size() << "\n";
   std::cout << "streets: " << t.street_names_.size() << "\n";
   std::cout << "places: " << t.place_names_.size() << "\n";
   std::cout << "area: " << t.area_names_.size() << "\n";

@@ -90,10 +90,8 @@ struct guess_context {
 
   std::vector<bool> area_active_;
 
-  cista::raw::vector_map<place_idx_t, phrase_match_scores_t>
-      place_phrase_match_scores_;
-  cista::raw::vector_map<street_idx_t, phrase_match_scores_t>
-      street_phrase_match_scores_;
+  std::vector<phrase_match_scores_t> place_phrase_match_scores_;
+  std::vector<phrase_match_scores_t> street_phrase_match_scores_;
   cista::raw::vector_map<area_idx_t, phrase_match_scores_t>
       area_phrase_match_scores_;
 

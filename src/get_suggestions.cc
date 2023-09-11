@@ -341,17 +341,17 @@ void match_places(std::uint8_t const numeric_tokens_mask,
 }
 
 template <bool Debug, typename T>
-void get_match_score(
-    guess_context& ctx,
-    typeahead const& t,
-    cista::raw::vector_map<T, uint8_t> const& match_counts,
-    std::vector<cos_sim_match<T>> const& matches,
-    cista::offset::vector_map<T, string_idx_t> const& names,
-    cista::raw::vector_map<T, phrase_match_scores_t>& phrase_match_scores) {
+void get_match_score(guess_context& ctx,
+                     typeahead const& t,
+                     cista::raw::vector_map<T, uint8_t> const& match_counts,
+                     std::vector<cos_sim_match<T>> const& matches,
+                     cista::offset::vector_map<T, string_idx_t> const& names,
+                     std::vector<phrase_match_scores_t>& phrase_match_scores) {
   UTL_START_TIMING(t);
-  for (auto const& m : matches) {
+  phrase_match_scores.resize(matches.size());
+  for (auto const& [i, m] : utl::enumerate(matches)) {
     for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
-      phrase_match_scores[m.idx_][j] = get_match_score(
+      phrase_match_scores[i][j] = get_match_score(
           t.strings_[names[m.idx_]].view(), p.s_, ctx.lev_dist_, ctx.tmp_);
     }
   }
@@ -366,19 +366,19 @@ void get_scored_matches(
     std::uint8_t const numeric_tokens_mask,
     data::vector_map<T, string_idx_t> const& names,
     std::vector<cos_sim_match<T>> const& filtered,
-    cista::raw::vector_map<T, phrase_match_scores_t> const& phrase_match_scores,
+    std::vector<phrase_match_scores_t> const& phrase_match_scores,
     std::vector<scored_match<T>>& scored_matches) {
   UTL_START_TIMING(t);
 
   scored_matches.clear();
   //  auto i = 0U;
-  for (auto const& m : filtered) {
+  for (auto const& [i, m] : utl::enumerate(filtered)) {
     for (auto p_idx = phrase_idx_t{0U}; p_idx != ctx.phrases_.size(); ++p_idx) {
       if ((ctx.phrases_[p_idx].token_bits_ & numeric_tokens_mask) != 0U) {
         continue;
       }
 
-      auto const p_match_score = phrase_match_scores[m.idx_][p_idx];
+      auto const p_match_score = phrase_match_scores[i][p_idx];
       //      std::cout << cista::type_str<T>() << " " << i
       //                << ": name=" << t.strings_[names[m.idx_]].view()
       //                << ", cos_sim=" << m.cos_sim_ << ", score=" <<

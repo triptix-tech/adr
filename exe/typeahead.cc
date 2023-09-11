@@ -20,6 +20,24 @@
 namespace bpo = boost::program_options;
 namespace fs = std::filesystem;
 
+constexpr auto const kAddresses = std::array<std::string_view, 16>{
+    "Oldesloer Strasse 74",
+    "Pohlstrasse 73 Niedersachsen",
+    "10532 S Redwood Rd",
+    "Chausseestr. 27 23423 Berlin",
+    "South Jordan",
+    "2104 John F Kennedy Blvd W",
+    "1B Chandos Rd",
+    "United Kingdom",
+    "Market St",
+    "Neustadt An Der Weinstraße Königsbach",
+    "24 Rue de Madrid Bouches-du-Rhône",
+    "53 Rue de la Scellerie Indre-et-Loire",
+    "49 Rue Etienne Marcel",
+    "An der Hauptwache 15 Frankfurt am Main",
+    "4500 Kingsway #1001 Burnaby British Columbia",
+    "3833 Princeton Pkwy SW"};
+
 int main(int ac, char** av) {
   auto in = fs::path{"adr.cista"};
   auto guess = std::string{""};
@@ -28,12 +46,14 @@ int main(int ac, char** av) {
   auto mapped = false;
   auto runs = 1U;
   auto warmup = false;
+  auto benchmark = false;
 
   try {
     bpo::options_description desc{"Options"};
     desc.add_options()  //
         ("help,h", "Help screen")  //
         ("verbose,v", "Print debug output")  //
+        ("benchmark,b", "parallel benchmark on all threads")  //
         ("warmup,w", "warm up with test query")  //
         ("in,i", bpo::value<fs::path>(&in)->default_value(in),
          "OSM input file")  //
@@ -71,16 +91,48 @@ int main(int ac, char** av) {
     if (vm.count("warmup")) {
       warmup = true;
     }
+    if (vm.count("benchmark")) {
+      benchmark = true;
+    }
   } catch (bpo::error const& ex) {
     std::cerr << ex.what() << '\n';
     return 1;
   }
 
   auto const t = adr::read(in, mapped);
+  adr::print_stats(*t);
+
+  if (benchmark) {
+    auto count = std::atomic_uint32_t{0U};
+    auto threads = std::vector<std::thread>{};
+    auto const num_threads = std::thread::hardware_concurrency();
+
+    UTL_START_TIMING(timer);
+    for (auto i = 0U; i != num_threads; ++i) {
+      threads.emplace_back([&]() {
+        auto ctx = adr::guess_context{};
+        ctx.resize(*t);
+
+        while (true) {
+          adr::get_suggestions<false>(
+              *t, {}, kAddresses[count % kAddresses.size()], n, ctx);
+          ++count;
+          if (count > 1'000) {
+            break;
+          }
+        }
+      });
+    }
+    for (auto& t : threads) {
+      t.join();
+    }
+    UTL_STOP_TIMING(timer);
+    std::cout << UTL_TIMING_MS(timer) << " ms\n";
+    return 0;
+  }
+
   auto ctx = adr::guess_context{};
   ctx.resize(*t);
-
-  adr::print_stats(*t);
 
   if (warmup) {
     adr::get_suggestions<false>(
