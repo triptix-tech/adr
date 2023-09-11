@@ -46,7 +46,7 @@
   url=git@github.com:motis-project/mimalloc.git
   branch=master
   commit=0087f000848de31b0090cb6f282348bd2fd3a9b8
-[taskflow]
-  url=git@github.com:taskflow/taskflow.git
+[zstd]
+  url=git@github.com:motis-project/zstd.git
   branch=master
-  commit=9316d98937e992968f1fb3a5836bf3500f756df7
+  commit=bce26304a57dd504ae7ae51f384bf9292d7e3acb

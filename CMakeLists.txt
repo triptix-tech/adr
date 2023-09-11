@@ -31,7 +31,6 @@ target_link_libraries(adr
     zlibstatic
     unordered_dense
     tiles-import-library
-    Taskflow
 )
 
 add_executable(tf exe/taskflow.cc)

@@ -6,9 +6,6 @@
 #include "boost/iterator/function_output_iterator.hpp"
 #include "boost/thread/tss.hpp"
 
-#include "taskflow/algorithm/data_pipeline.hpp"
-#include "taskflow/taskflow.hpp"
-
 #include "osmium/area/assembler.hpp"
 #include "osmium/area/multipolygon_manager.hpp"
 #include "osmium/handler/node_locations_for_ways.hpp"
