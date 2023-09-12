@@ -33,9 +33,6 @@ target_link_libraries(adr
     tiles-import-library
 )
 
-add_executable(tf exe/taskflow.cc)
-target_link_libraries(tf Taskflow)
-
 add_executable(adr-extract exe/extract.cc)
 target_link_libraries(adr-extract adr boost-program_options ${adr-mimalloc-lib})
 
