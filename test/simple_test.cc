@@ -6,6 +6,7 @@
 #include "adr/ngram.h"
 #include "adr/normalize.h"
 #include "adr/score.h"
+#include "adr/sift4.h"
 
 TEST(adr, simple) {
   adr::extract("test/Darmstadt.osm.pbf", "adr_darmstadt.cista", "/tmp");
@@ -111,5 +112,18 @@ TEST(adr, score_test) {
   //  lev_dist,
   //                                    tmp));
 
-  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "dar", lev_dist, tmp));
+  //  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "dar", lev_dist, tmp));
+
+  //  EXPECT_EQ(1,
+  //            adr::get_match_score("Froschgraben", "frochgabe", lev_dist,
+  //            tmp));
+
+  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist, tmp));
+}
+
+TEST(adr, sift4) {
+  auto offset_arr = std::vector<adr::sift_offset>{};
+  std::cout << static_cast<int>(
+                   adr::sift4("Froschgraben", "frochgabe", 4U, 10U, offset_arr))
+            << "\n";
 }

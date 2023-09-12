@@ -255,9 +255,9 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
         cos_sim_match{i, static_cast<float>(match_count) /
                              (ctx.sqrt_len_vec_in_ * match_sqrts_[i])};
 
-    if (matches.size() != 6000U || matches.back().cos_sim_ < m.cos_sim_) {
+    if (matches.size() != 6000 || matches.back().cos_sim_ < m.cos_sim_) {
       utl::insert_sorted(matches, m);
-      matches.resize(std::min(std::size_t{6000U}, matches.size()));
+      matches.resize(std::min(std::size_t{6000}, matches.size()));
     }
   }
   UTL_STOP_TIMING(t2);

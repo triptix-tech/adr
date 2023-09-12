@@ -81,26 +81,26 @@ score_t get_match_score(
     if (cut_normalized_str[i] != p[i]) {
       break;
     }
-    common_prefix_bonus -= 0.1F;
+    common_prefix_bonus -= 0.15F;
   }
 
-  auto const first_letter_mismatch_penality = s[0] != p[0] ? 2.0F : -0.5F;
-  auto const second_letter_mismatch_penality = s[1] != p[1] ? 1.0F : -0.25F;
+  auto const first_letter_mismatch_penality = s[0] != p[0] ? 2.0F : -0.75F;
+  auto const second_letter_mismatch_penality = s[1] != p[1] ? 1.0F : -0.5F;
 
   auto const score = dist + first_letter_mismatch_penality +
                      second_letter_mismatch_penality + overhang_penality +
                      relative_coverage + common_prefix_bonus;
-  //  std::cout << "dist=" << static_cast<int>(dist)
-  //            << ", size=" << cut_normalized_str.size()
-  //            << ", overhang_penality=" << overhang_penality
-  //            << ", relative_coverage=" << relative_coverage
-  //            << ", score=" << score
-  //            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F)
-  //            + 1.0F)
-  //            << "\n";
+  std::cout << "dist=" << static_cast<int>(dist)
+            << ", size=" << cut_normalized_str.size()
+            << ", overhang_penality=" << overhang_penality
+            << ", relative_coverage=" << relative_coverage
+            << ", score=" << score
+            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F) + 1.0F)
+            << "\n";
 
-  return score > std::ceil(cut_normalized_str.size() / 2.0F + 1.0F) ? kNoMatch
-                                                                    : score;
+  return std::floor(score) > std::ceil(cut_normalized_str.size() / 2.0F + 1.0F)
+             ? kNoMatch
+             : score;
 }
 
 }  // namespace adr

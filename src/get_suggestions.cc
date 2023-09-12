@@ -14,7 +14,7 @@
 
 namespace adr {
 
-constexpr auto const kMaxScoredMatches = std::size_t{250};
+constexpr auto const kMaxScoredMatches = std::size_t{600};
 
 struct area {
   friend bool operator==(area const& a, area const& b) {
@@ -364,7 +364,6 @@ void get_scored_matches(typeahead const& t,
   ctx.scored_street_matches_.clear();
   ctx.scored_place_matches_.clear();
 
-  //  auto i = 0U;
   for (auto const& [i, m] : utl::enumerate(ctx.string_matches_)) {
     for (auto p_idx = phrase_idx_t{0U}; p_idx != ctx.phrases_.size(); ++p_idx) {
       if ((ctx.phrases_[p_idx].token_bits_ & numeric_tokens_mask) != 0U) {
@@ -372,11 +371,10 @@ void get_scored_matches(typeahead const& t,
       }
 
       auto const p_match_score = ctx.string_phrase_match_scores_[i][p_idx];
-      //      std::cout << cista::type_str<T>() << " " << i
-      //                << ": name=" << t.strings_[names[m.idx_]].view()
+      //      std::cout << i << ": name=" << t.strings_[m.idx_].view()
       //                << ", cos_sim=" << m.cos_sim_ << ", score=" <<
       //                p_match_score
-      //                << ", phrase=" << ctx.phrases_[p_idx].s_ << " -> ";
+      //                << ", phrase=" << ctx.phrases_[p_idx].s_ << "\n";
 
       if (p_match_score == kNoMatch) {
         continue;
@@ -413,11 +411,7 @@ void get_scored_matches(typeahead const& t,
             break;
         }
       }
-
-      //      std::cout << "\n";
     }
-
-    //    ++i;
   }
 
   UTL_STOP_TIMING(t);
