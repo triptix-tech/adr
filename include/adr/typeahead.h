@@ -112,9 +112,7 @@ public:
 
   data::vector_map<string_idx_t, float> match_sqrts_;
 
-  ngram_index_t<area_idx_t> area_bigrams_;
-  ngram_index_t<place_idx_t> place_bigrams_;
-  ngram_index_t<street_idx_t> street_bigrams_;
+  ngram_index_t<string_idx_t> bigrams_;
 };
 
 struct area_set {

@@ -34,7 +34,8 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CISTA_USE_MIMALLOC": "ON",
         "ADR_MIMALLOC": "ON",
-        "CMAKE_CXX_FLAGS": "-fPIC"
+        "CMAKE_CXX_FLAGS": "-fPIC -march=neoverse-512tvb  -mtune=neoverse-512tvb",
+        "CMAKE_C_FLAGS": "-fPIC -march=neoverse-512tvb  -mtune=neoverse-512tvb"
       },
       "environment": {
         "PATH": "/opt:/opt/cmake-3.26.3-linux-x86_64/bin:/opt/buildcache/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

@@ -343,7 +343,6 @@ void match_places(std::uint8_t const numeric_tokens_mask,
 template <bool Debug, typename T>
 void get_match_score(guess_context& ctx,
                      typeahead const& t,
-                     cista::raw::vector_map<T, uint8_t> const& match_counts,
                      std::vector<cos_sim_match<T>> const& matches,
                      cista::offset::vector_map<T, string_idx_t> const& names,
                      std::vector<phrase_match_scores_t>& phrase_match_scores) {
@@ -434,10 +433,10 @@ void get_suggestions(typeahead const& t,
 
   t.guess<Debug>(normalize(in, ctx.tmp_), ctx);
 
-  get_match_score<Debug>(ctx, t, ctx.street_match_counts_, ctx.street_matches_,
-                         t.street_names_, ctx.street_phrase_match_scores_);
-  get_match_score<Debug>(ctx, t, ctx.place_match_counts_, ctx.place_matches_,
-                         t.place_names_, ctx.place_phrase_match_scores_);
+  get_match_score<Debug>(ctx, t, ctx.street_matches_, t.street_names_,
+                         ctx.street_phrase_match_scores_);
+  get_match_score<Debug>(ctx, t, ctx.place_matches_, t.place_names_,
+                         ctx.place_phrase_match_scores_);
 
   utl::fill(ctx.area_active_, false);
 

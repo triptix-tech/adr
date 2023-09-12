@@ -82,8 +82,7 @@ struct guess_context {
   std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;
 
-  cista::raw::vector_map<place_idx_t, std::uint8_t> place_match_counts_;
-  cista::raw::vector_map<street_idx_t, std::uint8_t> street_match_counts_;
+  cista::raw::vector_map<string_idx_t, std::uint8_t> string_match_counts_;
 
   std::vector<cos_sim_match<street_idx_t>> street_matches_;
   std::vector<cos_sim_match<place_idx_t>> place_matches_;

@@ -33,16 +33,9 @@ void suggestion::print(std::ostream& out,
 }
 
 void guess_context::resize(const adr::typeahead& t) {
-  auto const n_places = t.place_names_.size();
-  auto const n_areas = t.area_names_.size();
-  auto const n_streets = t.street_names_.size();
-
-  place_match_counts_.resize(n_places);
-  street_match_counts_.resize(n_streets);
-
-  area_phrase_match_scores_.resize(n_areas);
-
-  area_active_.resize(n_areas);
+  string_match_counts_.resize(t.strings_.size());
+  area_phrase_match_scores_.resize(t.area_names_.size());
+  area_active_.resize(t.area_names_.size());
 }
 
 }  // namespace adr
