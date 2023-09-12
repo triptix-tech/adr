@@ -191,18 +191,20 @@ void match_bigrams(typeahead const& t,
   trace("{}: n_in_ngrams={}, min_match_count={}\n", cista::type_str<T>(),
         n_in_ngrams, min_match_count);
   for (auto i = T{0U}; i < names.size(); ++i) {
-    if (names[T{i}] < min_match_count) {
+    auto const string_idx = names[i];
+
+    if (ctx.string_match_counts_[string_idx] < min_match_count) {
       continue;
     }
 
-    if (t.match_sqrts_[names[i]] == 0) {
+    if (t.match_sqrts_[string_idx] == 0) {
       continue;
     }
 
-    auto const match_count = ctx.string_match_counts_[names[i]];
+    auto const match_count = ctx.string_match_counts_[string_idx];
     auto const m = cos_sim_match<T>{
         i, static_cast<float>(match_count) /
-               (ctx.sqrt_len_vec_in_ * t.match_sqrts_[names[i]])};
+               (ctx.sqrt_len_vec_in_ * t.match_sqrts_[string_idx])};
 
     if (matches.size() != 6000U || matches.back().cos_sim_ < m.cos_sim_) {
       utl::insert_sorted(matches, m);
