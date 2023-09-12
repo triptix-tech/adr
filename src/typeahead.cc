@@ -53,6 +53,18 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
   return idx;
 }
 
+street_idx_t typeahead::get_or_create_street(import_context& ctx,
+                                             std::string_view street_name) {
+  auto const string_idx = get_or_create_string(ctx, street_name);
+  return utl::get_or_create(ctx.street_lookup_, string_idx, [&]() {
+    auto const idx = street_idx_t{street_names_.size()};
+    ctx.string_to_location_[string_idx].emplace_back(to_idx(idx),
+                                                     location_type_t::kStreet);
+    street_names_.emplace_back(string_idx);
+    return idx;
+  });
+}
+
 void typeahead::add_address(import_context& ctx,
                             osmium::TagList const& tags,
                             osmium::Location const& l) {
@@ -67,14 +79,7 @@ void typeahead::add_address(import_context& ctx,
   }
 
   auto const lock = std::scoped_lock{ctx.mutex_};
-  auto const string_idx = get_or_create_string(ctx, street);
-  auto const street_idx =
-      utl::get_or_create(ctx.street_lookup_, string_idx, [&]() {
-        auto const idx = street_idx_t{street_names_.size()};
-        street_names_.emplace_back(string_idx);
-        return idx;
-      });
-
+  auto const street_idx = get_or_create_street(ctx, street);
   auto const house_number_idx = get_or_create_string(ctx, house_number);
   ctx.house_numbers_[street_idx].emplace_back(house_number_idx);
   ctx.house_coordinates_[street_idx].emplace_back(coordinates{l.x(), l.y()});
@@ -89,14 +94,7 @@ void typeahead::add_street(import_context& ctx,
   }
 
   auto const lock = std::scoped_lock{ctx.mutex_};
-  auto const string_idx = get_or_create_string(ctx, name);
-  auto const street_idx =
-      utl::get_or_create(ctx.street_lookup_, string_idx, [&]() {
-        auto const idx = street_idx_t{street_names_.size()};
-        street_names_.emplace_back(string_idx);
-        return idx;
-      });
-
+  auto const street_idx = get_or_create_street(ctx, name);
   for (auto const p : ctx.street_pos_[street_idx]) {
     if (osmium::geom::haversine::distance(
             osmium::geom::Coordinates{l},
@@ -128,11 +126,14 @@ void typeahead::add_place(import_context& ctx,
 
   auto const lock = std::scoped_lock{ctx.mutex_};
   auto const idx = place_names_.size();
-  place_names_.emplace_back(get_or_create_string(ctx, name));
+  auto const string_idx = get_or_create_string(ctx, name);
+  place_names_.emplace_back(string_idx);
   place_coordinates_.emplace_back(l.x(), l.y());
   place_osm_ids_.emplace_back(id);
   place_is_way_.resize(place_is_way_.size() + 1U);
   place_is_way_.set(idx, is_way);
+  ctx.string_to_location_[string_idx].emplace_back(idx,
+                                                   location_type_t::kPlace);
 }
 
 string_idx_t typeahead::get_or_create_string(import_context& ctx,
@@ -177,50 +178,40 @@ void typeahead::build_trigram_index() {
   }
 }
 
-template <bool Debug, typename T>
-void match_bigrams(typeahead const& t,
-                   guess_context const& ctx,
-                   unsigned const n_in_ngrams,
-                   data::vector_map<T, string_idx_t> const& names,
-                   std::vector<cos_sim_match<T>>& matches) {
-  matches.clear();
-
-  // Calculate cosine-similarity.
-  UTL_START_TIMING(t2);
-  auto const min_match_count = 2U + n_in_ngrams / 10U;
-  trace("{}: n_in_ngrams={}, min_match_count={}\n", cista::type_str<T>(),
-        n_in_ngrams, min_match_count);
-  for (auto i = T{0U}; i < names.size(); ++i) {
-    auto const string_idx = names[i];
-
-    if (ctx.string_match_counts_[string_idx] < min_match_count) {
-      continue;
+bool typeahead::verify() {
+  auto i = 0U;
+  for (auto const [str, locations, types] :
+       utl::zip(strings_, string_to_location_, string_to_type_)) {
+    for (auto const& [l, type] : utl::zip(locations, types)) {
+      switch (type) {
+        case location_type_t::kStreet:
+          if (street_names_[street_idx_t{l}] != i) {
+            std::cerr << "ERROR: street " << l
+                      << ": street_name=" << street_names_[street_idx_t{l}]
+                      << " != i=" << i << "\n";
+            return false;
+          }
+          break;
+        case location_type_t::kPlace:
+          if (place_names_[place_idx_t{l}] != i) {
+            std::cerr << "ERROR: place " << l
+                      << ": place_name=" << place_names_[place_idx_t{l}]
+                      << " != i=" << i << "\n";
+            return false;
+          }
+          break;
+      }
     }
-
-    if (t.match_sqrts_[string_idx] == 0) {
-      continue;
-    }
-
-    auto const match_count = ctx.string_match_counts_[string_idx];
-    auto const m = cos_sim_match<T>{
-        i, static_cast<float>(match_count) /
-               (ctx.sqrt_len_vec_in_ * t.match_sqrts_[string_idx])};
-
-    if (matches.size() != 6000U || matches.back().cos_sim_ < m.cos_sim_) {
-      utl::insert_sorted(matches, m);
-      matches.resize(std::min(std::size_t{6000U}, matches.size()));
-    }
+    ++i;
   }
-  UTL_STOP_TIMING(t2);
-  trace("{}: {} matches [{} ms]\n", cista::type_str<T>(), matches.size(),
-        UTL_TIMING_MS(t2));
+  return true;
 }
 
 template <bool Debug>
 void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
-  ctx.place_matches_.clear();
-  ctx.street_matches_.clear();
-
+  // ====================
+  // COUNT NGRAM MATCHES
+  // --------------------
   if (normalized.size() < 2U) {
     return;
   }
@@ -240,10 +231,37 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   UTL_STOP_TIMING(t1);
   trace("counting matches [{} ms]\n", UTL_TIMING_MS(t1));
 
-  match_bigrams<Debug>(*this, ctx, n_in_ngrams, place_names_,
-                       ctx.place_matches_);
-  match_bigrams<Debug>(*this, ctx, n_in_ngrams, street_names_,
-                       ctx.street_matches_);
+  // ================
+  // COMPUTE COS SIM
+  // ----------------
+  auto& matches = ctx.string_matches_;
+  matches.clear();
+
+  // Calculate cosine-similarity.
+  UTL_START_TIMING(t2);
+  auto const min_match_count = 2U + n_in_ngrams / 10U;
+  trace("n_in_ngrams={}, min_match_count={}\n", n_in_ngrams, min_match_count);
+  for (auto i = string_idx_t{0U}; i < strings_.size(); ++i) {
+    if (ctx.string_match_counts_[i] < min_match_count) {
+      continue;
+    }
+
+    if (match_sqrts_[i] == 0) {
+      continue;
+    }
+
+    auto const match_count = ctx.string_match_counts_[i];
+    auto const m =
+        cos_sim_match{i, static_cast<float>(match_count) /
+                             (ctx.sqrt_len_vec_in_ * match_sqrts_[i])};
+
+    if (matches.size() != 6000U || matches.back().cos_sim_ < m.cos_sim_) {
+      utl::insert_sorted(matches, m);
+      matches.resize(std::min(std::size_t{6000U}, matches.size()));
+    }
+  }
+  UTL_STOP_TIMING(t2);
+  trace("{} matches [{} ms]\n", matches.size(), UTL_TIMING_MS(t2));
 }
 
 cista::wrapped<typeahead> read(std::filesystem::path const& path_in,

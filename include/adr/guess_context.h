@@ -46,11 +46,10 @@ struct suggestion {
   float score_;
 };
 
-template <typename T>
 struct cos_sim_match {
   bool operator==(cos_sim_match const& o) const { return false; }
   bool operator<(cos_sim_match const& o) const { return cos_sim_ > o.cos_sim_; }
-  T idx_;
+  string_idx_t idx_;
   score_t cos_sim_;
 };
 
@@ -84,13 +83,11 @@ struct guess_context {
 
   cista::raw::vector_map<string_idx_t, std::uint8_t> string_match_counts_;
 
-  std::vector<cos_sim_match<street_idx_t>> street_matches_;
-  std::vector<cos_sim_match<place_idx_t>> place_matches_;
+  std::vector<cos_sim_match> string_matches_;
 
   std::vector<bool> area_active_;
 
-  std::vector<phrase_match_scores_t> place_phrase_match_scores_;
-  std::vector<phrase_match_scores_t> street_phrase_match_scores_;
+  std::vector<phrase_match_scores_t> string_phrase_match_scores_;
   cista::raw::vector_map<area_idx_t, phrase_match_scores_t>
       area_phrase_match_scores_;
 

@@ -20,10 +20,8 @@ using place_idx_t = cista::strong<std::uint32_t, struct place_idx_>;
 constexpr auto const kPostalCodeAdminLevel = admin_level_t{11};
 
 enum class location_type_t : std::uint8_t {
-  kArea,
   kPlace,
   kStreet,
-  kHouseNumber
 };
 
 struct coordinates {

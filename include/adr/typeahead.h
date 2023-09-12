@@ -54,6 +54,10 @@ struct import_context {
   std::mutex place_stats_mutex_;
   raw_hash_map<std::string, std::uint32_t> place_stats_;
 
+  raw_mutable_vecvec<string_idx_t,
+                     cista::raw::pair<std::uint32_t, location_type_t>>
+      string_to_location_;
+
   std::mutex mutex_;
 };
 
@@ -86,6 +90,9 @@ struct typeahead {
   void guess(std::string_view normalized, guess_context&) const;
 
 private:
+  street_idx_t get_or_create_street(import_context& ctx,
+                                    std::string_view street_name);
+
   string_idx_t get_or_create_string(import_context&, std::string_view s);
 
 public:
@@ -113,6 +120,9 @@ public:
   data::vector_map<string_idx_t, float> match_sqrts_;
 
   ngram_index_t<string_idx_t> bigrams_;
+
+  data::vecvec<string_idx_t, std::uint32_t> string_to_location_;
+  data::vecvec<string_idx_t, location_type_t> string_to_type_;
 };
 
 struct area_set {

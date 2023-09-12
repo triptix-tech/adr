@@ -340,61 +340,78 @@ void match_places(std::uint8_t const numeric_tokens_mask,
   trace("PLACES: {} ms\n", UTL_TIMING_MS(t));
 }
 
-template <bool Debug, typename T>
-void get_match_score(guess_context& ctx,
-                     typeahead const& t,
-                     std::vector<cos_sim_match<T>> const& matches,
-                     cista::offset::vector_map<T, string_idx_t> const& names,
-                     std::vector<phrase_match_scores_t>& phrase_match_scores) {
+template <bool Debug>
+void compute_string_phrase_match_scores(guess_context& ctx,
+                                        typeahead const& t) {
   UTL_START_TIMING(t);
-  phrase_match_scores.resize(matches.size());
-  for (auto const& [i, m] : utl::enumerate(matches)) {
+  ctx.string_phrase_match_scores_.resize(ctx.string_matches_.size());
+  for (auto const& [i, m] : utl::enumerate(ctx.string_matches_)) {
     for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
-      phrase_match_scores[i][j] = get_match_score(
-          t.strings_[names[m.idx_]].view(), p.s_, ctx.lev_dist_, ctx.tmp_);
+      ctx.string_phrase_match_scores_[i][j] = get_match_score(
+          t.strings_[m.idx_].view(), p.s_, ctx.lev_dist_, ctx.tmp_);
     }
   }
   UTL_STOP_TIMING(t);
-  trace("{}: match scores [{} ms]\n", cista::type_str<T>(), UTL_TIMING_MS(t));
+  trace("match scores [{} ms]\n", UTL_TIMING_MS(t));
 }
 
-template <bool Debug, typename T>
-void get_scored_matches(
-    typeahead const& t,
-    guess_context& ctx,
-    std::uint8_t const numeric_tokens_mask,
-    data::vector_map<T, string_idx_t> const& names,
-    std::vector<cos_sim_match<T>> const& filtered,
-    std::vector<phrase_match_scores_t> const& phrase_match_scores,
-    std::vector<scored_match<T>>& scored_matches) {
+template <bool Debug>
+void get_scored_matches(typeahead const& t,
+                        guess_context& ctx,
+                        std::uint8_t const numeric_tokens_mask) {
   UTL_START_TIMING(t);
 
-  scored_matches.clear();
+  ctx.scored_street_matches_.clear();
+  ctx.scored_place_matches_.clear();
+
   //  auto i = 0U;
-  for (auto const& [i, m] : utl::enumerate(filtered)) {
+  for (auto const& [i, m] : utl::enumerate(ctx.string_matches_)) {
     for (auto p_idx = phrase_idx_t{0U}; p_idx != ctx.phrases_.size(); ++p_idx) {
       if ((ctx.phrases_[p_idx].token_bits_ & numeric_tokens_mask) != 0U) {
         continue;
       }
 
-      auto const p_match_score = phrase_match_scores[i][p_idx];
+      auto const p_match_score = ctx.string_phrase_match_scores_[i][p_idx];
       //      std::cout << cista::type_str<T>() << " " << i
       //                << ": name=" << t.strings_[names[m.idx_]].view()
       //                << ", cos_sim=" << m.cos_sim_ << ", score=" <<
       //                p_match_score
       //                << ", phrase=" << ctx.phrases_[p_idx].s_ << " -> ";
 
-      if (p_match_score != kNoMatch &&
-          (scored_matches.size() != kMaxScoredMatches ||
-           scored_matches.back().score_ > p_match_score)) {
-        auto const [it, inserted] = utl::insert_sorted(
-            scored_matches,
-            {.score_ = p_match_score, .phrase_idx_ = p_idx, .idx_ = m.idx_});
-        //        if (inserted) {
-        //          std::cout << std::distance(begin(scored_matches), it);
-        //        }
-        scored_matches.resize(
-            std::min(kMaxScoredMatches, scored_matches.size()));
+      if (p_match_score == kNoMatch) {
+        continue;
+      }
+
+      for (auto const [idx, type] :
+           utl::zip(t.string_to_location_[m.idx_], t.string_to_type_[m.idx_])) {
+        switch (type) {
+          case location_type_t::kStreet: {
+            auto const street_idx = street_idx_t{idx};
+            if (ctx.scored_street_matches_.size() != kMaxScoredMatches ||
+                ctx.scored_street_matches_.back().score_ > p_match_score) {
+              auto const [it, inserted] = utl::insert_sorted(
+                  ctx.scored_street_matches_, {.score_ = p_match_score,
+                                               .phrase_idx_ = p_idx,
+                                               .idx_ = street_idx});
+              ctx.scored_street_matches_.resize(std::min(
+                  kMaxScoredMatches, ctx.scored_street_matches_.size()));
+            }
+            break;
+          }
+
+          case location_type_t::kPlace:
+            auto const place_idx = place_idx_t{idx};
+            if (ctx.scored_place_matches_.size() != kMaxScoredMatches ||
+                ctx.scored_place_matches_.back().score_ > p_match_score) {
+              auto const [it, inserted] = utl::insert_sorted(
+                  ctx.scored_place_matches_, {.score_ = p_match_score,
+                                              .phrase_idx_ = p_idx,
+                                              .idx_ = place_idx});
+              ctx.scored_place_matches_.resize(std::min(
+                  kMaxScoredMatches, ctx.scored_place_matches_.size()));
+            }
+            break;
+        }
       }
 
       //      std::cout << "\n";
@@ -404,7 +421,7 @@ void get_scored_matches(
   }
 
   UTL_STOP_TIMING(t);
-  trace("{}: score matches [{} ms]\n", cista::type_str<T>(), UTL_TIMING_MS(t));
+  trace("score matches [{} ms]\n", UTL_TIMING_MS(t));
 }
 
 template <bool Debug>
@@ -433,21 +450,13 @@ void get_suggestions(typeahead const& t,
 
   t.guess<Debug>(normalize(in, ctx.tmp_), ctx);
 
-  get_match_score<Debug>(ctx, t, ctx.street_matches_, t.street_names_,
-                         ctx.street_phrase_match_scores_);
-  get_match_score<Debug>(ctx, t, ctx.place_matches_, t.place_names_,
-                         ctx.place_phrase_match_scores_);
+  compute_string_phrase_match_scores<Debug>(ctx, t);
 
   utl::fill(ctx.area_active_, false);
 
   auto const numeric_tokens_mask = get_numeric_tokens_mask(tokens);
 
-  get_scored_matches<Debug>(
-      t, ctx, numeric_tokens_mask, t.street_names_, ctx.street_matches_,
-      ctx.street_phrase_match_scores_, ctx.scored_street_matches_);
-  get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, t.place_names_,
-                            ctx.place_matches_, ctx.place_phrase_match_scores_,
-                            ctx.scored_place_matches_);
+  get_scored_matches<Debug>(t, ctx, numeric_tokens_mask);
 
   match_streets<Debug>(numeric_tokens_mask, t, ctx, tokens);
   match_places<Debug>(numeric_tokens_mask, t, ctx, tokens);

@@ -268,6 +268,14 @@ void extract(std::filesystem::path const& in_path,
     for (auto const b : ctx.house_coordinates_) {
       t.house_coordinates_.emplace_back(b);
     }
+    for (auto const locations : ctx.string_to_location_) {
+      auto idxs = t.string_to_location_.add_back_sized(locations.size());
+      auto types = t.string_to_type_.add_back_sized(locations.size());
+      for (auto i = 0U; i != locations.size(); ++i) {
+        idxs[i] = locations[i].first;
+        types[i] = locations[i].second;
+      }
+    }
     UTL_STOP_TIMING(copy_data);
     std::cout << "copy data timing: " << UTL_TIMING_MS(copy_data) << "\n";
   }
