@@ -32,8 +32,9 @@ void suggestion::print(std::ostream& out,
       << " -> score=" << static_cast<float>(score_) << "\n";
 }
 
-void guess_context::resize(const adr::typeahead& t) {
-  string_match_counts_.resize(t.strings_.size());
+void guess_context::resize(adr::typeahead const& t) {
+  //  string_match_counts_.resize(t.strings_.size());
+  cache_.n_strings_ = t.strings_.size();
   area_phrase_match_scores_.resize(t.area_names_.size());
   area_active_.resize(t.area_names_.size());
 }

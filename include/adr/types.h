@@ -63,4 +63,7 @@ using phrase_idx_t = std::uint8_t;
 
 using phrase_match_scores_t = std::array<score_t, kMaxInputPhrases>;
 
+using string_match_count_vector_t =
+    cista::raw::vector_map<string_idx_t, std::uint8_t>;
+
 }  // namespace adr

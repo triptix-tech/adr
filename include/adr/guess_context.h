@@ -9,6 +9,7 @@
 
 #include "ankerl/cista_adapter.h"
 
+#include "adr/cache.h"
 #include "adr/ngram.h"
 #include "adr/normalize.h"
 #include "adr/sift4.h"
@@ -74,6 +75,7 @@ struct area_src {
 };
 
 struct guess_context {
+
   void resize(typeahead const&);
 
   utf8_normalize_buf_t normalize_buf_;
@@ -82,7 +84,9 @@ struct guess_context {
   std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;
 
-  cista::raw::vector_map<string_idx_t, std::uint8_t> string_match_counts_;
+  //  cista::raw::vector_map<string_idx_t, std::uint8_t> string_match_counts_;
+
+  adr::cache cache_;
 
   std::vector<cos_sim_match> string_matches_;
 

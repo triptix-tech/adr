@@ -5,6 +5,7 @@
 #include "fmt/core.h"
 
 #include "adr/adr.h"
+#include "adr/cache.h"
 #include "adr/ngram.h"
 #include "adr/normalize.h"
 #include "adr/score.h"
@@ -12,16 +13,6 @@
 
 TEST(adr, simple) {
   adr::extract("test/Darmstadt.osm.pbf", "adr_darmstadt.cista", "/tmp");
-}
-
-TEST(adr, trigram_no_overflow) {
-  auto const t = adr::compress_trigram("az4");
-  EXPECT_EQ("az4", adr::decompress_trigram(t));
-}
-
-TEST(adr, trigram_overflow) {
-  auto const t = adr::compress_trigram("az6");
-  EXPECT_EQ("az1", adr::decompress_trigram(t));
 }
 
 TEST(adr, for_each_trigram) {
@@ -138,4 +129,19 @@ TEST(adr, sift4) {
   std::cout << static_cast<int>(
                    adr::sift4("Froschgraben", "frochgabe", 4U, 10U, offset_arr))
             << "\n";
+}
+
+TEST(adr, cache) {
+  auto c = adr::cache{100U};
+
+  auto missing = adr::ngram_set_t{};
+  auto& vec = c.get_closest(adr::ngram_set_t{{1U, 2U, 3U}}, missing);
+  EXPECT_EQ((adr::ngram_set_t{{1U, 2U, 3U}}), missing);
+
+  EXPECT_EQ(0U, vec[adr::string_idx_t{0}]);
+  vec[adr::string_idx_t{0}] = 1;
+
+  vec = c.get_closest(adr::ngram_set_t{{1U, 2U, 3U}}, missing);
+  EXPECT_EQ((adr::ngram_set_t{}), missing);
+  EXPECT_EQ(1U, vec[adr::string_idx_t{0}]);
 }

@@ -204,6 +204,9 @@ bool typeahead::verify() {
 
 template <bool Debug>
 void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
+  auto& matches = ctx.string_matches_;
+  matches.clear();
+
   // ====================
   // COUNT NGRAM MATCHES
   // --------------------
@@ -217,10 +220,14 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   // Collect candidate indices matched by the bigrams in the input
   // string.
   UTL_START_TIMING(t1);
-  utl::fill(ctx.string_match_counts_, 0U);
-  for (auto i = 0U; i != n_in_ngrams; ++i) {
-    for (auto const item_idx : bigrams_[in_ngrams_buf[i]]) {
-      ++ctx.string_match_counts_[item_idx];
+  auto missing = ngram_set_t{};
+  auto& string_match_counts = ctx.cache_.get_closest(
+      ngram_set_t{begin(in_ngrams_buf), begin(in_ngrams_buf) + n_in_ngrams},
+      missing);
+  std::cout << "#missing: " << missing.size() << "\n";
+  for (auto const& missing_ngram : missing) {
+    for (auto const string_idx : bigrams_[missing_ngram]) {
+      ++string_match_counts[string_idx];
     }
   }
   UTL_STOP_TIMING(t1);
@@ -229,15 +236,11 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   // ================
   // COMPUTE COS SIM
   // ----------------
-  auto& matches = ctx.string_matches_;
-  matches.clear();
-
-  // Calculate cosine-similarity.
   UTL_START_TIMING(t2);
   auto const min_match_count = 2U + n_in_ngrams / 10U;
   trace("n_in_ngrams={}, min_match_count={}\n", n_in_ngrams, min_match_count);
   for (auto i = string_idx_t{0U}; i < strings_.size(); ++i) {
-    if (ctx.string_match_counts_[i] < min_match_count) {
+    if (string_match_counts[i] < min_match_count) {
       continue;
     }
 
@@ -245,7 +248,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
       continue;
     }
 
-    auto const match_count = ctx.string_match_counts_[i];
+    auto const match_count = string_match_counts[i];
     auto const m =
         cos_sim_match{i, static_cast<float>(match_count) /
                              (ctx.sqrt_len_vec_in_ * match_sqrts_[i])};

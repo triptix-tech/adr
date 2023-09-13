@@ -16,6 +16,8 @@
 #include "ftxui/util/ref.hpp"  // for Ref
 
 #include "adr/adr.h"
+#include "utl/parser/cstr.h"
+#include "utl/read_file.h"
 
 namespace bpo = boost::program_options;
 namespace fs = std::filesystem;
@@ -41,6 +43,7 @@ constexpr auto const kAddresses = std::array<std::string_view, 16>{
 int main(int ac, char** av) {
   auto in = fs::path{"adr.cista"};
   auto guess = std::string{""};
+  auto file = std::string{""};
   auto verbose = false;
   auto n = 15U;
   auto mapped = false;
@@ -56,6 +59,8 @@ int main(int ac, char** av) {
         ("verbose,v", "Print debug output")  //
         ("benchmark,b", "parallel benchmark on all threads")  //
         ("dark,d", "dark mode")  //
+        ("file,f", bpo::value<std::string>(&file)->default_value(file),
+         "read inputs from file")  //
         ("warmup,w", "warm up with test query")  //
         ("in,i", bpo::value<fs::path>(&in)->default_value(in),
          "OSM input file")  //
@@ -107,6 +112,30 @@ int main(int ac, char** av) {
   auto const t = adr::read(in, mapped);
   adr::print_stats(*t);
 
+  auto ctx = adr::guess_context{};
+  ctx.resize(*t);
+
+  if (warmup) {
+    adr::get_suggestions<false>(
+        *t, geo::latlng{0, 0}, "Willy Brandt Platz 64289 Darmstadt Deutschland",
+        n, ctx);
+  }
+
+  if (!file.empty()) {
+    std::cout << "reading file " << file << "\n";
+    auto const content = utl::read_file(file.c_str());
+    if (!content.has_value()) {
+      std::cout << "unable to read file " << file << "\n";
+    }
+    utl::for_each_line(utl::cstr{*content}, [&](utl::cstr const line) {
+      UTL_START_TIMING(timer);
+      adr::get_suggestions<false>(*t, {}, line.view(), n, ctx);
+      UTL_STOP_TIMING(timer);
+      std::cout << UTL_TIMING_MS(timer) << " ms\n";
+    });
+    return 0;
+  }
+
   if (benchmark) {
     auto count = std::atomic_uint32_t{0U};
     auto threads = std::vector<std::thread>{};
@@ -134,15 +163,6 @@ int main(int ac, char** av) {
     UTL_STOP_TIMING(timer);
     std::cout << UTL_TIMING_MS(timer) << " ms\n";
     return 0;
-  }
-
-  auto ctx = adr::guess_context{};
-  ctx.resize(*t);
-
-  if (warmup) {
-    adr::get_suggestions<false>(
-        *t, geo::latlng{0, 0}, "Willy Brandt Platz 64289 Darmstadt Deutschland",
-        n, ctx);
   }
 
   if (!guess.empty()) {
