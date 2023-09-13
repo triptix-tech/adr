@@ -14,11 +14,12 @@ struct sift_offset {
   bool trans_;
 };
 
-edit_dist_t sift4(std::string_view s1,
-                  std::string_view s2,
-                  edit_dist_t const maxOffset,
-                  edit_dist_t const maxDistance,
-                  std::vector<sift_offset>& offset_arr) {
+inline edit_dist_t sift4(std::string_view s1,
+                         std::string_view s2,
+                         edit_dist_t const maxOffset,
+                         edit_dist_t const maxDistance,
+                         std::vector<sift_offset>& offset_arr) {
+  offset_arr.clear();
   if (s1.empty()) {
     if (s2.empty()) {
       return 0U;

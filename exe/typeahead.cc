@@ -184,7 +184,7 @@ int main(int ac, char** av) {
         s.print(ss, *t, ctx.phrases_);
         list.push_back(text(ss.str()));
       }
-      return vbox(std::move(list)) | bgcolor(Color::White);
+      return vbox(std::move(list)) | bgcolor(Color::Black);
     };
 
     InputOption options;
@@ -193,8 +193,9 @@ int main(int ac, char** av) {
     auto component = Container::Vertical({input_first_name});
 
     auto renderer = Renderer(component, [&] {
-      return vbox({input_first_name->Render(), guesses()}) |
-             bgcolor(Color::Black);
+      return vbox({input_first_name->Render() | bgcolor(Color::Black),
+                   guesses()}) |
+             bgcolor(Color::White);
     });
 
     screen.Loop(renderer);

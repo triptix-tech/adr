@@ -46,7 +46,7 @@ void activate_areas(typeahead const& t,
               (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
                t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
               )
-              ? get_match_score(area_name, area_p.s_, ctx.lev_dist_,
+              ? get_match_score(area_name, area_p.s_, ctx.sift4_offset_arr_,
                                 ctx.normalize_buf_)
               : kNoMatch;
     }
@@ -92,8 +92,9 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
           continue;
         }
 
-        auto const hn_score = get_match_score(
-            t.strings_[hn].view(), p.s_, ctx.lev_dist_, ctx.normalize_buf_);
+        auto const hn_score =
+            get_match_score(t.strings_[hn].view(), p.s_, ctx.sift4_offset_arr_,
+                            ctx.normalize_buf_);
         if (hn_score == kNoMatch) {
           continue;
         }
@@ -107,7 +108,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
                          ctx.phrases_[street_p_idx].token_bits_ |
                          ctx.phrases_[hn_p_idx].token_bits_)});
       }
-      ++i;
+      ++index;
     }
 
     for (auto const& [area_set_idx, items] : ctx.areas_) {
@@ -349,8 +350,9 @@ void compute_string_phrase_match_scores(guess_context& ctx,
   ctx.string_phrase_match_scores_.resize(ctx.string_matches_.size());
   for (auto const& [i, m] : utl::enumerate(ctx.string_matches_)) {
     for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
-      ctx.string_phrase_match_scores_[i][j] = get_match_score(
-          t.strings_[m.idx_].view(), p.s_, ctx.lev_dist_, ctx.normalize_buf_);
+      ctx.string_phrase_match_scores_[i][j] =
+          get_match_score(t.strings_[m.idx_].view(), p.s_,
+                          ctx.sift4_offset_arr_, ctx.normalize_buf_);
     }
   }
   UTL_STOP_TIMING(t);

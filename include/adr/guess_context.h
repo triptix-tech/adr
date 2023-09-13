@@ -11,6 +11,7 @@
 
 #include "adr/ngram.h"
 #include "adr/normalize.h"
+#include "adr/sift4.h"
 #include "adr/types.h"
 
 namespace adr {
@@ -76,7 +77,7 @@ struct guess_context {
   void resize(typeahead const&);
 
   utf8_normalize_buf_t normalize_buf_;
-  std::vector<std::uint8_t> lev_dist_;
+  std::vector<sift_offset> sift4_offset_arr_;
 
   std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;

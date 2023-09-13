@@ -52,7 +52,7 @@ inline edit_dist_t levenshtein_distance(std::string_view source,
 inline score_t get_match_score(
     std::string_view s,  // name from dataset - will be normalized!
     std::string_view p,  // input phrase - won't be normalized!
-    std::vector<edit_dist_t>& lev_dist,
+    std::vector<sift_offset>& sift4_offset_arr,
     utf8_normalize_buf_t& tmp) {
   if (s.empty() || p.empty()) {
     return kNoMatch;
@@ -61,7 +61,9 @@ inline score_t get_match_score(
   auto const normalized_str = std::string_view{normalize(s, tmp)};
   auto const cut_normalized_str =
       normalized_str.substr(0U, std::min(normalized_str.size(), p.size()));
-  auto const dist = levenshtein_distance(cut_normalized_str, p, lev_dist);
+  auto const dist =
+      sift4(cut_normalized_str, p, 5, std::min(s.size(), p.size()) / 2 + 2,
+            sift4_offset_arr);
   if (dist >= cut_normalized_str.size()) {
     //    std::cout << "dist=" << static_cast<int>(dist) << " > "
     //              << cut_normalized_str.size() << "\n";

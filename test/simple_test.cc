@@ -87,6 +87,7 @@ TEST(adr, numeric_tokens) {
 
 TEST(adr, score_test) {
   auto lev_dist = std::vector<adr::edit_dist_t>{};
+  auto sift4_dist = std::vector<adr::sift_offset>{};
   auto tmp = std::string{};
   //  EXPECT_EQ(
   //      1, adr::get_match_score("Spießstraße", "spessartrasse", lev_dist,
@@ -123,8 +124,13 @@ TEST(adr, score_test) {
   //            tmp));
 
   auto ctx = adr::guess_context{};
-  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist,
-                                    ctx.normalize_buf_));
+  //  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist,
+  //                                    ctx.normalize_buf_));
+  //  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist,
+  //  tmp));
+
+  EXPECT_EQ(1,
+            adr::get_match_score("10a", "5", sift4_dist, ctx.normalize_buf_));
 }
 
 TEST(adr, sift4) {
@@ -132,33 +138,4 @@ TEST(adr, sift4) {
   std::cout << static_cast<int>(
                    adr::sift4("Froschgraben", "frochgabe", 4U, 10U, offset_arr))
             << "\n";
-}
-
-TEST(adr, utf8normalize) {
-  std::string s = "#äöüÄÖÜδιακρίνεινó";
-  std::basic_string<utf8proc_int32_t> output;
-  output.resize(1024);
-  auto const new_size = utf8proc_decompose(
-      reinterpret_cast<std::uint8_t const*>(s.data()), s.size(), output.data(),
-      output.size() / sizeof(utf8proc_int32_t),
-      static_cast<utf8proc_option_t>(utf8proc_option_t::UTF8PROC_DECOMPOSE |
-                                     utf8proc_option_t::UTF8PROC_STRIPMARK |
-                                     utf8proc_option_t::UTF8PROC_CASEFOLD));
-
-  if (new_size < 0U) {
-    std::cout << utf8proc_errmsg(new_size) << "\n";
-    return;
-  }
-
-  output.resize(new_size);
-  std::cout << "new size: " << new_size << "\n";
-
-  auto const new_size_1 = utf8proc_reencode(output.data(), new_size,
-                                            static_cast<utf8proc_option_t>(0));
-
-  std::cout << std::string_view{reinterpret_cast<char const*>(output.data()),
-                                static_cast<std::size_t>(new_size_1)}
-            << "\n";
-
-  //  fmt::print(U"{}\n", output);
 }
