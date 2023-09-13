@@ -75,8 +75,8 @@ struct area_src {
 struct guess_context {
   void resize(typeahead const&);
 
-  std::string tmp_;  // for normalize
-  std::vector<std::uint8_t> lev_dist_;  // levenshtein distance table
+  utf8_normalize_buf_t normalize_buf_;
+  std::vector<std::uint8_t> lev_dist_;
 
   std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;

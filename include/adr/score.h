@@ -5,9 +5,9 @@
 
 namespace adr {
 
-edit_dist_t levenshtein_distance(std::string_view source,
-                                 std::string_view target,
-                                 std::vector<edit_dist_t>& lev_dist) {
+inline edit_dist_t levenshtein_distance(std::string_view source,
+                                        std::string_view target,
+                                        std::vector<edit_dist_t>& lev_dist) {
   if (source.size() > target.size()) {
     std::swap(source, target);
   }
@@ -49,11 +49,11 @@ edit_dist_t levenshtein_distance(std::string_view source,
   return lev_dist[min_size];
 }
 
-score_t get_match_score(
+inline score_t get_match_score(
     std::string_view s,  // name from dataset - will be normalized!
     std::string_view p,  // input phrase - won't be normalized!
     std::vector<edit_dist_t>& lev_dist,
-    std::string& tmp) {
+    utf8_normalize_buf_t& tmp) {
   if (s.empty() || p.empty()) {
     return kNoMatch;
   }
@@ -90,13 +90,14 @@ score_t get_match_score(
   auto const score = dist + first_letter_mismatch_penality +
                      second_letter_mismatch_penality + overhang_penality +
                      relative_coverage + common_prefix_bonus;
-  std::cout << "dist=" << static_cast<int>(dist)
-            << ", size=" << cut_normalized_str.size()
-            << ", overhang_penality=" << overhang_penality
-            << ", relative_coverage=" << relative_coverage
-            << ", score=" << score
-            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F) + 1.0F)
-            << "\n";
+  //  std::cout << "dist=" << static_cast<int>(dist)
+  //            << ", size=" << cut_normalized_str.size()
+  //            << ", overhang_penality=" << overhang_penality
+  //            << ", relative_coverage=" << relative_coverage
+  //            << ", score=" << score
+  //            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F)
+  //            + 1.0F)
+  //            << "\n";
 
   return std::floor(score) > std::ceil(cut_normalized_str.size() / 2.0F + 1.0F)
              ? kNoMatch

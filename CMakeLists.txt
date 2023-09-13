@@ -31,6 +31,7 @@ target_link_libraries(adr
     zlibstatic
     unordered_dense
     tiles-import-library
+    utf8proc
 )
 
 add_executable(adr-extract exe/extract.cc)

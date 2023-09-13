@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 
+#include "utf8proc.h"
+
 #include "utl/enumerate.h"
 
 namespace adr {
@@ -17,47 +19,30 @@ inline void replace_all(std::string& s,
   }
 }
 
-inline std::string const& normalize(std::string_view v, std::string& s) {
-  s.resize(v.size());
-  std::copy(begin(v), end(v), begin(s));
+using utf8_normalize_buf_t = std::basic_string<utf8proc_int32_t>;
 
-  replace_all(s, "è", "e");
-  replace_all(s, "é", "e");
-  replace_all(s, "Ä", "a");
-  replace_all(s, "ä", "a");
-  replace_all(s, "Ö", "o");
-  replace_all(s, "ö", "o");
-  replace_all(s, "Ü", "u");
-  replace_all(s, "ü", "u");
-  replace_all(s, "ß", "ss");
-  replace_all(s, "-", " ");
-  replace_all(s, "/", " ");
-  replace_all(s, ".", " ");
-  replace_all(s, ",", " ");
-  replace_all(s, "(", " ");
-  replace_all(s, ")", " ");
-
-  for (int i = 0; i < s.length(); ++i) {
-    char c = s[i];
-    bool is_lower_case_char = c >= 'a' && c <= 'z';
-    bool is_upper_case_char = c >= 'A' && c <= 'Z';
-    bool is_number = c >= '0' && c <= '9';
-    if (!is_lower_case_char && !is_upper_case_char && !is_number) {
-      s[i] = ' ';
-    }
+inline std::string_view normalize(std::string_view v,
+                                  utf8_normalize_buf_t& decomposed) {
+  decomposed.resize(v.size());
+  auto const decomposed_size = utf8proc_decompose(
+      reinterpret_cast<std::uint8_t const*>(v.data()), v.size(),
+      decomposed.data(), decomposed.size(),
+      static_cast<utf8proc_option_t>(utf8proc_option_t::UTF8PROC_DECOMPOSE |
+                                     utf8proc_option_t::UTF8PROC_STRIPMARK |
+                                     utf8proc_option_t::UTF8PROC_CASEFOLD));
+  if (decomposed_size < 0U) {
+    throw std::runtime_error{utf8proc_errmsg(decomposed_size)};
   }
 
-  replace_all(s, "  ", " ");
-
-  std::transform(begin(s), end(s), begin(s), ::tolower);
-
-  return s;
+  auto const reencoded_size = utf8proc_reencode(
+      decomposed.data(), decomposed_size, static_cast<utf8proc_option_t>(0));
+  return {reinterpret_cast<char const*>(decomposed.data()),
+          static_cast<std::size_t>(reencoded_size)};
 }
 
-inline std::string normalize_alloc(std::string_view in) {
-  std::string normalized;
-  normalize(in, normalized);
-  return normalized;
+inline std::string_view normalize(std::string_view in) {
+  static auto decomposed_buf = utf8_normalize_buf_t{};
+  return normalize(in, decomposed_buf);
 }
 
 struct phrase {

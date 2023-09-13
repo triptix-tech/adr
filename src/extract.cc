@@ -368,7 +368,7 @@ void extract(std::filesystem::path const& in_path,
     ctx.street_lookup_ = {};
     ctx.street_names_ = {};
 
-    t.build_trigram_index();
+    t.build_ngram_index();
 
     UTL_STOP_TIMING(trigram_index);
     std::cout << "trigram index timing: " << UTL_TIMING_MS(trigram_index)

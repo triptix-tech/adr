@@ -153,28 +153,23 @@ area_set_idx_t typeahead::get_or_create_area_set(
   });
 }
 
-void typeahead::build_trigram_index() {
-  auto normalized = std::string{};
-
+void typeahead::build_ngram_index() {
+  auto normalize_buf = utf8_normalize_buf_t{};
   auto tmp = std::vector<std::vector<string_idx_t>>{};
   tmp.resize(kNBigrams);
+  match_sqrts_.resize(strings_.size());
   for (auto const [i, str_idx] : utl::enumerate(strings_)) {
-    for_each_bigram(normalize(str_idx.view(), normalized),
-                    [&](std::string_view bigram) {
-                      tmp[compress_bigram(bigram)].emplace_back(i);
-                    });
+    auto const normalized = normalize(str_idx.view(), normalize_buf);
+    match_sqrts_[string_idx_t{i}] =
+        static_cast<float>(std::sqrt(normalized.size() - 1U));
+    for_each_bigram(normalized, [&](std::string_view bigram) {
+      tmp[compress_bigram(bigram)].emplace_back(i);
+    });
   }
 
   for (auto& x : tmp) {
     utl::erase_duplicates(x);
     bigrams_.emplace_back(x);
-  }
-
-  match_sqrts_.resize(strings_.size());
-  for (auto i = string_idx_t{0U}; i != strings_.size(); ++i) {
-    normalize(strings_[i].view(), normalized);
-    match_sqrts_[string_idx_t{i}] =
-        static_cast<float>(std::sqrt(normalized.size() - 1U));
   }
 }
 

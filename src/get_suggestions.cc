@@ -46,7 +46,8 @@ void activate_areas(typeahead const& t,
               (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
                t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
               )
-              ? get_match_score(area_name, area_p.s_, ctx.lev_dist_, ctx.tmp_)
+              ? get_match_score(area_name, area_p.s_, ctx.lev_dist_,
+                                ctx.normalize_buf_)
               : kNoMatch;
     }
   }
@@ -74,15 +75,16 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
     //              << ctx.phrases_[street_p_idx].s_ << ": " << street_edit_dist
     //              << "}\n";
 
-    for (auto const [i, area_set] : utl::enumerate(t.street_areas_[street])) {
+    for (auto const [index, area_set] :
+         utl::enumerate(t.street_areas_[street])) {
       ctx.areas_[area_set].emplace_back(
           area_src{.type_ = area_src::type::kStreet,
                    .score_ = 0.0F,
-                   .index_ = static_cast<std::uint32_t>(i),
+                   .index_ = static_cast<std::uint32_t>(index),
                    .matched_mask_ = ctx.phrases_[street_p_idx].token_bits_});
     }
 
-    auto i = 0U;
+    auto index = 0U;
     for (auto const [hn, areas_idx] :
          utl::zip(t.house_numbers_[street], t.house_areas_[street])) {
       for (auto const& [hn_p_idx, p] : utl::enumerate(ctx.phrases_)) {
@@ -90,8 +92,8 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
           continue;
         }
 
-        auto const hn_score = get_match_score(t.strings_[hn].view(), p.s_,
-                                              ctx.lev_dist_, ctx.tmp_);
+        auto const hn_score = get_match_score(
+            t.strings_[hn].view(), p.s_, ctx.lev_dist_, ctx.normalize_buf_);
         if (hn_score == kNoMatch) {
           continue;
         }
@@ -99,7 +101,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
         ctx.areas_[areas_idx].emplace_back(
             area_src{.type_ = area_src::type::kHouseNumber,
                      .score_ = t.strings_[hn].view() == p.s_ ? -1.5F : hn_score,
-                     .index_ = i,
+                     .index_ = index,
                      .house_number_p_idx_ = static_cast<std::uint8_t>(hn_p_idx),
                      .matched_mask_ = static_cast<std::uint8_t>(
                          ctx.phrases_[street_p_idx].token_bits_ |
@@ -348,7 +350,7 @@ void compute_string_phrase_match_scores(guess_context& ctx,
   for (auto const& [i, m] : utl::enumerate(ctx.string_matches_)) {
     for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
       ctx.string_phrase_match_scores_[i][j] = get_match_score(
-          t.strings_[m.idx_].view(), p.s_, ctx.lev_dist_, ctx.tmp_);
+          t.strings_[m.idx_].view(), p.s_, ctx.lev_dist_, ctx.normalize_buf_);
     }
   }
   UTL_STOP_TIMING(t);
@@ -437,12 +439,12 @@ void get_suggestions(typeahead const& t,
     if (token.empty()) {
       return;
     }
-    tokens.emplace_back(normalize_alloc(token.view()));
+    tokens.emplace_back(normalize(token.view(), ctx.normalize_buf_));
     all_tokens_mask |= 1U << (i++);
   });
   ctx.phrases_ = get_phrases(tokens);
 
-  t.guess<Debug>(normalize(in, ctx.tmp_), ctx);
+  t.guess<Debug>(normalize(in, ctx.normalize_buf_), ctx);
 
   compute_string_phrase_match_scores<Debug>(ctx, t);
 

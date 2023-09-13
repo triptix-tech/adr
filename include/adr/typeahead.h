@@ -80,7 +80,7 @@ struct typeahead {
                  osmium::TagList const&,
                  osmium::Location const&);
 
-  void build_trigram_index();
+  void build_ngram_index();
   bool verify();
 
   area_set_idx_t get_or_create_area_set(import_context&,

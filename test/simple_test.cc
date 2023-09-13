@@ -2,6 +2,8 @@
 
 #include "utl/to_vec.h"
 
+#include "fmt/core.h"
+
 #include "adr/adr.h"
 #include "adr/ngram.h"
 #include "adr/normalize.h"
@@ -26,8 +28,10 @@ TEST(adr, for_each_trigram) {
   constexpr auto const in = std::string_view{"Landwehrstraße"};
   std::vector<std::string> v;
   auto s = std::string{};
-  adr::normalize(in, s);
-  adr::for_each_trigram(s, [&](std::string_view s) { v.emplace_back(s); });
+  auto decomposed_buf = std::basic_string<utf8proc_int32_t>{};
+  auto const normalized = adr::normalize(in, decomposed_buf);
+  adr::for_each_trigram(normalized,
+                        [&](std::string_view s) { v.emplace_back(s); });
   EXPECT_EQ((std::vector<std::string>{{"lan", "and", "ndw", "dwe", "weh", "ehr",
                                        "hrs", "rst", "str", "tra", "ras", "ass",
                                        "sse"}}),
@@ -38,7 +42,7 @@ TEST(adr, for_each_bigram) {
   constexpr auto const in = std::string_view{"Landwehrstraße"};
   std::vector<adr::ngram_t> v;
   auto s = std::string{};
-  adr::for_each_bigram(adr::normalize(in, s), [&](std::string_view s) {
+  adr::for_each_bigram(adr::normalize(in), [&](std::string_view s) {
     v.emplace_back(adr::compress_bigram(s));
   });
   EXPECT_EQ(
@@ -118,7 +122,9 @@ TEST(adr, score_test) {
   //            adr::get_match_score("Froschgraben", "frochgabe", lev_dist,
   //            tmp));
 
-  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist, tmp));
+  auto ctx = adr::guess_context{};
+  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist,
+                                    ctx.normalize_buf_));
 }
 
 TEST(adr, sift4) {
@@ -126,4 +132,33 @@ TEST(adr, sift4) {
   std::cout << static_cast<int>(
                    adr::sift4("Froschgraben", "frochgabe", 4U, 10U, offset_arr))
             << "\n";
+}
+
+TEST(adr, utf8normalize) {
+  std::string s = "#äöüÄÖÜδιακρίνεινó";
+  std::basic_string<utf8proc_int32_t> output;
+  output.resize(1024);
+  auto const new_size = utf8proc_decompose(
+      reinterpret_cast<std::uint8_t const*>(s.data()), s.size(), output.data(),
+      output.size() / sizeof(utf8proc_int32_t),
+      static_cast<utf8proc_option_t>(utf8proc_option_t::UTF8PROC_DECOMPOSE |
+                                     utf8proc_option_t::UTF8PROC_STRIPMARK |
+                                     utf8proc_option_t::UTF8PROC_CASEFOLD));
+
+  if (new_size < 0U) {
+    std::cout << utf8proc_errmsg(new_size) << "\n";
+    return;
+  }
+
+  output.resize(new_size);
+  std::cout << "new size: " << new_size << "\n";
+
+  auto const new_size_1 = utf8proc_reencode(output.data(), new_size,
+                                            static_cast<utf8proc_option_t>(0));
+
+  std::cout << std::string_view{reinterpret_cast<char const*>(output.data()),
+                                static_cast<std::size_t>(new_size_1)}
+            << "\n";
+
+  //  fmt::print(U"{}\n", output);
 }
