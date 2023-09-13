@@ -149,9 +149,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
                     // No-zip-code areas only match non-numeric tokens.
                     (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
                      t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
-                    ) &&
-                // Area matched by bi-grams.
-                ctx.area_active_[to_idx(area)];
+                );
 
             if (!match_allowed) {
               //              std::cout <<
@@ -303,9 +301,7 @@ void match_places(std::uint8_t const numeric_tokens_mask,
                 // No-zip-code areas only match non-numeric tokens.
                 (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
                  t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
-                ) &&
-            // Area matched by bi-grams.
-            ctx.area_active_[to_idx(area)];
+            );
 
         if (!match_allowed) {
           continue;
