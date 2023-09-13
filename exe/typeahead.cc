@@ -47,6 +47,7 @@ int main(int ac, char** av) {
   auto runs = 1U;
   auto warmup = false;
   auto benchmark = false;
+  auto dark = false;
 
   try {
     bpo::options_description desc{"Options"};
@@ -54,6 +55,7 @@ int main(int ac, char** av) {
         ("help,h", "Help screen")  //
         ("verbose,v", "Print debug output")  //
         ("benchmark,b", "parallel benchmark on all threads")  //
+        ("dark,d", "dark mode")  //
         ("warmup,w", "warm up with test query")  //
         ("in,i", bpo::value<fs::path>(&in)->default_value(in),
          "OSM input file")  //
@@ -93,6 +95,9 @@ int main(int ac, char** av) {
     }
     if (vm.count("benchmark")) {
       benchmark = true;
+    }
+    if (vm.count("dark")) {
+      dark = true;
     }
   } catch (bpo::error const& ex) {
     std::cerr << ex.what() << '\n';
@@ -184,7 +189,8 @@ int main(int ac, char** av) {
         s.print(ss, *t, ctx.phrases_);
         list.push_back(text(ss.str()));
       }
-      return vbox(std::move(list)) | bgcolor(Color::Black);
+      return vbox(std::move(list)) |
+             bgcolor(dark ? Color::Black : Color::White);
     };
 
     InputOption options;
@@ -193,9 +199,8 @@ int main(int ac, char** av) {
     auto component = Container::Vertical({input_first_name});
 
     auto renderer = Renderer(component, [&] {
-      return vbox({input_first_name->Render() | bgcolor(Color::Black),
-                   guesses()}) |
-             bgcolor(Color::White);
+      return vbox(
+          {input_first_name->Render() | bgcolor(Color::Black), guesses()});
     });
 
     screen.Loop(renderer);

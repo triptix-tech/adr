@@ -276,6 +276,8 @@ void extract(std::filesystem::path const& in_path,
         types[i] = locations[i].second;
       }
     }
+    t.string_to_location_.resize(t.strings_.size());
+    t.string_to_type_.resize(t.strings_.size());
     UTL_STOP_TIMING(copy_data);
     std::cout << "copy data timing: " << UTL_TIMING_MS(copy_data) << "\n";
   }
