@@ -11,6 +11,7 @@
 
 #include "adr/ngram.h"
 #include "adr/normalize.h"
+#include "adr/sift4.h"
 #include "adr/types.h"
 
 namespace adr {
@@ -77,6 +78,7 @@ struct guess_context {
 
   std::string tmp_;  // for normalize
   std::vector<std::uint8_t> lev_dist_;  // levenshtein distance table
+  std::vector<sift_offset> sift4_offset_arr_;
 
   std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;

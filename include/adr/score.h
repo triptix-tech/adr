@@ -52,7 +52,7 @@ edit_dist_t levenshtein_distance(std::string_view source,
 score_t get_match_score(
     std::string_view s,  // name from dataset - will be normalized!
     std::string_view p,  // input phrase - won't be normalized!
-    std::vector<edit_dist_t>& lev_dist,
+    std::vector<sift_offset>& sift4_offset_arr,
     std::string& tmp) {
   if (s.empty() || p.empty()) {
     return kNoMatch;
@@ -61,7 +61,7 @@ score_t get_match_score(
   auto const normalized_str = std::string_view{normalize(s, tmp)};
   auto const cut_normalized_str =
       normalized_str.substr(0U, std::min(normalized_str.size(), p.size()));
-  auto const dist = levenshtein_distance(cut_normalized_str, p, lev_dist);
+  auto const dist = sift4(cut_normalized_str, p, 5, 10, sift4_offset_arr);
   if (dist >= cut_normalized_str.size()) {
     //    std::cout << "dist=" << static_cast<int>(dist) << " > "
     //              << cut_normalized_str.size() << "\n";
@@ -90,13 +90,14 @@ score_t get_match_score(
   auto const score = dist + first_letter_mismatch_penality +
                      second_letter_mismatch_penality + overhang_penality +
                      relative_coverage + common_prefix_bonus;
-  std::cout << "dist=" << static_cast<int>(dist)
-            << ", size=" << cut_normalized_str.size()
-            << ", overhang_penality=" << overhang_penality
-            << ", relative_coverage=" << relative_coverage
-            << ", score=" << score
-            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F) + 1.0F)
-            << "\n";
+  //  std::cout << "dist=" << static_cast<int>(dist)
+  //            << ", size=" << cut_normalized_str.size()
+  //            << ", overhang_penality=" << overhang_penality
+  //            << ", relative_coverage=" << relative_coverage
+  //            << ", score=" << score
+  //            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F)
+  //            + 1.0F)
+  //            << "\n";
 
   return std::floor(score) > std::ceil(cut_normalized_str.size() / 2.0F + 1.0F)
              ? kNoMatch

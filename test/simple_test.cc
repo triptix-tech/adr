@@ -83,6 +83,7 @@ TEST(adr, numeric_tokens) {
 
 TEST(adr, score_test) {
   auto lev_dist = std::vector<adr::edit_dist_t>{};
+  auto sift4_dist = std::vector<adr::sift_offset>{};
   auto tmp = std::string{};
   //  EXPECT_EQ(
   //      1, adr::get_match_score("Spießstraße", "spessartrasse", lev_dist,
@@ -118,7 +119,10 @@ TEST(adr, score_test) {
   //            adr::get_match_score("Froschgraben", "frochgabe", lev_dist,
   //            tmp));
 
-  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist, tmp));
+  //  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist,
+  //  tmp));
+
+  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damstadt", sift4_dist, tmp));
 }
 
 TEST(adr, sift4) {
