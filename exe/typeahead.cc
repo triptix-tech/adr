@@ -6,6 +6,8 @@
 #include "fmt/format.h"
 
 #include "utl/enumerate.h"
+#include "utl/parser/cstr.h"
+#include "utl/read_file.h"
 #include "utl/timing.h"
 
 #include "ftxui/component/captured_mouse.hpp"  // for ftxui
@@ -16,8 +18,7 @@
 #include "ftxui/util/ref.hpp"  // for Ref
 
 #include "adr/adr.h"
-#include "utl/parser/cstr.h"
-#include "utl/read_file.h"
+#include "adr/typeahead.h"
 
 namespace bpo = boost::program_options;
 namespace fs = std::filesystem;
@@ -112,7 +113,8 @@ int main(int ac, char** av) {
   auto const t = adr::read(in, mapped);
   adr::print_stats(*t);
 
-  auto ctx = adr::guess_context{};
+  auto cache = adr::cache{.n_strings_ = t->strings_.size(), .max_size_ = 1000U};
+  auto ctx = adr::guess_context{cache};
   ctx.resize(*t);
 
   if (warmup) {
@@ -144,7 +146,7 @@ int main(int ac, char** av) {
     UTL_START_TIMING(timer);
     for (auto i = 0U; i != num_threads; ++i) {
       threads.emplace_back([&]() {
-        auto ctx = adr::guess_context{};
+        auto ctx = adr::guess_context{cache};
         ctx.resize(*t);
 
         while (true) {
@@ -157,8 +159,8 @@ int main(int ac, char** av) {
         }
       });
     }
-    for (auto& t : threads) {
-      t.join();
+    for (auto& thread : threads) {
+      thread.join();
     }
     UTL_STOP_TIMING(timer);
     std::cout << UTL_TIMING_MS(timer) << " ms\n";
@@ -183,7 +185,7 @@ int main(int ac, char** av) {
 
     for (auto const& [i, s] : utl::enumerate(ctx.suggestions_)) {
       std::cout << "[" << i << "]\t";
-      s.print(std::cout, *t, ctx.phrases_);
+      s.print(std::cout, *t);
     }
     return 0;
   } else {
@@ -206,7 +208,7 @@ int main(int ac, char** av) {
       list.emplace_back(text(fmt::format("{} ms", UTL_TIMING_MS(timer))));
       for (auto const& s : ctx.suggestions_) {
         auto ss = std::stringstream{};
-        s.print(ss, *t, ctx.phrases_);
+        s.print(ss, *t);
         list.push_back(text(ss.str()));
       }
       return vbox(std::move(list)) |
