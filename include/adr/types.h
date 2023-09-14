@@ -8,7 +8,7 @@ namespace cista::offset {}
 
 namespace adr {
 
-namespace data = cista::offset;
+namespace data = cista::raw;
 
 using area_set_idx_t = cista::strong<std::uint32_t, struct area_set_idx_>;
 using area_idx_t = cista::strong<std::uint32_t, struct area_idx_>;
