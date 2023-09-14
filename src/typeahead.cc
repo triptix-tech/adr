@@ -250,7 +250,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
     if (string_match_counts[i] > best) {
       best = string_match_counts[i];
       min_match_count =
-          std::max(static_cast<unsigned>(2 * std::sqrt(best)), min_match_count);
+          std::max(static_cast<unsigned>(std::pow(best, 0.4)), min_match_count);
     }
 
     auto const match_count = string_match_counts[i];

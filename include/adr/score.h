@@ -74,7 +74,7 @@ inline score_t get_match_score(
                           std::min(normalized_str.size(), p.size())) /
        4.0F);
   auto const relative_coverage =
-      2.0F * (static_cast<float>(dist) /
+      6.0F * (static_cast<float>(dist) /
               static_cast<float>(cut_normalized_str.size()));
 
   auto common_prefix_bonus = 0.0F;
@@ -101,9 +101,7 @@ inline score_t get_match_score(
   //            + 1.0F)
   //            << "\n";
 
-  return std::floor(score) > std::ceil(cut_normalized_str.size() / 2.0F + 1.0F)
-             ? kNoMatch
-             : score;
+  return score > std::ceil(cut_normalized_str.size() / 2.0F) ? kNoMatch : score;
 }
 
 }  // namespace adr

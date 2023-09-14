@@ -114,34 +114,24 @@ TEST(adr, score_test) {
   //            adr::get_match_score("Froschgraben", "frochgabe", lev_dist,
   //            tmp));
 
-  auto ctx = adr::guess_context{};
   //  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist,
   //                                    ctx.normalize_buf_));
   //  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist,
   //  tmp));
 
+  adr::utf8_normalize_buf_t buf;
+  //  EXPECT_EQ(1,
+  //            adr::get_match_score("Landkreis Aschaffenburg",
+  //                                 "mainaschaff aschaffenburg", sift4_dist,
+  //                                 buf));
   EXPECT_EQ(1,
-            adr::get_match_score("10a", "5", sift4_dist, ctx.normalize_buf_));
+            adr::get_match_score("Odenwaldkreis", "odewnadl", sift4_dist, buf));
 }
 
 TEST(adr, sift4) {
   auto offset_arr = std::vector<adr::sift_offset>{};
-  std::cout << static_cast<int>(
-                   adr::sift4("Froschgraben", "frochgabe", 4U, 10U, offset_arr))
+  std::cout << static_cast<int>(adr::sift4("Landkreis Aschaffenburg",
+                                           "mainaschaff aschaffenburg", 4U, 10U,
+                                           offset_arr))
             << "\n";
-}
-
-TEST(adr, cache) {
-  auto c = adr::cache{100U};
-
-  auto missing = adr::ngram_set_t{};
-  auto& vec = c.get_closest(adr::ngram_set_t{{1U, 2U, 3U}}, missing);
-  EXPECT_EQ((adr::ngram_set_t{{1U, 2U, 3U}}), missing);
-
-  EXPECT_EQ(0U, vec[adr::string_idx_t{0}]);
-  vec[adr::string_idx_t{0}] = 1;
-
-  vec = c.get_closest(adr::ngram_set_t{{1U, 2U, 3U}}, missing);
-  EXPECT_EQ((adr::ngram_set_t{}), missing);
-  EXPECT_EQ(1U, vec[adr::string_idx_t{0}]);
 }

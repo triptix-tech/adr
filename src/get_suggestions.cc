@@ -165,35 +165,34 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
               //                        << "\n";
               continue;
             }
-            //            else {
-            //              std::cout <<
-            //              t.strings_[t.street_names_[street]].view()
-            //                        << "  NOT matched: "
-            //                        <<
-            //                        t.strings_[t.area_names_[t.area_sets_[area_set_idx]
-            //                                                                [area_idx]]]
-            //                               .view()
-            //                        << " vs " << area_p.s_ << ": match not
-            //                        allowed\n";
-            //            }
 
             auto const edit_dist =
                 ctx.area_phrase_match_scores_[area][area_p_idx];
+
+            //            std::cout <<
+            //            t.strings_[t.street_names_[street]].view()
+            //                      << "  matched: "
+            //                      <<
+            //                      t.strings_[t.area_names_[t.area_sets_[area_set_idx]
+            //                                                              [area_idx]]]
+            //                             .view()
+            //                      << " vs " << area_p.s_ << ": " << edit_dist
+            //                      << "\n";
+
             if (best_edit_dist > edit_dist) {
               best_edit_dist = edit_dist;
               best_area_idx = area_idx;
+            } else {
+              //              std::cout <<
+              //              t.strings_[t.street_names_[street]].view()
+              //                        << "  NOT matched: "
+              //                        <<
+              //                        t.strings_[t.area_names_[t.area_sets_[area_set_idx]
+              //                                                                [area_idx]]]
+              //                               .view()
+              //                        << " vs " << area_p.s_ << ": " <<
+              //                        edit_dist << "\n";
             }
-            //            else {
-            //              std::cout <<
-            //              t.strings_[t.street_names_[street]].view()
-            //                        << "  NOT matched: "
-            //                        <<
-            //                        t.strings_[t.area_names_[t.area_sets_[area_set_idx]
-            //                                                                [area_idx]]]
-            //                               .view()
-            //                        << " vs " << area_p.s_ << ": " <<
-            //                        edit_dist << "\n";
-            //            }
           }
 
           if (best_edit_dist != kNoMatch) {
@@ -202,7 +201,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
             matched_mask |= area_p.token_bits_;
             //            std::cout <<
             //            t.strings_[t.street_names_[street]].view()
-            //                      << "  matched: "
+            //                      << "\t\t\t***MATCHED: "
             //                      <<
             //                      t.strings_[t.area_names_[t.area_sets_[area_set_idx]
             //                                                              [best_area_idx]]]
