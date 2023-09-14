@@ -238,11 +238,19 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   // ----------------
   UTL_START_TIMING(t2);
   auto const n_strings = strings_.size();
-  auto const min_match_count = 2U + n_in_ngrams / 10U;
+  auto best = std::uint8_t{0U};
+  auto min_match_count = 2U + n_in_ngrams / (2U + n_in_ngrams / 10U);
+  //  std::cout << best << " " << min_match_count << "\n";
   trace("n_in_ngrams={}, min_match_count={}\n", n_in_ngrams, min_match_count);
   for (auto i = string_idx_t{0U}; i < n_strings; ++i) {
     if (string_match_counts[i] < min_match_count) {
       continue;
+    }
+
+    if (string_match_counts[i] > best) {
+      best = string_match_counts[i];
+      min_match_count =
+          std::max(static_cast<unsigned>(best / 1.5), min_match_count);
     }
 
     auto const match_count = string_match_counts[i];
