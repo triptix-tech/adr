@@ -220,16 +220,17 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   // Collect candidate indices matched by the bigrams in the input
   // string.
   UTL_START_TIMING(t1);
+  auto const ngram_set =
+      ngram_set_t{begin(in_ngrams_buf), begin(in_ngrams_buf) + n_in_ngrams};
   auto missing = ngram_set_t{};
-  auto& string_match_counts = ctx.cache_.get_closest(
-      ngram_set_t{begin(in_ngrams_buf), begin(in_ngrams_buf) + n_in_ngrams},
-      missing);
-  std::cout << "#missing: " << missing.size() << "\n";
+  auto string_match_counts_ptr = ctx.cache_.get_closest(ngram_set, missing);
+  auto& string_match_counts = *string_match_counts_ptr;
   for (auto const& missing_ngram : missing) {
     for (auto const string_idx : bigrams_[missing_ngram]) {
       ++string_match_counts[string_idx];
     }
   }
+  ctx.cache_.add(ngram_set, string_match_counts_ptr);
   UTL_STOP_TIMING(t1);
   trace("counting matches [{} ms]\n", UTL_TIMING_MS(t1));
 

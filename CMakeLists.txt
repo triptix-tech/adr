@@ -37,6 +37,9 @@ target_link_libraries(adr
 add_executable(adr-extract exe/extract.cc)
 target_link_libraries(adr-extract adr boost-program_options ${adr-mimalloc-lib})
 
+add_executable(adr-server exe/server.cc)
+target_link_libraries(adr-server adr uWebSockets boost-program_options ${adr-mimalloc-lib})
+
 add_executable(adr-typeahead exe/typeahead.cc)
 target_link_libraries(adr-typeahead
     adr

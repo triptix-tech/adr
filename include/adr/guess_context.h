@@ -36,9 +36,7 @@ struct address {
 };
 
 struct suggestion {
-  void print(std::ostream&,
-             typeahead const&,
-             std::vector<phrase> const& phrases) const;
+  void print(std::ostream&, typeahead const&) const;
   bool operator<(suggestion const& o) const { return score_ < o.score_; }
 
   std::variant<place_idx_t, address, area_idx_t> location_;
@@ -75,6 +73,7 @@ struct area_src {
 };
 
 struct guess_context {
+  explicit guess_context(cache& cache) : cache_{cache} {}
 
   void resize(typeahead const&);
 
@@ -86,7 +85,7 @@ struct guess_context {
 
   //  cista::raw::vector_map<string_idx_t, std::uint8_t> string_match_counts_;
 
-  adr::cache cache_;
+  adr::cache& cache_;
 
   std::vector<cos_sim_match> string_matches_;
 

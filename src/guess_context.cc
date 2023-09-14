@@ -6,9 +6,7 @@
 
 namespace adr {
 
-void suggestion::print(std::ostream& out,
-                       adr::typeahead const& t,
-                       std::vector<phrase> const& phrases) const {
+void suggestion::print(std::ostream& out, adr::typeahead const& t) const {
   std::visit(utl::overloaded{
                  [&](place_idx_t const p) {
                    out << "place=" << t.strings_[t.place_names_[p]].view();
@@ -33,8 +31,6 @@ void suggestion::print(std::ostream& out,
 }
 
 void guess_context::resize(adr::typeahead const& t) {
-  //  string_match_counts_.resize(t.strings_.size());
-  cache_.n_strings_ = t.strings_.size();
   area_phrase_match_scores_.resize(t.area_names_.size());
   area_active_.resize(t.area_names_.size());
 }

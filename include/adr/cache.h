@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cinttypes>
+#include <deque>
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -49,8 +50,27 @@ inline ngram_set_t missing_elements(ngram_set_t const& subset,
 }
 
 struct cache {
-  string_match_count_vector_t& get_closest(ngram_set_t const& ref,
-                                           ngram_set_t& missing) {
+  void add(ngram_set_t const& ref,
+           std::shared_ptr<string_match_count_vector_t> v) {
+    auto const lock = std::lock_guard{mtx_};
+    entries_.emplace(ref, std::move(v));
+    insert_order_.push_back(ref);
+
+    while (entries_.size() > max_size_ && !insert_order_.empty()) {
+      auto const& front = insert_order_.front();
+      auto const it = entries_.find(front);
+      insert_order_.pop_front();
+      if (it != end(entries_)) {
+        entries_.erase(it);
+        break;
+      }
+    }
+  }
+
+  std::shared_ptr<string_match_count_vector_t> get_closest(
+      ngram_set_t const& ref, ngram_set_t& missing) {
+    auto const lock = std::lock_guard{mtx_};
+
     auto const existing_it = entries_.find(ref);
     if (existing_it != end(entries_)) {
       missing.clear();
@@ -69,17 +89,18 @@ struct cache {
 
     if (max_it == end(entries_)) {
       missing = ref;
-      return entries_
-          .emplace_hint(max_it, ref, string_match_count_vector_t(n_strings_))
-          ->second;
+      return std::make_shared<string_match_count_vector_t>(n_strings_);
     } else {
       missing = missing_elements(max_it->first, ref);
-      return entries_.emplace_hint(max_it, ref, max_it->second)->second;
+      return std::make_shared<string_match_count_vector_t>(*max_it->second);
     }
   }
 
+  std::mutex mtx_;
   std::size_t n_strings_{0U};
-  std::map<ngram_set_t, string_match_count_vector_t> entries_;
+  std::size_t max_size_{0U};
+  std::deque<ngram_set_t> insert_order_;
+  std::map<ngram_set_t, std::shared_ptr<string_match_count_vector_t>> entries_;
 };
 
 }  // namespace adr
