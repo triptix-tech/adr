@@ -117,7 +117,7 @@ public:
 
   data::vecvec<string_idx_t, char> strings_;
 
-  data::vector_map<string_idx_t, float> match_sqrts_;
+  data::vector_map<string_idx_t, std::uint8_t> n_bigrams_;
 
   ngram_index_t<string_idx_t> bigrams_;
 

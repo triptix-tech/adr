@@ -157,11 +157,10 @@ void typeahead::build_ngram_index() {
   auto normalize_buf = utf8_normalize_buf_t{};
   auto tmp = std::vector<std::vector<string_idx_t>>{};
   tmp.resize(kNBigrams);
-  match_sqrts_.resize(strings_.size());
+  n_bigrams_.resize(strings_.size());
   for (auto const [i, str_idx] : utl::enumerate(strings_)) {
     auto const normalized = normalize(str_idx.view(), normalize_buf);
-    match_sqrts_[string_idx_t{i}] =
-        static_cast<float>(std::sqrt(normalized.size() - 1U));
+    n_bigrams_[string_idx_t{i}] = normalized.size() - 1U;
     for_each_bigram(normalized, [&](std::string_view bigram) {
       tmp[compress_bigram(bigram)].emplace_back(i);
     });
@@ -245,14 +244,10 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
       continue;
     }
 
-    if (match_sqrts_[i] == 0) {
-      continue;
-    }
-
     auto const match_count = string_match_counts[i];
-    auto const m =
-        cos_sim_match{i, static_cast<float>(match_count) /
-                             (ctx.sqrt_len_vec_in_ * match_sqrts_[i])};
+    auto const cos_sim = static_cast<float>(match_count * match_count) /
+                         (n_bigrams_[i] * n_in_ngrams);
+    auto const m = cos_sim_match{i, cos_sim};
 
     if (matches.size() != 6000 || matches.back().cos_sim_ < m.cos_sim_) {
       utl::insert_sorted(matches, m);
