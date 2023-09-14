@@ -237,9 +237,10 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   // COMPUTE COS SIM
   // ----------------
   UTL_START_TIMING(t2);
+  auto const n_strings = strings_.size();
   auto const min_match_count = 2U + n_in_ngrams / 10U;
   trace("n_in_ngrams={}, min_match_count={}\n", n_in_ngrams, min_match_count);
-  for (auto i = string_idx_t{0U}; i < strings_.size(); ++i) {
+  for (auto i = string_idx_t{0U}; i < n_strings; ++i) {
     if (string_match_counts[i] < min_match_count) {
       continue;
     }
