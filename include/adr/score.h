@@ -82,7 +82,7 @@ inline score_t get_token_match_score(
     if (cut_normalized_str[i] != p[i]) {
       break;
     }
-    common_prefix_bonus -= 0.15F;
+    common_prefix_bonus -= 0.25F;
   }
 
   auto const first_letter_mismatch_penality =
@@ -194,7 +194,7 @@ inline score_t get_match_score(
       auto const& s_token = s_tokens[s_idx];
       auto const s_p_match_score =
           s_token == p_token
-              ? -2.5F
+              ? -5.0F
               : get_token_match_score(s_token, p_token, sift4_offset_arr);
       if (best_s_score > s_p_match_score) {
         best_s_idx = s_idx;
