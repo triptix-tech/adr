@@ -240,55 +240,24 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   // ----------------
   UTL_START_TIMING(t2);
   auto const n_strings = strings_.size();
-  auto cut_off = 0.005F;
-  auto best = 0.0;
-  auto min_match_count = 2U + n_in_ngrams / (4U + n_in_ngrams / 5U);
+  auto min_match_count = 2U + n_in_ngrams / (4U + n_in_ngrams / 10U);
+  //  std::cout << best << " " << min_match_count << "\n";
   trace("n_in_ngrams={}, min_match_count={}\n", n_in_ngrams, min_match_count);
   for (auto i = string_idx_t{0U}; i < n_strings; ++i) {
     if (string_match_counts[i] < min_match_count) {
-
-      auto const match_count = string_match_counts[i];
-      auto const cos_sim = static_cast<float>(match_count * match_count) /
-                           (n_bigrams_[i] * n_in_ngrams);
-      //      std::cout << "filtered " << strings_[i].view() << ", cos_sim=" <<
-      //      cos_sim
-      //                << " [match_count=" <<
-      //                static_cast<int>(string_match_counts[i])
-      //                << ", min_match_count=" << min_match_count << "]\n";
-
       continue;
     }
 
     auto const match_count = string_match_counts[i];
     auto const cos_sim = static_cast<float>(match_count * match_count) /
-                         (n_bigrams_[i] * n_bigrams_[i] * n_in_ngrams);
+                         (n_bigrams_[i] * n_in_ngrams);
 
-    if (cos_sim < cut_off) {
-      //      std::cout << "filtered " << strings_[i].view() << ", cos_sim=" <<
-      //      cos_sim
-      //                << " [cos_sim=" << cos_sim << ", cut_off=" << cut_off <<
-      //                "]\n";
-      continue;
-    }
-
-    if (cos_sim > best) {
-      //      std::cout << "BEST=" << strings_[i].view() << " [" << cos_sim
-      //                << "] ->  cut_off=" << cut_off << " -> "
-      //                << std::max(cos_sim / 10.0F, cut_off) << "\n";
-      best = cos_sim;
-      cut_off = std::max(cos_sim / 10.0F, cut_off);
-    }
-
-    auto const m = cos_sim_match{i, cos_sim};
-    if (matches.size() != 30000 || matches.back().cos_sim_ < m.cos_sim_) {
-      utl::insert_sorted(matches, m);
-      matches.resize(std::min(std::size_t{30000}, matches.size()));
+    if (cos_sim > 0.01 && matches.size() != 11'000 ||
+        matches.back().cos_sim_ < cos_sim) {
+      utl::insert_sorted(matches, {i, cos_sim});
+      matches.resize(std::min(std::size_t{11'000}, matches.size()));
     }
   }
-
-  //  std::cout << "WORST=" << matches.back().cos_sim_ << " ["
-  //            << strings_[matches.back().idx_].view() << "]\n";
-
   UTL_STOP_TIMING(t2);
   trace("{} matches [{} ms]\n", matches.size(), UTL_TIMING_MS(t2));
 }

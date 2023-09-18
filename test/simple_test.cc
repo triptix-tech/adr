@@ -145,7 +145,10 @@ TEST(adr, score_test) {
   //                                    sift4_dist, buf));
   //  EXPECT_EQ(1, adr::get_match_score("Werthhoven", "werft", sift4_dist,
   //  buf));
-  EXPECT_EQ(1, adr::get_match_score("Werthhoven", "werft", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Werthhoven", "werft", sift4_dist,
+  //  buf));
+  EXPECT_EQ(1, adr::get_match_score("Bartholomäus-Kirche", "bartholomauskirche",
+                                    sift4_dist, buf));
 }
 
 TEST(adr, for_each_token) {

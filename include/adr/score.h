@@ -176,6 +176,7 @@ inline score_t get_match_score(
 
   //  std::cout << s << " vs " << p << "\n";
 
+  auto fallback = get_token_match_score(normalized_str, p, sift4_offset_arr);
   auto covered = std::bitset<8>{};
   auto sum = 0.0F;
   auto no_match = false;
@@ -203,7 +204,7 @@ inline score_t get_match_score(
 
     if (best_s_score == kNoMatch) {
       //      std::cout << "  NO MATCH FOUND: " << p_token << "\n";
-      goto fail;
+      return fallback;
     }
 
     //    std::cout << "  MATCHED: " << p_tokens[p_idx] << " vs "
@@ -223,10 +224,7 @@ inline score_t get_match_score(
 
   //  std::cout << "  SUM: " << sum << "\n";
 
-  return sum;
-
-fail:
-  return kNoMatch;
+  return std::min(fallback, sum);
 }
 
 }  // namespace adr
