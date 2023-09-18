@@ -52,7 +52,10 @@ void for_each_bigram(std::string_view s, Fn&& fn) {
     return;
   }
   for (auto i = 0U; i < s.length() - 1U; ++i) {
-    fn(s.substr(i, 2));
+    auto const bigram = s.substr(i, 2);
+    if (bigram[0] != ' ' && bigram[1] != ' ') {
+      fn(bigram);
+    }
   }
 }
 

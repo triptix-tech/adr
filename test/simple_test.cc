@@ -124,8 +124,38 @@ TEST(adr, score_test) {
   //            adr::get_match_score("Landkreis Aschaffenburg",
   //                                 "mainaschaff aschaffenburg", sift4_dist,
   //                                 buf));
-  EXPECT_EQ(1,
-            adr::get_match_score("Odenwaldkreis", "odewnadl", sift4_dist, buf));
+  //  EXPECT_EQ(1,
+  //            adr::get_match_score("Odenwaldkreis", "odewnadl", sift4_dist,
+  //            buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Zur Werft", "Werft", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Musikhaus Thomann", "thomann
+  //  musikladen",
+  //                                    sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Musikhaus Thomann", "musikladen",
+  //                                    sift4_dist, buf));
+  //  EXPECT_EQ(
+  //      1, adr::get_match_score("Musikhaus Thomann", "thomann", sift4_dist,
+  //      buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Werne", "werft", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("erlenbachtalweg", "erlenbach werft",
+  //                                    sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Erlenbach-Center", "erlenbach werft",
+  //                                    sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("erdbeerhof munch", "erberhof munch",
+  //                                    sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Werthhoven", "werft", sift4_dist,
+  //  buf));
+  EXPECT_EQ(1, adr::get_match_score("Werthhoven", "werft", sift4_dist, buf));
+}
+
+TEST(adr, for_each_token) {
+  adr::for_each_token(
+      "Groß-Umstadt An der Pfalz",
+      [](std::string_view s) {
+        std::cout << s << "\n";
+        return utl::continue_t::kContinue;
+      },
+      ' ', '-', 'z');
 }
 
 TEST(adr, sift4) {

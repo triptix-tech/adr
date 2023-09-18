@@ -39,10 +39,14 @@ struct suggestion {
   void print(std::ostream&, typeahead const&) const;
   bool operator<(suggestion const& o) const { return score_ < o.score_; }
 
-  std::variant<place_idx_t, address, area_idx_t> location_;
+  std::string areas(typeahead const&) const;
+  std::string description(typeahead const&) const;
+
+  std::variant<place_idx_t, address> location_;
   coordinates coordinates_;
   area_set_idx_t area_set_;
   std::uint32_t matched_areas_;
+  std::uint8_t matched_tokens_;
   float score_;
 };
 

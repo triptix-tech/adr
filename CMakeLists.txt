@@ -32,7 +32,9 @@ target_link_libraries(adr
     unordered_dense
     tiles-import-library
     utf8proc
+    rapidjson
 )
+target_compile_definitions(adr PUBLIC RAPIDJSON_HAS_STDSTRING)
 
 add_executable(adr-extract exe/extract.cc)
 target_link_libraries(adr-extract adr boost-program_options ${adr-mimalloc-lib})

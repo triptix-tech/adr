@@ -87,65 +87,7 @@ int main(int ac, char** av) {
   }
 
   auto const t = adr::read(in, mapped);
-
-  //  using queue_item_t =
-  //      std::pair<std::string /* request string */,
-  //                std::function<void(std::string /* response */)>>;
-
-  //  auto q = moodycamel::BlockingConcurrentQueue<queue_item_t>{};
-  //  auto workers = std::vector<std::thread>{};
   auto cache = adr::cache{.n_strings_ = t->strings_.size(), .max_size_ = 1000U};
-  //  for (auto i = 0U; i != num_threads; ++i) {
-  //    workers.emplace_back([&]() {
-  //      auto req = std::string{};
-  //
-  //      auto ctx = adr::guess_context{cache};
-  //      auto ss = std::stringstream{};
-  //      ctx.resize(*t);
-  //
-  //      auto item = queue_item_t{};
-  //
-  //      while (true) {
-  //        q.wait_dequeue(item);
-  //        url_decode(item.first, req);
-  //        std::cout << "REQ: " << req << "\n";
-  //        adr::get_suggestions<false>(*t, {}, req, 10U, ctx);
-  //
-  //        ss.str("");
-  //        for (auto const& s : ctx.suggestions_) {
-  //          s.print(ss, *t);
-  //        }
-  //        item.second(ss.str());
-  //      }
-  //    });
-  //  }
-  //
-  //  uWS::App()
-  //      .get("/geocode/:req",
-  //           [&](uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
-  //             UTL_START_TIMING(timer);
-  //             res->writeHeader("Content-Type", "text/plain;charset=UTF-8");
-  //             auto const loop = uWS::Loop::get();
-  //             q.enqueue(queue_item_t{
-  //                 req->getParameter(0),
-  //                 [res, timer_start, &loop](std::string const& x) {
-  //                   loop->defer([&]() {
-  //                     res->cork([x, res, timer_start]() {
-  //                       UTL_STOP_TIMING(timer);
-  //                       fmt::print("request timing: {}\n",
-  //                       UTL_TIMING_MS(timer)); res->end(x);
-  //                     });
-  //                   });
-  //                 }});
-  //             res->onAborted([]() {});
-  //           })
-  //      .listen(host, port,
-  //              [&](auto* listen_socket) {
-  //                if (listen_socket) {
-  //                  std::cout << "Listening on port " << port << std::endl;
-  //                }
-  //              })
-  //      .run();
 
   std::vector<std::thread*> threads(std::thread::hardware_concurrency());
 
@@ -156,8 +98,6 @@ int main(int ac, char** av) {
           auto ctx = adr::guess_context{cache};
           auto ss = std::stringstream{};
           ctx.resize(*t);
-
-          /* Very simple WebSocket echo server */
           uWS::App()
               .get("/geocode/:req",
                    [&](uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
