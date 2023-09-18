@@ -251,7 +251,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
       i += 4096U;
     }
   }
-  auto const q_idx = std::ceil(sampling.size() / 40.0F);
+  auto const q_idx = std::ceil(sampling.size() / (n_in_ngrams * 3.0F));
   std::nth_element(begin(sampling), begin(sampling) + q_idx, end(sampling),
                    [](auto&& a, auto&& b) { return a > b; });
   UTL_STOP_TIMING(t2);
