@@ -58,8 +58,8 @@ inline std::string bit_mask_to_str(std::uint8_t const b) {
   return r;
 }
 
-inline std::vector<phrase> get_phrases(
-    std::vector<std::string> const& in_tokens) {
+template <typename String>
+inline std::vector<phrase> get_phrases(std::vector<String> const& in_tokens) {
   auto r = std::vector<phrase>{};
   for (auto from = 0U; from != in_tokens.size(); ++from) {
     for (auto length = 1U; from + length <= in_tokens.size() && length != 4U;

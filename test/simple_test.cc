@@ -45,7 +45,7 @@ TEST(adr, for_each_bigram) {
 }
 
 TEST(adr, phrase) {
-  auto const phrases = adr::get_phrases(
+  auto const phrases = adr::get_phrases<std::string_view>(
       {"willy", "brandt", "platz", "abert", "ainstein", "illme"});
   auto const expected = std::vector<std::pair<std::string, std::string>>{
       {"willy", "10000000"},
@@ -150,9 +150,11 @@ TEST(adr, score_test) {
   //  EXPECT_EQ(1, adr::get_match_score("Bartholomäus-Kirche",
   //  "bartholomauskirche",
   //                                    sift4_dist, buf));
-  EXPECT_EQ(1, adr::get_match_score(
-                   "Landwirtschafts- und Heimatmuseum Zappendorf",
-                   "landwirtschafrtsmuseum zappendorf", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score(
+  //                   "Landwirtschafts- und Heimatmuseum Zappendorf",
+  //                   "landwirtschafrtsmuseum zappendorf", sift4_dist, buf));
+  EXPECT_EQ(1, adr::get_match_score("Darmstädter Waffel Oase",
+                                    "waffeloase darmstadt", sift4_dist, buf));
 }
 
 TEST(adr, for_each_token) {
