@@ -14,7 +14,7 @@
 
 namespace adr {
 
-constexpr auto const kMaxScoredMatches = std::size_t{600};
+constexpr auto const kMaxScoredMatches = std::size_t{10000};
 
 struct area {
   friend bool operator==(area const& a, area const& b) {
@@ -120,12 +120,12 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
           auto best_area_idx = 0U;
 
           if ((area_p.token_bits_ & matched_mask) != 0U) {
-            // std::cout <<
-            // t.strings_[t.street_names_[street]].view()
-            //           << " [p=" << ctx.phrases_[street_p_idx].s_
-            //           << "]"
-            //           << area_p.s_ << " -> ALREADY MATCHED"
-            //           << "\n";
+            //            std::cout <<
+            //            t.strings_[t.street_names_[street]].view()
+            //                      << " [p=" << ctx.phrases_[street_p_idx].s_
+            //                      << "]"
+            //                      << area_p.s_ << " -> ALREADY MATCHED"
+            //                      << "\n";
             continue;
           }
 
@@ -144,27 +144,27 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
                 );
 
             if (!match_allowed) {
-              // std::cout <<
-              // t.strings_[t.street_names_[street]].view()
-              //           << " [p=" <<
-              //           ctx.phrases_[street_p_idx].s_ << "]"
-              //           << "\t\t\t" << area_name << " vs " <<
-              //           area_p.s_
-              //           << " -> NOT ALLOWED"
-              //           << "\n";
+              //              std::cout <<
+              //              t.strings_[t.street_names_[street]].view()
+              //                        << " [p=" <<
+              //                        ctx.phrases_[street_p_idx].s_ << "]"
+              //                        << "\t\t\t" << area_name << " vs " <<
+              //                        area_p.s_
+              //                        << " -> NOT ALLOWED"
+              //                        << "\n";
               continue;
             }
 
             auto const edit_dist =
                 ctx.area_phrase_match_scores_[area][area_p_idx];
 
-            // std::cout <<
-            // t.strings_[t.street_names_[street]].view()
-            //           << " [p=" << ctx.phrases_[street_p_idx].s_
-            //           << "]"
-            //           << "\t\t\t" << area_name << " vs " <<
-            //           area_p.s_ << " -> "
-            //           << edit_dist << "\n";
+            //            std::cout <<
+            //            t.strings_[t.street_names_[street]].view()
+            //                      << " [p=" << ctx.phrases_[street_p_idx].s_
+            //                      << "]"
+            //                      << "\t\t\t" << area_name << " vs " <<
+            //                      area_p.s_ << " -> "
+            //                      << edit_dist << "\n";
 
             if (best_edit_dist > edit_dist) {
               best_edit_dist = edit_dist;
@@ -197,13 +197,13 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
           for (auto const [t_idx, token] : utl::enumerate(tokens)) {
             if ((matched_mask & (1U << t_idx)) == 0U) {
               total_score += token.size() * 3.0F;
-              //  std::cout <<
-              //  t.strings_[t.street_names_[street]].view()
-              //            << " [p=" <<
-              //            ctx.phrases_[street_p_idx].s_ << "]"
-              //            << "\t\t\t***NOTHING MATCHED: " << token
-              //            << " --> "
-              //            << (token.size() * 3.0F) << "\n";
+              //              std::cout <<
+              //              t.strings_[t.street_names_[street]].view()
+              //                        << " [p=" <<
+              //                        ctx.phrases_[street_p_idx].s_ << "]"
+              //                        << "\t\t\t***NOTHING MATCHED: " << token
+              //                        << " --> "
+              //                        << (token.size() * 3.0F) << "\n";
             }
           }
 

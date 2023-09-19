@@ -226,13 +226,19 @@ inline score_t get_match_score(
     covered |= s_phrases[best_s_idx].token_bits_;
   }
 
+  auto n_not_matched = 0U;
   for (auto s_idx = 0U; s_idx != s_tokens.size(); ++s_idx) {
     if ((covered & (1U << s_idx)) == 0U) {
-      auto const not_matched_penalty = s_tokens[s_idx].size() / 2U;
+      ++n_not_matched;
+      auto const not_matched_penalty = s_tokens[s_idx].size() / 4U;
       //      std::cout << "PENALITY NOT MATCHED: " << s_tokens[s_idx] << ": "
       //                << not_matched_penalty << "\n";
       sum += not_matched_penalty;
     }
+  }
+
+  if (n_not_matched == s_tokens.size()) {
+    return kNoMatch;
   }
 
   //  std::cout << "  SUM: " << sum << "\n";

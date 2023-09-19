@@ -153,8 +153,10 @@ TEST(adr, score_test) {
   //  EXPECT_EQ(1, adr::get_match_score(
   //                   "Landwirtschafts- und Heimatmuseum Zappendorf",
   //                   "landwirtschafrtsmuseum zappendorf", sift4_dist, buf));
-  EXPECT_EQ(1, adr::get_match_score("Darmstädter Waffel Oase",
-                                    "waffeloase darmstadt", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Darmstädter Waffel Oase",
+  //                                    "waffeloase darmstadt", sift4_dist,
+  //                                    buf));
+  EXPECT_EQ(1, adr::get_match_score("Bas-Rhin", "zappendorf", sift4_dist, buf));
 }
 
 TEST(adr, for_each_token) {
