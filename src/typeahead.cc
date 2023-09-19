@@ -255,7 +255,10 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   std::nth_element(begin(sampling), begin(sampling) + q_idx, end(sampling),
                    [](auto&& a, auto&& b) { return a > b; });
   UTL_STOP_TIMING(t2);
-  auto const cutoff = sampling[q_idx - 1];
+  if (sampling.empty()) {
+    return;
+  }
+  auto const cutoff = sampling[q_idx == 0 ? 0 : q_idx - 1];
   trace("cutoff {} [size={}, idx={}] [{} ms]\n", cutoff, sampling.size(), q_idx,
         UTL_TIMING_MS(t2));
   //  std::cout << "ESTIMATED CUTOFF: " << sampling[q_idx - 1] << "\n";
