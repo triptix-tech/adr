@@ -26,6 +26,7 @@ void get_suggestions(typeahead const&,
                      geo::latlng const&,
                      std::string_view input,
                      unsigned names,
+                     language_list_t const&,
                      guess_context&);
 
 void print_stats(typeahead const&);

@@ -29,8 +29,7 @@
 
 namespace adr {
 
-template <typename T>
-using ngram_index_t = data::vecvec<ngram_t, T, std::uint32_t>;
+using lang_map_t = data::hash_map<data::string, language_idx_t>;
 
 struct import_context {
   template <typename K, typename V>
@@ -89,24 +88,40 @@ struct typeahead {
   template <bool Debug>
   void guess(std::string_view normalized, guess_context&) const;
 
-private:
-  street_idx_t get_or_create_street(import_context& ctx,
+  template <typename Langs>
+  std::int16_t find_lang(Langs const& langs, language_idx_t const l) const {
+    if (l == kDefaultLang) {
+      return kDefaultLangIdx;
+    }
+    auto const it = std::find(begin(langs), end(langs), l);
+    return it == end(langs) ? -1 : std::distance(begin(langs), it);
+  }
+
+  language_idx_t resolve_language(std::string_view s) const {
+    auto const it = lang_.find(s);
+    return it == end(lang_) ? language_idx_t::invalid() : it->second;
+  }
+
+  language_idx_t get_or_create_lang_idx(std::string_view);
+
+  street_idx_t get_or_create_street(import_context&,
                                     std::string_view street_name);
 
-  string_idx_t get_or_create_string(import_context&, std::string_view s);
+  string_idx_t get_or_create_string(import_context&, std::string_view);
 
-public:
-  data::vector_map<area_idx_t, string_idx_t> area_names_;
+  data::vecvec<area_idx_t, string_idx_t> area_names_;
+  data::vecvec<area_idx_t, language_idx_t> area_name_lang_;
   data::vector_map<area_idx_t, admin_level_t> area_admin_level_;
   data::vector_map<area_idx_t, std::uint32_t> area_population_;
 
-  data::vector_map<place_idx_t, string_idx_t> place_names_;
+  data::vecvec<place_idx_t, string_idx_t> place_names_;
+  data::vecvec<place_idx_t, language_idx_t> place_name_lang_;
   data::vector_map<place_idx_t, coordinates> place_coordinates_;
   data::vector_map<place_idx_t, area_set_idx_t> place_areas_;
   data::vector_map<place_idx_t, std::int64_t> place_osm_ids_;
   data::bitvec place_is_way_;
 
-  data::vector_map<street_idx_t, string_idx_t> street_names_;
+  data::vecvec<street_idx_t, string_idx_t> street_names_;
   data::vecvec<street_idx_t, coordinates> street_pos_;
   data::vecvec<street_idx_t, area_set_idx_t> street_areas_;
   data::vecvec<street_idx_t, string_idx_t> house_numbers_;
@@ -119,10 +134,13 @@ public:
 
   data::vector_map<string_idx_t, std::uint8_t> n_bigrams_;
 
-  ngram_index_t<string_idx_t> bigrams_;
+  data::vecvec<ngram_t, string_idx_t, std::uint32_t> bigrams_;
 
   data::vecvec<string_idx_t, std::uint32_t> string_to_location_;
   data::vecvec<string_idx_t, location_type_t> string_to_type_;
+
+  lang_map_t lang_;
+  data::vecvec<language_idx_t, char, std::uint32_t> lang_names_;
 };
 
 struct area_set {
@@ -135,17 +153,30 @@ struct area_set {
         });
     auto const city_idx =
         city_it == end(areas) ? -1 : std::distance(begin(areas), city_it);
+    auto const city_admin_lvl = city_idx == -1
+                                    ? admin_level_t::invalid()
+                                    : s.t_.area_admin_level_[areas[city_idx]];
+
+    auto print_city = city_idx != -1;
+    if (city_idx != -1) {
+      for (auto const& [i, a] : utl::enumerate(s.t_.area_sets_[s.areas_])) {
+        auto const admin_lvl = s.t_.area_admin_level_[a];
+        auto const matched = (((1U << i) & s.matched_mask_) != 0U);
+        if (city_admin_lvl == admin_lvl && matched) {
+          print_city = false;
+          break;
+        }
+      }
+    }
 
     auto first = true;
     out << s.areas_ << " [";
     for (auto const& [i, a] : utl::enumerate(s.t_.area_sets_[s.areas_])) {
-      auto const admin_lvl =
-          static_cast<unsigned>(to_idx(s.t_.area_admin_level_[a]));
+      auto const admin_lvl = s.t_.area_admin_level_[a];
       auto const matched = (((1U << i) & s.matched_mask_) != 0U);
-      auto const print_city =
-          city_idx != -1 &&
-          s.t_.area_admin_level_[areas[city_idx]] == admin_lvl;
-      if (!print_city && !matched) {
+      auto const is_city =
+          print_city && s.t_.area_admin_level_[areas[city_idx]] == admin_lvl;
+      if (!is_city && !matched) {
         continue;
       }
 
@@ -153,20 +184,35 @@ struct area_set {
         out << ", ";
       }
       first = false;
-      auto const name = s.t_.strings_[s.t_.area_names_[a]].view();
+      auto const language_idx =
+          matched ? s.matched_area_lang_[i] : s.get_area_lang_idx(a);
+      auto const name = s.t_.strings_[s.t_.area_names_[a][language_idx]].view();
       if (matched) {
-        out << "*";
+        out << "i=" << static_cast<int>(s.matched_area_lang_[i]) << " *";
       }
       out << "(" << name.substr(std::max(static_cast<int>(name.size()) - 16, 0))
-          << ", " << admin_lvl << ")";
+          << ", " << static_cast<int>(to_idx(admin_lvl)) << ")";
     }
     out << "]";
     return out;
   }
 
+  std::int16_t get_area_lang_idx(area_idx_t const a) const {
+    for (auto i = 0U; i != languages_.size(); ++i) {
+      auto const j = languages_.size() - i - 1U;
+      auto const lang_idx = t_.find_lang(t_.area_name_lang_[a], languages_[j]);
+      if (lang_idx == -1) {
+        return lang_idx;
+      }
+    }
+    return -1;
+  }
+
   typeahead const& t_;
+  language_list_t const& languages_;
   area_set_idx_t areas_;
   std::uint32_t matched_mask_{std::numeric_limits<std::uint32_t>::max()};
+  area_set_lang_t matched_area_lang_;
 };
 
 }  // namespace adr

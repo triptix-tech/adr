@@ -16,8 +16,16 @@ using admin_level_t = cista::strong<std::uint8_t, struct admin_level_idx_>;
 using string_idx_t = cista::strong<std::uint32_t, struct string_idx_>;
 using street_idx_t = cista::strong<std::uint32_t, struct street_idx_>;
 using place_idx_t = cista::strong<std::uint32_t, struct place_idx_>;
+using language_idx_t = cista::strong<std::uint8_t, struct language_idx_>;
+
+constexpr auto const kDefaultLangIdx = 0U;
+constexpr auto const kDefaultLang = language_idx_t{0U};
 
 constexpr auto const kPostalCodeAdminLevel = admin_level_t{11};
+
+using language_list_t = std::basic_string_view<language_idx_t>;
+
+using area_set_lang_t = std::array<std::uint8_t, 32U>;
 
 enum class location_type_t : std::uint8_t {
   kPlace,
@@ -62,6 +70,8 @@ constexpr auto const kNoMatch = std::numeric_limits<score_t>::max();
 using phrase_idx_t = std::uint8_t;
 
 using phrase_match_scores_t = std::array<score_t, kMaxInputPhrases>;
+using phrase_lang_t =
+    std::array<std::uint8_t /* name index */, kMaxInputPhrases>;
 
 using string_match_count_vector_t =
     cista::raw::vector_map<string_idx_t, std::uint8_t>;

@@ -148,10 +148,10 @@ void extract(std::filesystem::path const& in_path,
                           .add_rule(true, "boundary", "administrative")
                           .add_rule(true, "admin_level");
 
-  auto const node_idx_file = tiles::tmp_file{
-      (boost::filesystem::path{tmp_dname} / "idx.bin").generic_string()};
-  auto const node_dat_file = tiles::tmp_file{
-      (boost::filesystem::path{tmp_dname} / "dat.bin").generic_string()};
+  auto const node_idx_file =
+      tiles::tmp_file{(tmp_dname / "idx.bin").generic_string()};
+  auto const node_dat_file =
+      tiles::tmp_file{(tmp_dname / "dat.bin").generic_string()};
   auto node_idx =
       tiles::hybrid_node_idx{node_idx_file.fileno(), node_dat_file.fileno()};
   auto mp_manager = osm_area::MultipolygonManager<osm_area::Assembler>{
@@ -180,6 +180,7 @@ void extract(std::filesystem::path const& in_path,
 
   auto ctx = import_context{};
   auto t = typeahead{};
+  t.lang_names_.emplace_back("default");
   auto areas = std::vector<area_rtree_value>{};
   auto areas_mutex = std::mutex{};
   auto mp_queue = tiles::in_order_queue<osm_mem::Buffer>{};

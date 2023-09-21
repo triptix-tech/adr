@@ -18,6 +18,7 @@
 namespace adr {
 
 struct typeahead;
+struct guess_context;
 
 constexpr auto const kNoMatchScores = []() {
   auto a = phrase_match_scores_t{};
@@ -35,16 +36,26 @@ struct address {
   std::uint32_t house_number_;
 };
 
+struct matched_area {
+  area_idx_t area_;
+  language_idx_t lang_;
+};
+
 struct suggestion {
-  void print(std::ostream&, typeahead const&) const;
+  void print(std::ostream&,
+             typeahead const&,
+             language_list_t const&,
+             guess_context const&) const;
   bool operator<(suggestion const& o) const { return score_ < o.score_; }
 
   std::string areas(typeahead const&) const;
   std::string description(typeahead const&) const;
 
+  string_idx_t str_;
   std::variant<place_idx_t, address> location_;
   coordinates coordinates_;
   area_set_idx_t area_set_;
+  area_set_lang_t matched_area_lang_;
   std::uint32_t matched_areas_;
   std::uint8_t matched_tokens_;
   float score_;
@@ -65,10 +76,11 @@ struct scored_match {
   }
   score_t score_;
   phrase_idx_t phrase_idx_;
+  string_idx_t string_idx_;
   T idx_;
 };
 
-struct area_src {
+struct match_item {
   enum class type { kStreet, kHouseNumber, kPlace } type_;
   score_t score_;
   std::uint32_t index_;
@@ -98,8 +110,10 @@ struct guess_context {
   std::vector<phrase_match_scores_t> string_phrase_match_scores_;
   cista::raw::vector_map<area_idx_t, phrase_match_scores_t>
       area_phrase_match_scores_;
+  cista::raw::vector_map<area_idx_t, phrase_lang_t> area_phrase_lang_;
 
-  cista::raw::ankerl_map<area_set_idx_t, std::vector<area_src>> areas_;
+  cista::raw::ankerl_map<area_set_idx_t, std::vector<match_item>>
+      area_match_items_;
   cista::raw::ankerl_set<std::uint8_t> item_matched_masks_;
 
   std::vector<scored_match<street_idx_t>> scored_street_matches_;

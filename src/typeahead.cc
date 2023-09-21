@@ -1,5 +1,7 @@
 #include "adr/typeahead.h"
 
+#include <string_view>
+
 #include "cista/mmap.h"
 
 #include "utl/timing.h"
@@ -9,7 +11,40 @@
 
 #include "adr/trace.h"
 
+using namespace std::string_view_literals;
+
 namespace adr {
+
+language_idx_t typeahead::get_or_create_lang_idx(std::string_view s) {
+  return utl::get_or_create(lang_, s, [&]() {
+    // +1 skips zero as 0 == default language
+    lang_names_.emplace_back(s);
+    return language_idx_t{lang_.size() + 1U};
+  });
+}
+
+template <typename Fn>
+void for_each_name(typeahead& t, osmium::TagList const& tags, Fn&& fn) {
+  auto const call_fn = [&](char const* name, language_idx_t const l) {
+    if (name != nullptr) {
+      fn(std::string_view{name}, l);
+    }
+  };
+
+  call_fn(tags["name"], kDefaultLang);
+  call_fn(tags["old_name"], kDefaultLang);
+  call_fn(tags["alt_name"], kDefaultLang);
+  call_fn(tags["official_name"], kDefaultLang);
+
+  for (auto const& tag : tags) {
+    constexpr auto const kNamePrefix = "name:"sv;
+    auto const key = std::string_view{tag.key()};
+    if (key.starts_with(kNamePrefix)) {
+      auto const lang_str = key.substr(kNamePrefix.size());
+      call_fn(tag.value(), t.get_or_create_lang_idx(lang_str));
+    }
+  }
+}
 
 area_idx_t typeahead::add_postal_code_area(import_context& ctx,
                                            osmium::TagList const& tags) {
@@ -22,7 +57,8 @@ area_idx_t typeahead::add_postal_code_area(import_context& ctx,
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(kPostalCodeAdminLevel);
   area_population_.emplace_back(0U);
-  area_names_.emplace_back(get_or_create_string(ctx, postal_code));
+  area_names_.emplace_back({get_or_create_string(ctx, postal_code)});
+  area_name_lang_.emplace_back({kDefaultLang});
   return idx;
 }
 
@@ -44,12 +80,20 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
   }
 
   auto const lock = std::scoped_lock{ctx.mutex_};
+
+  auto names = area_names_.add_back_sized(0U);
+  auto langs = area_name_lang_.add_back_sized(0U);
+  for_each_name(*this, tags,
+                [&](std::string_view name, language_idx_t const lang) {
+                  names.push_back(get_or_create_string(ctx, name));
+                  langs.push_back(lang);
+                });
+
   auto const population = tags["population"];
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(admin_level_t{admin_lvl_int});
   area_population_.emplace_back(
       population == nullptr ? 0U : utl::parse<unsigned>(population));
-  area_names_.emplace_back(get_or_create_string(ctx, name));
   return idx;
 }
 
@@ -60,7 +104,7 @@ street_idx_t typeahead::get_or_create_street(import_context& ctx,
     auto const idx = street_idx_t{street_names_.size()};
     ctx.string_to_location_[string_idx].emplace_back(to_idx(idx),
                                                      location_type_t::kStreet);
-    street_names_.emplace_back(string_idx);
+    street_names_.emplace_back({string_idx});
     return idx;
   });
 }
@@ -126,14 +170,22 @@ void typeahead::add_place(import_context& ctx,
 
   auto const lock = std::scoped_lock{ctx.mutex_};
   auto const idx = place_names_.size();
-  auto const string_idx = get_or_create_string(ctx, name);
-  place_names_.emplace_back(string_idx);
+
+  auto names = place_names_.add_back_sized(0U);
+  auto langs = place_name_lang_.add_back_sized(0U);
+  for_each_name(*this, tags,
+                [&](std::string_view name, language_idx_t const l) {
+                  auto const str_idx = get_or_create_string(ctx, name);
+                  ctx.string_to_location_[str_idx].emplace_back(
+                      idx, location_type_t::kPlace);
+                  names.push_back(str_idx);
+                  langs.push_back(l);
+                });
+
   place_coordinates_.emplace_back(l.x(), l.y());
   place_osm_ids_.emplace_back(id);
   place_is_way_.resize(place_is_way_.size() + 1U);
   place_is_way_.set(idx, is_way);
-  ctx.string_to_location_[string_idx].emplace_back(idx,
-                                                   location_type_t::kPlace);
 }
 
 string_idx_t typeahead::get_or_create_string(import_context& ctx,
@@ -175,23 +227,27 @@ void typeahead::build_ngram_index() {
 }
 
 bool typeahead::verify() {
+  auto const has = [](auto&& haystack, auto&& needle) {
+    return std::find(begin(haystack), end(haystack), needle) != end(haystack);
+  };
+
   auto i = 0U;
   for (auto const [str, locations, types] :
        utl::zip(strings_, string_to_location_, string_to_type_)) {
     for (auto const& [l, type] : utl::zip(locations, types)) {
       switch (type) {
         case location_type_t::kStreet:
-          if (street_names_[street_idx_t{l}] != i) {
-            std::cerr << "ERROR: street " << l
-                      << ": street_name=" << street_names_[street_idx_t{l}]
+          if (!has(street_names_[street_idx_t{l}], i)) {
+            std::cerr << "ERROR: street " << l << ": street_name="
+                      << street_names_[street_idx_t{l}][kDefaultLangIdx]
                       << " != i=" << i << "\n";
             return false;
           }
           break;
         case location_type_t::kPlace:
-          if (place_names_[place_idx_t{l}] != i) {
-            std::cerr << "ERROR: place " << l
-                      << ": place_name=" << place_names_[place_idx_t{l}]
+          if (!has(place_names_[place_idx_t{l}], i)) {
+            std::cerr << "ERROR: place " << l << ": place_name="
+                      << place_names_[place_idx_t{l}][kDefaultLangIdx]
                       << " != i=" << i << "\n";
             return false;
           }

@@ -45,6 +45,7 @@ int main(int ac, char** av) {
   auto in = fs::path{"adr.cista"};
   auto guess = std::string{""};
   auto file = std::string{""};
+  auto languages = std::vector<std::string>{};
   auto verbose = false;
   auto n = 15U;
   auto mapped = false;
@@ -71,7 +72,9 @@ int main(int ac, char** av) {
          "number of suggestions")  //
         ("runs,r", bpo::value<unsigned>(&runs)->default_value(runs),
          "number of runs (for benchmarking)")  //
-        ("mmap,m", "use memory mapping");
+        ("mmap,m", "use memory mapping")  //
+        ("languages,l", bpo::value(&languages)->multitoken(),
+         R"(IANA language tags such as "en", "de", "it")");
 
     auto const pos_desc =
         bpo::positional_options_description{}.add("in", 1).add("guess", -1);
@@ -113,6 +116,16 @@ int main(int ac, char** av) {
   auto const t = adr::read(in, mapped);
   adr::print_stats(*t);
 
+  auto lang_indices =
+      std::basic_string<adr::language_idx_t>{{adr::kDefaultLang}};
+  for (auto const& l_str : languages) {
+    auto const l_idx = t->resolve_language(l_str);
+    if (l_idx == adr::language_idx_t::invalid()) {
+      std::cout << "could not resolve language " << l_str << "\n";
+    }
+    lang_indices.push_back(l_idx);
+  }
+
   auto cache = adr::cache{.n_strings_ = t->strings_.size(), .max_size_ = 1000U};
   auto ctx = adr::guess_context{cache};
   ctx.resize(*t);
@@ -120,7 +133,7 @@ int main(int ac, char** av) {
   if (warmup) {
     adr::get_suggestions<false>(
         *t, geo::latlng{0, 0}, "Willy Brandt Platz 64289 Darmstadt Deutschland",
-        n, ctx);
+        n, lang_indices, ctx);
   }
 
   if (!file.empty()) {
@@ -131,7 +144,7 @@ int main(int ac, char** av) {
     }
     utl::for_each_line(utl::cstr{*content}, [&](utl::cstr const line) {
       UTL_START_TIMING(timer);
-      adr::get_suggestions<false>(*t, {}, line.view(), n, ctx);
+      adr::get_suggestions<false>(*t, {}, line.view(), n, lang_indices, ctx);
       UTL_STOP_TIMING(timer);
       std::cout << UTL_TIMING_MS(timer) << " ms\n";
     });
@@ -150,8 +163,9 @@ int main(int ac, char** av) {
         ctx.resize(*t);
 
         while (true) {
-          adr::get_suggestions<false>(
-              *t, {}, kAddresses[count % kAddresses.size()], n, ctx);
+          adr::get_suggestions<false>(*t, {},
+                                      kAddresses[count % kAddresses.size()], n,
+                                      lang_indices, ctx);
           ++count;
           if (count > 1'000) {
             break;
@@ -171,9 +185,11 @@ int main(int ac, char** av) {
     UTL_START_TIMING(timer);
     for (auto i = 0U; i != runs; ++i) {
       if (verbose) {
-        adr::get_suggestions<true>(*t, geo::latlng{0, 0}, guess, n, ctx);
+        adr::get_suggestions<true>(*t, geo::latlng{0, 0}, guess, n,
+                                   lang_indices, ctx);
       } else {
-        adr::get_suggestions<false>(*t, geo::latlng{0, 0}, guess, n, ctx);
+        adr::get_suggestions<false>(*t, geo::latlng{0, 0}, guess, n,
+                                    lang_indices, ctx);
       }
     }
     UTL_STOP_TIMING(timer);
@@ -185,7 +201,7 @@ int main(int ac, char** av) {
 
     for (auto const& [i, s] : utl::enumerate(ctx.suggestions_)) {
       std::cout << "[" << i << "]\t";
-      s.print(std::cout, *t);
+      s.print(std::cout, *t, lang_indices, ctx);
     }
     return 0;
   } else {
@@ -201,14 +217,15 @@ int main(int ac, char** av) {
       }
 
       UTL_START_TIMING(timer);
-      adr::get_suggestions<false>(*t, geo::latlng{0, 0}, first_name, n, ctx);
+      adr::get_suggestions<false>(*t, geo::latlng{0, 0}, first_name, n,
+                                  lang_indices, ctx);
       UTL_STOP_TIMING(timer);
 
       Elements list;
       list.emplace_back(text(fmt::format("{} ms", UTL_TIMING_MS(timer))));
       for (auto const& s : ctx.suggestions_) {
         auto ss = std::stringstream{};
-        s.print(ss, *t);
+        s.print(ss, *t, lang_indices, ctx);
         list.push_back(text(ss.str()));
       }
       return vbox(std::move(list)) |
