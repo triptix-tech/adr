@@ -196,11 +196,13 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
           }
 
           if (best_edit_dist != kNoMatch) {
+            auto const best_area = t.area_sets_[area_set_idx][best_area_idx];
             matched_areas |= (1U << best_area_idx);
             area_lang[best_area_idx] =
-                ctx.area_phrase_lang_[t.area_sets_[area_set_idx][best_area_idx]]
-                                     [area_p_idx];
+                ctx.area_phrase_lang_[best_area][area_p_idx];
             areas_edit_dist += best_edit_dist;
+            areas_edit_dist -=
+                (t.area_population_[best_area].get() / 10'000'000.0F) * 2U;
             matched_mask |= area_p.token_bits_;
             //            std::cout
             //                <<
@@ -345,11 +347,12 @@ void match_places(std::uint8_t const numeric_tokens_mask,
         //                         .view()
         //                  << ", score=" << best_edit_dist << "\n";
 
+        auto const best_area = t.area_sets_[area_set_idx][best_area_idx];
         matched_areas_mask |= (1U << best_area_idx);
-        area_lang[best_area_idx] =
-            ctx.area_phrase_lang_[t.area_sets_[area_set_idx][best_area_idx]]
-                                 [area_p_idx];
+        area_lang[best_area_idx] = ctx.area_phrase_lang_[best_area][area_p_idx];
         areas_edit_dist += best_edit_dist;
+        areas_edit_dist -=
+            (t.area_population_[best_area].get() / 10'000'000.0F) * 2U;
         matched_tokens_mask |= area_p.token_bits_;
       }
     }
@@ -365,6 +368,10 @@ void match_places(std::uint8_t const numeric_tokens_mask,
         //                  << (token.size() * 3.0F) << "\n";
       }
     }
+
+    total_score -= std::popcount(matched_areas_mask);
+    total_score -= t.place_population_[place].get() / 10'000'000.F;
+
     ctx.suggestions_.emplace_back(
         suggestion{.str_ = str_idx,
                    .location_ = place,

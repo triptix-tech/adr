@@ -90,10 +90,14 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
                 });
 
   auto const population = tags["population"];
+  area_population_.emplace_back(population == nullptr
+                                    ? 0U
+                                    : utl::parse<unsigned>(population) /
+                                          population::kCompressionFactor);
+
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(admin_level_t{admin_lvl_int});
-  area_population_.emplace_back(
-      population == nullptr ? 0U : utl::parse<unsigned>(population));
+
   return idx;
 }
 
@@ -181,6 +185,12 @@ void typeahead::add_place(import_context& ctx,
                   names.push_back(str_idx);
                   langs.push_back(l);
                 });
+
+  auto const population = tags["population"];
+  place_population_.emplace_back(population == nullptr
+                                     ? 0U
+                                     : utl::parse<unsigned>(population) /
+                                           population::kCompressionFactor);
 
   place_coordinates_.emplace_back(l.x(), l.y());
   place_osm_ids_.emplace_back(id);

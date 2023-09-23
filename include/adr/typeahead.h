@@ -31,6 +31,12 @@ namespace adr {
 
 using lang_map_t = data::hash_map<data::string, language_idx_t>;
 
+struct population {
+  static constexpr auto const kCompressionFactor = 200U;
+  std::uint32_t get() const { return value_ * kCompressionFactor; }
+  std::uint16_t value_;
+};
+
 struct import_context {
   template <typename K, typename V>
   using raw_hash_map = cista::raw::ankerl_map<K, V>;
@@ -112,13 +118,14 @@ struct typeahead {
   data::vecvec<area_idx_t, string_idx_t> area_names_;
   data::vecvec<area_idx_t, language_idx_t> area_name_lang_;
   data::vector_map<area_idx_t, admin_level_t> area_admin_level_;
-  data::vector_map<area_idx_t, std::uint32_t> area_population_;
+  data::vector_map<area_idx_t, population> area_population_;
 
   data::vecvec<place_idx_t, string_idx_t> place_names_;
   data::vecvec<place_idx_t, language_idx_t> place_name_lang_;
   data::vector_map<place_idx_t, coordinates> place_coordinates_;
   data::vector_map<place_idx_t, area_set_idx_t> place_areas_;
   data::vector_map<place_idx_t, std::int64_t> place_osm_ids_;
+  data::vector_map<place_idx_t, population> place_population_;
   data::bitvec place_is_way_;
 
   data::vecvec<street_idx_t, string_idx_t> street_names_;
