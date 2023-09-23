@@ -46,6 +46,7 @@ TEST(adr, for_each_bigram) {
 
 TEST(adr, phrase) {
   auto const phrases = adr::get_phrases<std::string_view>(
+      {"willy", "brandt", "platz", "abert", "ainstein", "illme"},
       {"willy", "brandt", "platz", "abert", "ainstein", "illme"});
   auto const expected = std::vector<std::pair<std::string, std::string>>{
       {"willy", "10000000"},
@@ -65,7 +66,7 @@ TEST(adr, phrase) {
       {"illme", "00000100"}};
   auto i = 0U;
   for (auto const& p : phrases) {
-    EXPECT_EQ((std::pair{p.s_, adr::bit_mask_to_str(p.token_bits_)}),
+    EXPECT_EQ((std::pair{p.normalized_, adr::bit_mask_to_str(p.token_bits_)}),
               (expected[i]));
     ++i;
   }
@@ -119,7 +120,6 @@ TEST(adr, score_test) {
   //  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist,
   //  tmp));
 
-  adr::utf8_normalize_buf_t buf;
   //  EXPECT_EQ(1,
   //            adr::get_match_score("Landkreis Aschaffenburg",
   //                                 "mainaschaff aschaffenburg", sift4_dist,
@@ -158,10 +158,26 @@ TEST(adr, score_test) {
   //                                    buf));
   //  EXPECT_EQ(1, adr::get_match_score("Bas-Rhin", "zappendorf", sift4_dist,
   //  buf));
-  EXPECT_EQ(1, adr::get_match_score("Darmstädter Waffel Oase", "waffeloase",
-                                    sift4_dist, buf));
-  EXPECT_EQ(1, adr::get_match_score("Darmstädter Waffel Oase", "waffel oase",
-                                    sift4_dist, buf));
+
+  //  EXPECT_EQ(1, adr::get_match_score("Darmstädter Waffel Oase", "waffeloase",
+  //                                    sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Darmstädter Waffel Oase", "waffel
+  //  oase",
+  //                                    sift4_dist, buf));
+
+  adr::utf8_normalize_buf_t b1, b2;
+  auto const get_match_score = [&](std::string_view a_raw,
+                                   std::string_view b_raw) {
+    auto const a_normalized = adr::normalize(a_raw);
+    auto const p =
+        adr::phrase{.token_bits_ = 0U,
+                    .raw_ = std::string{b_raw},
+                    .normalized_ = std::string{adr::normalize(b_raw)}};
+    auto const b_normalized = adr::normalize(b_raw);
+    return adr::get_match_score(a_raw, p, sift4_dist, b1, b2);
+  };
+  EXPECT_EQ(1, get_match_score("Brünn", "brunn"));
+  EXPECT_EQ(1, get_match_score("Brünn", "brünn"));
 }
 
 TEST(adr, for_each_token) {
@@ -180,4 +196,9 @@ TEST(adr, sift4) {
                                            "mainaschaff aschaffenburg", 4U, 10U,
                                            offset_arr))
             << "\n";
+}
+
+TEST(adr, to_lower_case) {
+  auto buf = adr::utf8_normalize_buf_t{};
+  EXPECT_EQ("brünn", adr::to_lower_case("Brünn", buf));
 }

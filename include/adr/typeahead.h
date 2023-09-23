@@ -170,7 +170,7 @@ struct area_set {
     }
 
     auto first = true;
-    out << s.areas_ << " [";
+    out << "[";
     for (auto const& [i, a] : utl::enumerate(s.t_.area_sets_[s.areas_])) {
       auto const admin_lvl = s.t_.area_admin_level_[a];
       auto const matched = (((1U << i) & s.matched_mask_) != 0U);

@@ -52,60 +52,81 @@ inline edit_dist_t levenshtein_distance(std::string_view source,
 }
 
 inline score_t get_token_match_score(
-    std::string_view dataset_token,
-    std::string_view p,
+    std::string_view dataset_token_raw,
+    std::string_view dataset_token_normalized,
+    std::string_view p_raw,
+    std::string_view p_normalized,
     std::vector<sift_offset>& sift4_offset_arr) {
-  auto const cut_normalized_str =
-      dataset_token.substr(0U, std::min(dataset_token.size(), p.size()));
-  //  std::vector<edit_dist_t> lev_dist;
-  //  auto const dist = levenshtein_distance(cut_normalized_str, p, lev_dist);
-  auto const dist =
-      sift4(cut_normalized_str, p, 3,
-            std::min(dataset_token.size(), p.size()) / 2 + 2, sift4_offset_arr);
+  auto const cut_dataset_token_raw = dataset_token_raw.substr(
+      0U, std::min(dataset_token_raw.size(), p_raw.size()));
+  auto const cut_dataset_token_normalized = dataset_token_normalized.substr(
+      0U, std::min(dataset_token_normalized.size(), p_normalized.size()));
 
-  if (dist >= cut_normalized_str.size()) {
+  auto const dist_normalized = sift4(
+      cut_dataset_token_normalized, p_normalized, 3,
+      std::min(cut_dataset_token_normalized.size(), p_normalized.size()) / 2 +
+          2,
+      sift4_offset_arr);
+  auto const dist_raw =
+      dataset_token_raw == dataset_token_normalized && p_raw == p_normalized
+          ? dist_normalized
+          : sift4(cut_dataset_token_raw, p_raw, 3,
+                  std::min(cut_dataset_token_raw.size(), p_raw.size()) / 2 + 2,
+                  sift4_offset_arr);
+
+  if (dist_normalized >= cut_dataset_token_normalized.size()) {
     //    std::cout << "dist=" << static_cast<int>(dist) << " > "
     //              << cut_normalized_str.size() << "\n";
     return kNoMatch;
   }
   auto const overhang_penality =
-      (static_cast<float>(dataset_token.size() -
-                          std::min(dataset_token.size(), p.size())) /
+      (static_cast<float>(
+           dataset_token_normalized.size() -
+           std::min(dataset_token_normalized.size(), p_normalized.size())) /
        3.0F);
   auto const relative_coverage =
-      6.0F * (static_cast<float>(dist) /
-              static_cast<float>(cut_normalized_str.size()));
+      6.0F * (static_cast<float>(dist_normalized) /
+              static_cast<float>(cut_dataset_token_normalized.size()));
 
   auto common_prefix_bonus = 0.0F;
-  auto const end = std::min(cut_normalized_str.size(), p.size());
+  auto const end =
+      std::min(cut_dataset_token_normalized.size(), p_normalized.size());
   for (auto i = 0U; i != end; ++i) {
-    if (cut_normalized_str[i] != p[i]) {
+    if (cut_dataset_token_normalized[i] != p_normalized[i]) {
       break;
     }
     common_prefix_bonus -= 0.25F;
   }
 
   auto const first_letter_mismatch_penality =
-      cut_normalized_str[0] != p[0] ? 2.0F : -0.5F;
+      cut_dataset_token_normalized[0] != p_normalized[0] ? 2.0F : -0.5F;
   auto const second_letter_mismatch_penality =
-      cut_normalized_str[1] != p[1] ? 1.0F : -0.25F;
+      cut_dataset_token_normalized[1] != p_normalized[1] ? 1.0F : -0.25F;
 
-  auto score = dist + first_letter_mismatch_penality +
+  auto const diff_penalty = (dist_raw - dist_normalized) / 2.0F;
+
+  auto score = dist_normalized + first_letter_mismatch_penality +
                second_letter_mismatch_penality + overhang_penality +
-               relative_coverage + common_prefix_bonus;
-  //  std::cout << "  " << dataset_token << " vs " << p
-  //            << ": dist=" << static_cast<int>(dist)
-  //            << ", size=" << cut_normalized_str.size()
+               relative_coverage + common_prefix_bonus + diff_penalty;
+
+  //  std::cout << "  " << dataset_token_raw << " vs " << p_raw
+  //            << ": raw_dist=" << static_cast<int>(dist_raw)
+  //            << ", normalized_dist=" << static_cast<int>(dist_normalized)
+  //            << ", raw_size=" << cut_dataset_token_raw.size()
+  //            << ", normalize_size=" << cut_dataset_token_normalized.size()
   //            << ", overhang_penality=" << overhang_penality
   //            << ", relative_coverage=" << relative_coverage
   //            << ", first_letter_mismatch_penality="
   //            << first_letter_mismatch_penality
   //            << ", second_letter_mismatch_penality="
   //            << second_letter_mismatch_penality << ", score=" << score
-  //            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F))
-  //            << "\n";
+  //            << ", max="
+  //            << (std::ceil(cut_dataset_token_normalized.size() / 2.0F)) <<
+  //            "\n";
 
-  return score > std::ceil(cut_normalized_str.size() / 2.0F) ? kNoMatch : score;
+  return score > std::ceil(cut_dataset_token_normalized.size() / 2.0F)
+             ? kNoMatch
+             : score;
 }
 
 template <typename... Delimiter>
@@ -133,67 +154,61 @@ void for_each_token(std::string_view s, Fn&& f, Delimiter&&... d) {
   }
 }
 
-inline score_t get_match_score(
-    std::string_view s,  // name from dataset - will be normalized!
-    std::string_view p,  // input phrase - won't be normalized!
-    std::vector<sift_offset>& sift4_offset_arr,
-    utf8_normalize_buf_t& tmp) {
-  if (s.empty() || p.empty()) {
+inline score_t get_match_score(std::string_view s,
+                               phrase const& p,
+                               std::vector<sift_offset>& sift4_offset_arr,
+                               utf8_normalize_buf_t& normalize_buf,
+                               utf8_normalize_buf_t& to_lower_case_buf) {
+  if (s.empty() || p.raw_.empty()) {
     return kNoMatch;
   }
 
-  auto const normalized_str = std::string_view{normalize(s, tmp)};
+  auto const s_normalized = std::string_view{normalize(s, normalize_buf)};
+  auto const s_raw = std::string_view{to_lower_case(s, to_lower_case_buf)};
 
-  auto s_tokens = std::vector<std::string_view>{};
-  auto p_tokens = std::vector<std::string_view>{};
+  auto const split_tokens = [](std::string_view x,
+                               std::vector<std::string_view>& tokens) {
+    for_each_token(
+        x,
+        [&, c = 0U](auto&& p_token) mutable {
+          if (++c > 8) {
+            return utl::continue_t::kBreak;
+          }
+          if (!p_token.empty()) {
+            tokens.emplace_back(p_token);
+          }
+          return utl::continue_t::kContinue;
+        },
+        ' ', '-');
+  };
 
-  for_each_token(
-      p,
-      [&, c = 0U](auto&& p_token) mutable {
-        if (++c > 8) {
-          return utl::continue_t::kBreak;
-        }
-        if (!p_token.empty()) {
-          p_tokens.emplace_back(p_token);
-        }
-        return utl::continue_t::kContinue;
-      },
-      ' ', '-');
+  std::vector<std::string_view> p_tokens_normalized, s_tokens_normalized;
+  split_tokens(s_normalized, s_tokens_normalized);
+  split_tokens(p.normalized_, p_tokens_normalized);
 
-  for_each_token(
-      normalized_str,
-      [&, c = 0U](auto&& s_token) mutable {
-        if (++c > 8) {
-          return utl::continue_t::kBreak;
-        }
-        if (!s_token.empty()) {
-          s_tokens.emplace_back(s_token);
-        }
-        return utl::continue_t::kContinue;
-      },
-      ' ', '-');
-
-  if (p_tokens.size() > s_tokens.size()) {
-    return get_token_match_score(normalized_str, p, sift4_offset_arr) +
-           (p_tokens.size() - s_tokens.size()) * 2;
+  auto const fallback = get_token_match_score(s_raw, s_normalized, p.raw_,
+                                              p.normalized_, sift4_offset_arr);
+  if (p_tokens_normalized.size() > s_tokens_normalized.size()) {
+    return fallback +
+           (p_tokens_normalized.size() - s_tokens_normalized.size()) * 2;
   }
 
-  auto const fallback =
-      get_token_match_score(normalized_str, p, sift4_offset_arr);
-  if (p_tokens.size() == 1U && s_tokens.size() == 1U) {
+  std::vector<std::string_view> s_tokens_raw, p_tokens_raw;
+  split_tokens(s_raw, s_tokens_raw);
+  split_tokens(p.raw_, p_tokens_raw);
+
+  if (p_tokens_normalized.size() == 1U && s_tokens_normalized.size() == 1U) {
     return fallback;
   }
 
-  auto const s_phrases = get_phrases(s_tokens);
+  auto const s_phrases = get_phrases(s_tokens_normalized, s_tokens_raw);
 
-  //  std::cout << s << " vs " << p << "\n";
+  //  std::cout << s_raw << " vs " << p.raw_ << "\n";
 
   auto covered = std::uint8_t{0U};
   auto sum = 0.0F;
   auto no_match = false;
-  for (auto p_idx = 0U; p_idx != p_tokens.size(); ++p_idx) {
-    auto const& p_token = p_tokens[p_idx];
-
+  for (auto p_idx = 0U; p_idx != p_tokens_normalized.size(); ++p_idx) {
     auto best_s_score = kNoMatch;
     auto best_s_idx = 0U;
 
@@ -203,10 +218,17 @@ inline score_t get_match_score(
         continue;
       }
 
-      auto const s_p_match_score =
-          s_phrase.s_ == p_token
-              ? -2.0F
-              : get_token_match_score(s_phrase.s_, p_token, sift4_offset_arr);
+      auto s_p_match_score = 0.0F;
+      //      if (s_phrase.raw_ == p_tokens_raw[p_idx]) {
+      //        s_p_match_score = -2.5F;
+      //      } else if (s_phrase.normalized_ == p_tokens_normalized[p_idx]) {
+      //        s_p_match_score = -2.0F;
+      //      } else {
+      s_p_match_score = get_token_match_score(
+          s_phrase.raw_, s_phrase.normalized_, p_tokens_raw[p_idx],
+          p_tokens_normalized[p_idx], sift4_offset_arr);
+      //      }
+
       if (best_s_score > s_p_match_score) {
         best_s_idx = s_idx;
         best_s_score = s_p_match_score;
@@ -214,36 +236,38 @@ inline score_t get_match_score(
     }
 
     if (best_s_score == kNoMatch) {
-      //      std::cout << "  NO MATCH FOUND: " << p_token << "\n";
-      sum += p_tokens.size() * 2.0;
+      //      std::cout << "  NO MATCH FOUND: " << p_tokens_raw[p_idx] << "\n";
+      sum += p_tokens_normalized[p_idx].size() * 2.0;
       continue;
     }
 
-    //    std::cout << "  MATCHED: " << p_token << " vs " <<
-    //    s_phrases[best_s_idx].s_
-    //              << ": " << best_s_score << "\n";
+    //    std::cout << "  MATCHED: " << p_tokens_raw[p_idx] << " vs "
+    //              << s_phrases[best_s_idx].raw_ << ": " << best_s_score <<
+    //              "\n";
     sum += best_s_score;
     covered |= s_phrases[best_s_idx].token_bits_;
   }
 
   auto n_not_matched = 0U;
-  for (auto s_idx = 0U; s_idx != s_tokens.size(); ++s_idx) {
+  for (auto s_idx = 0U; s_idx != s_tokens_normalized.size(); ++s_idx) {
     if ((covered & (1U << s_idx)) == 0U) {
       ++n_not_matched;
-      auto const not_matched_penalty = s_tokens[s_idx].size() / 4U;
-      //      std::cout << "PENALITY NOT MATCHED: " << s_tokens[s_idx] << ": "
-      //                << not_matched_penalty << "\n";
+      auto const not_matched_penalty = s_tokens_normalized[s_idx].size() / 4U;
+      //      std::cout << "PENALITY NOT MATCHED: " <<
+      //      s_tokens_normalized[s_idx]
+      //                << ": " << not_matched_penalty << "\n";
       sum += not_matched_penalty;
     }
   }
 
-  if (n_not_matched == s_tokens.size()) {
+  if (n_not_matched == s_tokens_normalized.size()) {
     return kNoMatch;
   }
 
   //  std::cout << "  SUM: " << sum << "\n";
 
-  auto const max = std::ceil(std::min(s.size(), p.size()) / 2.0F);
+  auto const max =
+      std::ceil(std::min(s_normalized.size(), p.normalized_.size()) / 2.0F);
   auto const score = std::min(fallback, sum);
   return score > max ? kNoMatch : score;
 }

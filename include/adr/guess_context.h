@@ -94,6 +94,7 @@ struct guess_context {
   void resize(typeahead const&);
 
   utf8_normalize_buf_t normalize_buf_;
+  utf8_normalize_buf_t to_lower_case_buf_;
   std::vector<sift_offset> sift4_offset_arr_;
 
   std::vector<phrase> phrases_;
