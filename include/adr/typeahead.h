@@ -193,9 +193,12 @@ struct area_set {
       first = false;
       auto const language_idx =
           matched ? s.matched_area_lang_[i] : s.get_area_lang_idx(a);
-      auto const name = s.t_.strings_[s.t_.area_names_[a][language_idx]].view();
+      auto const name =
+          s.t_.strings_[s.t_.area_names_[a][language_idx == -1 ? kDefaultLangIdx
+                                                               : language_idx]]
+              .view();
       if (matched) {
-        out << "i=" << static_cast<int>(s.matched_area_lang_[i]) << " *";
+        out << " *";
       }
       out << "(" << name.substr(std::max(static_cast<int>(name.size()) - 16, 0))
           << ", " << static_cast<int>(to_idx(admin_lvl)) << ")";

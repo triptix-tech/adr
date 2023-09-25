@@ -75,7 +75,7 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
   }
 
   auto const admin_lvl_int = utl::parse<unsigned>(admin_lvl);
-  if (admin_lvl_int < 2 || admin_lvl_int >= 10) {
+  if (admin_lvl_int < 2 || admin_lvl_int > 10) {
     return area_idx_t::invalid();
   }
 

@@ -323,10 +323,7 @@ void match_places(std::uint8_t const numeric_tokens_mask,
         //                  << ", place_edit_dist=" << place_edit_dist
         //                  << "]: " << ctx.phrases_[area_p_idx].s_ << " vs "
         //                  <<
-        //                  t.strings_[t.area_names_[t.area_sets_[area_set_idx]
-        //                                                          [best_area_idx]]
-        //                                             [kDefaultLangIdx]]
-        //                         .view()
+        //                  t.strings_[t.area_names_[area][kDefaultLangIdx]].view()
         //                  << ", score=" << edit_dist << "\n";
 
         if (best_edit_dist > edit_dist) {
@@ -370,7 +367,9 @@ void match_places(std::uint8_t const numeric_tokens_mask,
     }
 
     total_score -= std::popcount(matched_areas_mask);
-    total_score -= t.place_population_[place].get() / 10'000'000.F;
+    //    total_score -= std::log2(t.place_population_[place].get()) / 10.0F;
+    total_score -= t.place_population_[place].get() / 1'000'000.F;
+    total_score -= 1.5;
 
     ctx.suggestions_.emplace_back(
         suggestion{.str_ = str_idx,
