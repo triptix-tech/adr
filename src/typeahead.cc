@@ -225,7 +225,7 @@ void typeahead::build_ngram_index() {
     n_bigrams_[string_idx_t{i}] = std::min(
         static_cast<std::size_t>(std::numeric_limits<std::uint8_t>::max()),
         normalized.size() - 1U);
-    for_each_bigram(normalized, [&](std::string_view bigram) {
+    for_each_bigram(normalized, [&, i = i](std::string_view bigram) {
       tmp[compress_bigram(bigram)].emplace_back(i);
     });
   }
@@ -342,7 +342,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
     auto const cos_sim = static_cast<float>(match_count * match_count) /
                          (n_bigrams_[i] * n_in_ngrams);
     if (cos_sim > cutoff) {
-      matches.emplace_back(i, cos_sim);
+      matches.emplace_back(cos_sim_match{i, cos_sim});
     }
   }
   std::sort(begin(matches), end(matches));
