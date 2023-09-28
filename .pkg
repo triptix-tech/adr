@@ -9,7 +9,7 @@
 [cista]
   url=git@github.com:felixguendling/cista.git
   branch=master
-  commit=10c3b73cfb3a1c936ff8debebc72212637e57574
+  commit=58968739f4f8d54cf891f38e5da7118a2875a550
 [googletest]
   url=git@github.com:motis-project/googletest.git
   branch=master
@@ -58,3 +58,7 @@
   url=git@github.com:motis-project/rapidjson.git
   branch=master
   commit=e7a1ac95c7840c6f4351abead02b1f7a02874197
+[lmdb]
+  url=git@github.com:motis-project/lmdb.git
+  branch=master
+  commit=9bd01f14f549d8202413c4cd5f49b066b0a22b66

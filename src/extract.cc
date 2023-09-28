@@ -25,6 +25,7 @@
 #include "tiles/osm/tmp_file.h"
 #include "tiles/util_parallel.h"
 
+#include "adr/area_database.h"
 #include "adr/typeahead.h"
 
 namespace osm = osmium;
@@ -38,7 +39,7 @@ namespace bgi = boost::geometry::index;
 
 namespace adr {
 
-using point = bg::model::point<std::int32_t, 2, bg::cs::cartesian>;
+using point = bg::model::point<std::int32_t, 2U, bg::cs::cartesian>;
 using location_index_t =
     osm::index::map::FlexMem<osm::unsigned_object_id_type, osm::Location>;
 using location_handler_t = osm::handler::NodeLocationsForWays<location_index_t>;
@@ -48,11 +49,16 @@ using area_rtree_value = std::pair<box, adr::area_idx_t>;
 using rtree = bgi::rtree<area_rtree_value, bgi::rstar<16>>;
 
 struct feature_handler : public osmium::handler::Handler {
-  feature_handler(typeahead& t,
+  feature_handler(area_database& area_db,
+                  typeahead& t,
                   import_context& ctx,
                   std::vector<area_rtree_value>& areas,
                   std::mutex& areas_mutex)
-      : t_{t}, ctx_{ctx}, areas_{areas}, areas_mutex_{areas_mutex} {}
+      : area_db_{area_db},
+        t_{t},
+        ctx_{ctx},
+        areas_{areas},
+        areas_mutex_{areas_mutex} {}
 
   void way(osmium::Way const& w) {
     if (!w.nodes().empty()) {
@@ -95,29 +101,33 @@ struct feature_handler : public osmium::handler::Handler {
 
   void area(osmium::Area const& a) {
     auto const env = a.envelope();
-    if (!env.valid()) {
+    auto const& tags = a.tags();
+    if (!env.valid() ||
+        ((!tags.has_key("admin_level") || !tags.has_key("name")) &&
+         !tags.has_key("postal_code"))) {
       return;
     }
 
-    auto const admin_area_idx = t_.add_admin_area(ctx_, a.tags());
-    auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
-
+    auto const lock = std::scoped_lock{areas_mutex_};
     auto const bbox = box{{env.bottom_left().x(), env.bottom_left().y()},
                           {env.top_right().x(), env.top_right().y()}};
     auto env_box = box{};
     bg::envelope(bbox, env_box);
 
+    auto const admin_area_idx = t_.add_admin_area(ctx_, a.tags());
     if (admin_area_idx != area_idx_t::invalid()) {
-      auto const lock = std::scoped_lock{areas_mutex_};
       areas_.emplace_back(bbox, admin_area_idx);
+      area_db_.add_area(admin_area_idx, a);
     }
 
+    auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
     if (postal_code_area_idx != area_idx_t::invalid()) {
-      auto const lock = std::scoped_lock{areas_mutex_};
       areas_.emplace_back(bbox, postal_code_area_idx);
+      area_db_.add_area(postal_code_area_idx, a);
     }
   }
 
+  area_database& area_db_;
   typeahead& t_;
   import_context& ctx_;
   std::vector<area_rtree_value>& areas_;
@@ -148,6 +158,7 @@ void extract(std::filesystem::path const& in_path,
                           .add_rule(true, "boundary", "administrative")
                           .add_rule(true, "admin_level");
 
+  auto area_db = area_database{};
   auto const node_idx_file =
       tiles::tmp_file{(tmp_dname / "idx.bin").generic_string()};
   auto const node_dat_file =
@@ -201,7 +212,7 @@ void extract(std::filesystem::path const& in_path,
 
     std::atomic_bool has_exception{false};
     std::vector<std::future<void>> workers;
-    auto handler = feature_handler{t, ctx, areas, areas_mutex};
+    auto handler = feature_handler{area_db, t, ctx, areas, areas_mutex};
     workers.reserve(thread_count / 2);
     for (auto i = 0; i < thread_count / 2; ++i) {
       workers.emplace_back(pool.submit([&] {
@@ -305,7 +316,10 @@ void extract(std::filesystem::path const& in_path,
       place_areas.resize(t.place_coordinates_.size());
       utl::parallel_for_run(
           t.place_coordinates_.size(), [&](std::size_t const i) {
-            place_areas[i] = geo_lookup(t.place_coordinates_[place_idx_t{i}]);
+            auto const c = t.place_coordinates_[place_idx_t{i}];
+            auto areas = geo_lookup(c);
+            area_db.eliminate_duplicates(t, c, areas);
+            place_areas[i] = std::move(areas);
           });
       for (auto const& x : place_areas) {
         t.place_areas_.emplace_back(t.get_or_create_area_set(ctx, x));
@@ -322,7 +336,9 @@ void extract(std::filesystem::path const& in_path,
         auto const& coordinates = t.street_pos_[street_idx];
 
         for (auto const& c : coordinates) {
-          street_areas[i].emplace_back(geo_lookup(c));
+          auto areas = geo_lookup(c);
+          area_db.eliminate_duplicates(t, c, areas);
+          street_areas[i].emplace_back(areas);
         }
       });
 

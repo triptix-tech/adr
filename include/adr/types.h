@@ -2,9 +2,10 @@
 
 #include "osmium/osm/location.hpp"
 
+#include "cista/containers/vector.h"
 #include "cista/strong.h"
 
-namespace cista::offset {}
+namespace cista::raw {}
 
 namespace adr {
 
