@@ -17,7 +17,7 @@
 [utl]
   url=git@github.com:motis-project/utl.git
   branch=master
-  commit=d35623e6b1a870aa03e43c48ed6ed754fd66ee62
+  commit=324626e2804c5e324afaa8f7a8a5b93b8771060c
 [protozero]
   url=git@github.com:motis-project/protozero.git
   branch=master

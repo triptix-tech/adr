@@ -300,9 +300,9 @@ void extract(std::filesystem::path const& in_path,
     t.house_coordinates_.resize(t.street_names_.size());
 
     auto area_bbox_rtree = rtree{areas};
-    auto const geo_lookup =
-        [&](coordinates const c) -> std::basic_string<area_idx_t> {
-      auto rtree_results = std::basic_string<area_idx_t>{};
+    auto const geo_lookup = [&](std::basic_string<area_idx_t>& rtree_results,
+                                coordinates const c) {
+      rtree_results.clear();
       area_bbox_rtree.query(
           bgi::covers(point{c.lat_, c.lng_}),
           boost::make_function_output_iterator(
@@ -314,10 +314,11 @@ void extract(std::filesystem::path const& in_path,
     {
       auto place_areas = std::vector<std::basic_string<area_idx_t>>{};
       place_areas.resize(t.place_coordinates_.size());
-      utl::parallel_for_run(
-          t.place_coordinates_.size(), [&](std::size_t const i) {
+      utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
+          t.place_coordinates_.size(),
+          [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
             auto const c = t.place_coordinates_[place_idx_t{i}];
-            auto areas = geo_lookup(c);
+            geo_lookup(areas, c);
             area_db.eliminate_duplicates(t, c, areas);
             place_areas[i] = std::move(areas);
           });
@@ -331,16 +332,18 @@ void extract(std::filesystem::path const& in_path,
           std::vector<cista::raw::vecvec<std::uint32_t, area_idx_t>>{};
       street_areas.resize(t.street_pos_.size());
 
-      utl::parallel_for_run(t.street_pos_.size(), [&](std::size_t const i) {
-        auto const street_idx = street_idx_t{i};
-        auto const& coordinates = t.street_pos_[street_idx];
+      utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
+          t.street_pos_.size(),
+          [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
+            auto const street_idx = street_idx_t{i};
+            auto const& coordinates = t.street_pos_[street_idx];
 
-        for (auto const& c : coordinates) {
-          auto areas = geo_lookup(c);
-          area_db.eliminate_duplicates(t, c, areas);
-          street_areas[i].emplace_back(areas);
-        }
-      });
+            for (auto const& c : coordinates) {
+              geo_lookup(areas, c);
+              area_db.eliminate_duplicates(t, c, areas);
+              street_areas[i].emplace_back(areas);
+            }
+          });
 
       for (auto const& [i, x] : utl::enumerate(street_areas)) {
         t.street_areas_.add_back_sized(0);
@@ -356,14 +359,17 @@ void extract(std::filesystem::path const& in_path,
           std::vector<cista::raw::vecvec<std::uint32_t, area_idx_t>>{};
       house_areas.resize(t.house_coordinates_.size());
 
-      utl::parallel_for_run(
-          t.house_coordinates_.size(), [&](std::size_t const i) {
+      utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
+          t.house_coordinates_.size(),
+          [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
             auto const street_idx = street_idx_t{i};
             auto const& coordinates = t.street_pos_[street_idx];
 
             for (auto const& c :
                  t.house_coordinates_[street_idx_t{street_idx}]) {
-              house_areas[i].emplace_back(geo_lookup(c));
+              geo_lookup(areas, c);
+              area_db.eliminate_duplicates(t, c, areas);
+              house_areas[i].emplace_back(areas);
             }
           });
 

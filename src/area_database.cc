@@ -193,23 +193,27 @@ void area_database::eliminate_duplicates(typeahead const& t,
               return t.area_admin_level_[a] < t.area_admin_level_[b];
             });
 
+  auto const adm = [&](auto&& i) { return t.area_admin_level_[areas[i]]; };
+
+  auto i = 0U;
   auto out_i = 0U;
-  utl::equal_ranges_linear(
-      areas,
-      [&](area_idx_t const a, area_idx_t const b) {
-        return t.area_admin_level_[a] == t.area_admin_level_[b];
-      },
-      [&](auto&& from, auto&& to) {
-        auto const equal_admin_lvl_span = std::span{from, to};
-        if (equal_admin_lvl_span.size() == 1U) {
-          areas[out_i++] = *from;
-        }
-        for (auto const area : equal_admin_lvl_span) {
-          if (is_within(c, area)) {
-            areas[out_i++] = area;
-          }
-        }
-      });
+  auto last_written = admin_level_t::invalid();
+  while (i < areas.size()) {
+    auto const is_duplicate =
+        (i != areas.size() - 1U && adm(i) == adm(i + 1U)) ||
+        (last_written == adm(i));
+
+    if (is_duplicate && !is_within(c, areas[i])) {
+      ++i;
+      continue;
+    }
+
+    last_written = adm(i);
+    areas[out_i] = areas[i];
+    ++i;
+    ++out_i;
+  }
+
   areas.resize(out_i);
 }
 
