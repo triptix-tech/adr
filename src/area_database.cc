@@ -1,17 +1,20 @@
 #include "adr/area_database.h"
 
-#include "cista/containers/nvec.h"
-
 #include "boost/geometry/algorithms/within.hpp"
 #include "boost/geometry/core/cs.hpp"
 #include "boost/geometry/geometries/register/multi_polygon.hpp"
 #include "boost/geometry/geometries/register/point.hpp"
 #include "boost/geometry/geometries/register/ring.hpp"
 
-#include "adr/typeahead.h"
+#include "cista/containers/nvec.h"
+
 #include "utl/enumerate.h"
 #include "utl/equal_ranges_linear.h"
 #include "utl/verify.h"
+
+#include "tg.h"
+
+#include "adr/typeahead.h"
 
 namespace osm = osmium;
 
@@ -106,70 +109,50 @@ namespace adr {
 struct area_database::impl {
   using ring_t = std::vector<coordinates>;
 
+  ~impl() {
+    for (auto const& mp : idx_) {
+      tg_geom_free(mp);
+    }
+  }
+
   void add_area(area_idx_t const area_idx, osm::Area const& area) {
-    utl::verify(outers_.size() == to_idx(area_idx),
-                "area_db: n_outers={}, area_idx={}", outers_.size(), area_idx);
-    utl::verify(inners_.size() == to_idx(area_idx),
-                "area_db: n_inners={}, area_idx={}", inners_.size(), area_idx);
+    auto const convert_ring = [&](auto&& osm_ring) {
+      ring_tmp_.clear();
+      for (auto const& p : osm_ring) {
+        ring_tmp_.emplace_back(tg_point{.x = p.lat(), .y = p.lon()});
+      }
+      return tg_ring_new(ring_tmp_.data(), ring_tmp_.size());
+    };
 
-    outer_tmp_.clear();
-    inner_tmp_.clear();
-
-    outer_tmp_.resize(area.outer_rings().size());
-    inner_tmp_.resize(area.outer_rings().size());
+    polys_tmp_.clear();
 
     for (auto const& [outer_idx, outer_ring] :
          utl::enumerate(area.outer_rings())) {
-      for (auto const& p : outer_ring) {
-        outer_tmp_[outer_idx].emplace_back(coordinates{p.x(), p.y()});
+      inner_tmp_.clear();
+      for (auto const& inner_ring : area.inner_rings(outer_ring)) {
+        inner_tmp_.emplace_back(convert_ring(inner_ring));
       }
-
-      inner_tmp_[outer_idx].resize(area.inner_rings(outer_ring).size());
-      for (auto const& [inner_idx, inner_ring] :
-           utl::enumerate(area.inner_rings(outer_ring))) {
-        for (auto const& p : inner_ring) {
-          inner_tmp_[outer_idx][inner_idx].emplace_back(
-              coordinates{p.x(), p.y()});
-        }
-      }
+      polys_tmp_.emplace_back(tg_poly_new(
+          convert_ring(outer_ring), inner_tmp_.data(), inner_tmp_.size()));
     }
 
-    outers_.emplace_back(outer_tmp_);
-    inners_.emplace_back(inner_tmp_);
-
-    utl::verify(outers_.size() == inners_.size(),
-                "size mismatch:  area_idx={}, n_outers={}, n_inners={}",
-                area_idx, outers_.size(), inners_.size());
-    utl::verify(outers_.back().size() == inners_.back().size(),
-                "size mismatch: area_idx={}, outers.size[{}/{}]={}, "
-                "inners[{}/{}].size={}",
-                area_idx, outers_.size() - 1U, outers_.size(),
-                outers_.back().size(), inners_.size() - 1U, inners_.size(),
-                inners_.back().size());
-    utl::verify(outers_.size() == to_idx(area_idx) + 1U,
-                "area_db: n_outers={}, area_idx={}", outers_.size(), area_idx);
-    utl::verify(inners_.size() == to_idx(area_idx) + 1U,
-                "area_db: n_inners={}, area_idx={}", inners_.size(), area_idx);
+    idx_.emplace_back(
+        tg_geom_new_multipolygon(polys_tmp_.data(), polys_tmp_.size()));
   }
 
-  multi_polygon get(area_idx_t const area) const {
-    auto mp = multi_polygon{};
-    utl::verify(outers_[area].size() == inners_[area].size(),
-                "size mismatch: n_outers={}, n_inners={}", outers_[area].size(),
-                inners_[area].size());
-    auto const size = outers_[area].size();
-    for (auto i = 0U; i != size; ++i) {
-      auto p = polygon{outers_[area][i], inners_[area][i]};
-      mp.emplace_back(p);
-    }
-    return mp;
+  bool is_within(coordinates const c, area_idx_t const area) {
+    auto const l = osmium::Location{c.lat_, c.lng_};
+    auto const point = tg_geom_new_point(tg_point{l.lat(), l.lon()});
+    auto const result = tg_geom_within(point, idx_[to_idx(area)]);
+    tg_geom_free(point);
+    return result;
   }
 
-  std::vector<ring_t> outer_tmp_;
-  std::vector<std::vector<ring_t>> inner_tmp_;
+  std::vector<tg_point> ring_tmp_;
+  std::vector<tg_ring*> inner_tmp_;
+  std::vector<tg_poly*> polys_tmp_;
 
-  data::nvec<area_idx_t, coordinates, 2U> outers_;
-  data::nvec<area_idx_t, coordinates, 3U> inners_;
+  std::vector<tg_geom*> idx_;
 };
 
 area_database::area_database()
@@ -182,7 +165,7 @@ void area_database::add_area(area_idx_t const area_idx, osm::Area const& area) {
 }
 
 bool area_database::is_within(coordinates const c, area_idx_t area) const {
-  return boost::geometry::within(c, impl_->get(area));
+  return impl_->is_within(c, area);
 }
 
 void area_database::eliminate_duplicates(typeahead const& t,

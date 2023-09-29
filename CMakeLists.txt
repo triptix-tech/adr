@@ -33,6 +33,7 @@ target_link_libraries(adr
     tiles-import-library
     utf8proc
     rapidjson
+    tg
 )
 target_compile_definitions(adr PUBLIC RAPIDJSON_HAS_STDSTRING)
 
