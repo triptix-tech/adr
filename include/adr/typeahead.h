@@ -183,9 +183,9 @@ struct area_set {
       auto const matched = (((1U << i) & s.matched_mask_) != 0U);
       auto const is_city =
           print_city && s.t_.area_admin_level_[areas[city_idx]] == admin_lvl;
-      if (!is_city && !matched) {
-        continue;
-      }
+      //      if (!is_city && !matched) {
+      //        continue;
+      //      }
 
       if (!first) {
         out << ", ";
@@ -200,8 +200,10 @@ struct area_set {
       if (matched) {
         out << " *";
       }
-      out << "(" << name.substr(std::max(static_cast<int>(name.size()) - 16, 0))
-          << ", " << static_cast<int>(to_idx(admin_lvl)) << ")";
+      //      out << "(" << name.substr(std::max(static_cast<int>(name.size()) -
+      //      16, 0))
+      //          << ", " << static_cast<int>(to_idx(admin_lvl)) << ")";
+      out << "(" << name << ", " << static_cast<int>(to_idx(admin_lvl)) << ")";
     }
     out << "]";
     return out;

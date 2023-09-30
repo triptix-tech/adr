@@ -1,11 +1,5 @@
 #include <cista/mmap.h>
 
-#include "boost/geometry.hpp"
-#include "boost/geometry/geometries/box.hpp"
-#include "boost/geometry/geometries/point.hpp"
-#include "boost/iterator/function_output_iterator.hpp"
-#include "boost/thread/tss.hpp"
-
 #include "osmium/area/assembler.hpp"
 #include "osmium/area/multipolygon_manager.hpp"
 #include "osmium/handler/node_locations_for_ways.hpp"
@@ -25,6 +19,8 @@
 #include "tiles/osm/tmp_file.h"
 #include "tiles/util_parallel.h"
 
+#include "rtree.h"
+
 #include "adr/area_database.h"
 #include "adr/typeahead.h"
 
@@ -34,25 +30,14 @@ namespace osm_rel = osmium::relations;
 namespace osm_eb = osmium::osm_entity_bits;
 namespace osm_area = osmium::area;
 namespace osm_mem = osmium::memory;
-namespace bg = boost::geometry;
-namespace bgi = boost::geometry::index;
 
 namespace adr {
-
-using point = bg::model::point<std::int32_t, 2U, bg::cs::cartesian>;
-using location_index_t =
-    osm::index::map::FlexMem<osm::unsigned_object_id_type, osm::Location>;
-using location_handler_t = osm::handler::NodeLocationsForWays<location_index_t>;
-
-using box = bg::model::box<point>;
-using area_rtree_value = std::pair<box, adr::area_idx_t>;
-using rtree = bgi::rtree<area_rtree_value, bgi::rstar<16>>;
 
 struct feature_handler : public osmium::handler::Handler {
   feature_handler(area_database& area_db,
                   typeahead& t,
                   import_context& ctx,
-                  std::vector<area_rtree_value>& areas,
+                  rtree* areas,
                   std::mutex& areas_mutex)
       : area_db_{area_db},
         t_{t},
@@ -109,20 +94,33 @@ struct feature_handler : public osmium::handler::Handler {
     }
 
     auto const lock = std::scoped_lock{areas_mutex_};
-    auto const bbox = box{{env.bottom_left().x(), env.bottom_left().y()},
-                          {env.top_right().x(), env.top_right().y()}};
-    auto env_box = box{};
-    bg::envelope(bbox, env_box);
 
     auto const admin_area_idx = t_.add_admin_area(ctx_, a.tags());
+    auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
+
+    for (auto const& outer : a.outer_rings()) {
+      auto const outer_env = outer.envelope();
+      auto const min_corner = std::array<double, 2U>{
+          outer_env.bottom_left().lon(), outer_env.bottom_left().lat()};
+      auto const max_corner = std::array<double, 2U>{
+          outer_env.top_right().lon(), outer_env.top_right().lat()};
+
+      if (admin_area_idx != area_idx_t::invalid()) {
+        rtree_insert(areas_, min_corner.data(), max_corner.data(),
+                     reinterpret_cast<void*>(to_idx(admin_area_idx)));
+      }
+
+      if (postal_code_area_idx != area_idx_t::invalid()) {
+        rtree_insert(areas_, min_corner.data(), max_corner.data(),
+                     reinterpret_cast<void*>(to_idx(postal_code_area_idx)));
+      }
+    }
+
     if (admin_area_idx != area_idx_t::invalid()) {
-      areas_.emplace_back(bbox, admin_area_idx);
       area_db_.add_area(admin_area_idx, a);
     }
 
-    auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
     if (postal_code_area_idx != area_idx_t::invalid()) {
-      areas_.emplace_back(bbox, postal_code_area_idx);
       area_db_.add_area(postal_code_area_idx, a);
     }
   }
@@ -130,7 +128,7 @@ struct feature_handler : public osmium::handler::Handler {
   area_database& area_db_;
   typeahead& t_;
   import_context& ctx_;
-  std::vector<area_rtree_value>& areas_;
+  rtree* areas_;
   std::mutex& areas_mutex_;
 };
 
@@ -192,7 +190,7 @@ void extract(std::filesystem::path const& in_path,
   auto ctx = import_context{};
   auto t = typeahead{};
   t.lang_names_.emplace_back("default");
-  auto areas = std::vector<area_rtree_value>{};
+  auto areas = rtree_new();
   auto areas_mutex = std::mutex{};
   auto mp_queue = tiles::in_order_queue<osm_mem::Buffer>{};
   {  // Extract streets, places, and areas.
@@ -299,14 +297,22 @@ void extract(std::filesystem::path const& in_path,
 
     t.house_coordinates_.resize(t.street_names_.size());
 
-    auto area_bbox_rtree = rtree{areas};
     auto const geo_lookup = [&](std::basic_string<area_idx_t>& rtree_results,
                                 coordinates const c) {
       rtree_results.clear();
-      area_bbox_rtree.query(
-          bgi::covers(point{c.lat_, c.lng_}),
-          boost::make_function_output_iterator(
-              [&](auto&& entry) { rtree_results.push_back(entry.second); }));
+      auto const l = osm::Location{c.lat_, c.lng_};
+      auto const min = std::array<double, 2U>{l.lon(), l.lat()};
+      rtree_search(
+          areas, min.data(), nullptr,
+          [](double const*, double const*, void const* item, void* udata) {
+            auto const area = area_idx_t{static_cast<area_idx_t::value_t>(
+                reinterpret_cast<std::intptr_t>(item))};
+            auto const rtree_results_ptr =
+                reinterpret_cast<std::basic_string<area_idx_t>*>(udata);
+            rtree_results_ptr->push_back(area);
+            return true;
+          },
+          &rtree_results);
       utl::sort(rtree_results);
       return rtree_results;
     };
