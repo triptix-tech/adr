@@ -4,11 +4,19 @@
 
 #include "cista/mmap.h"
 
+#include "utl/erase_duplicates.h"
+#include "utl/get_or_create.h"
+#include "utl/parser/arg_parser.h"
 #include "utl/timing.h"
+#include "utl/zip.h"
 
 #include "osmium/geom/coordinates.hpp"
 #include "osmium/geom/haversine.hpp"
 
+#include "adr/adr.h"
+#include "adr/cista_read.h"
+#include "adr/guess_context.h"
+#include "adr/import_context.h"
 #include "adr/trace.h"
 
 using namespace std::string_view_literals;
@@ -133,12 +141,12 @@ void typeahead::add_address(import_context& ctx,
   ctx.house_coordinates_[street_idx].emplace_back(coordinates{l.x(), l.y()});
 }
 
-void typeahead::add_street(import_context& ctx,
-                           osmium::TagList const& tags,
-                           osmium::Location const& l) {
+street_idx_t typeahead::add_street(import_context& ctx,
+                                   osmium::TagList const& tags,
+                                   osmium::Location const& l) {
   auto const name = tags["name"];
   if (name == nullptr) {
-    return;
+    return street_idx_t::invalid();
   }
 
   auto const lock = std::scoped_lock{ctx.mutex_};
@@ -148,11 +156,13 @@ void typeahead::add_street(import_context& ctx,
             osmium::geom::Coordinates{l},
             osmium::geom::Coordinates{osmium::Location{p.lat_, p.lng_}}) <
         1500.0) {
-      return;
+      return street_idx;
     }
   }
 
   ctx.street_pos_[street_idx].emplace_back(coordinates{l.x(), l.y()});
+
+  return street_idx;
 }
 
 void typeahead::add_place(import_context& ctx,
@@ -372,18 +382,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
 
 cista::wrapped<typeahead> read(std::filesystem::path const& path_in,
                                bool const mapped) {
-  constexpr auto const kMode =
-      cista::mode::UNCHECKED | cista::mode::WITH_STATIC_VERSION;
-  if (mapped) {
-    auto b = cista::buf{
-        cista::mmap{path_in.string().c_str(), cista::mmap::protection::READ}};
-    auto const p = cista::deserialize<typeahead, kMode>(b);
-    return cista::wrapped{std::move(b), p};
-  } else {
-    auto b = cista::file{path_in.c_str(), "r"}.content();
-    auto const p = cista::deserialize<typeahead, kMode>(b);
-    return cista::wrapped{std::move(b), p};
-  }
+  return cista_read<typeahead>(path_in, mapped);
 }
 
 template void typeahead::guess<true>(std::string_view normalized,

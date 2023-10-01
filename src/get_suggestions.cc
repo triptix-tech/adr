@@ -3,8 +3,10 @@
 #include "fmt/ranges.h"
 
 #include "utl/helpers/algorithm.h"
+#include "utl/insert_sorted.h"
 #include "utl/timing.h"
 #include "utl/to_vec.h"
+#include "utl/zip.h"
 
 #include "cista/containers/flat_matrix.h"
 
@@ -54,7 +56,7 @@ void activate_areas(typeahead const& t,
       auto& score = ctx.area_phrase_match_scores_[area][j];
       auto& lang = ctx.area_phrase_lang_[area][j];
       for (auto const [i, l] : utl::enumerate(languages)) {
-        auto const lang_idx = t.find_lang(t.area_name_lang_[area], l);
+        auto const lang_idx = find_lang(t.area_name_lang_[area], l);
         if (lang_idx == -1) {
           continue;
         }

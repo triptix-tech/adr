@@ -42,7 +42,10 @@ add_executable(adr-extract exe/extract.cc)
 target_link_libraries(adr-extract adr boost-program_options ${adr-mimalloc-lib})
 
 add_executable(adr-contains exe/contains.cc)
-target_link_libraries(adr-contains adr boost-program_options ${adr-mimalloc-lib})
+target_link_libraries(adr-contains adr ${adr-mimalloc-lib})
+
+add_executable(adr-reverse exe/reverse.cc)
+target_link_libraries(adr-reverse adr boost-program_options ${adr-mimalloc-lib})
 
 add_executable(adr-server exe/server.cc)
 target_link_libraries(adr-server adr uWebSockets boost-program_options ${adr-mimalloc-lib})

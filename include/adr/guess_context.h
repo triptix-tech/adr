@@ -42,10 +42,7 @@ struct matched_area {
 };
 
 struct suggestion {
-  void print(std::ostream&,
-             typeahead const&,
-             language_list_t const&,
-             guess_context const&) const;
+  void print(std::ostream&, typeahead const&, language_list_t const&) const;
   bool operator<(suggestion const& o) const { return score_ < o.score_; }
 
   std::string areas(typeahead const&) const;
