@@ -5,11 +5,112 @@
 #include "rtree.h"
 
 #include "utl/enumerate.h"
+#include "utl/pairwise.h"
+#include "utl/timer.h"
 
+#include "adr/guess_context.h"
 #include "adr/import_context.h"
 #include "adr/typeahead.h"
 
 namespace adr {
+
+template <typename PolyLine>
+std::pair<double, geo::latlng> distance_to_way(geo::latlng const& x,
+                                               PolyLine&& c) {
+  auto min = std::numeric_limits<double>::max();
+  auto best = geo::latlng{};
+  for (auto const [a, b] : utl::pairwise(c)) {
+    auto const candidate = geo::closest_on_segment(x, a, b);
+    auto const dist = geo::distance(x, candidate);
+    if (dist < min) {
+      min = dist;
+      best = candidate;
+    }
+  }
+  return {min, best};
+}
+
+void reverse::lookup(typeahead const& t,
+                     guess_context&,
+                     rtree const* rt,
+                     geo::latlng const& query,
+                     std::size_t const n_guesses) const {
+  auto const min = std::array<double, 2U>{query.lng_ - 0.01, query.lat_ - 0.01};
+  auto const max = std::array<double, 2U>{query.lng_ + 0.01, query.lat_ + 0.01};
+  using udata_t = std::tuple<adr::typeahead const*, adr::reverse const*,
+                             std::vector<adr::suggestion>*, geo::latlng>;
+  auto results = std::vector<adr::suggestion>{};
+  auto udata = udata_t{&t, this, &results, query};
+  rtree_search(
+      rt, min.data(), max.data(),
+      [](double const* min, double const* max, void const* item, void* udata) {
+        auto const [t, r, results, query] = *reinterpret_cast<udata_t*>(udata);
+        auto const e = adr::rtree_entity::from_data(item);
+
+        auto const min_latlng = geo::latlng{min[1], min[0]};
+
+        switch (e.type_) {
+          case adr::entity_type::kHouseNumber: {
+            auto const& hn = e.hn_;
+            auto const c = t->house_coordinates_[hn.street_][hn.idx_];
+            results->emplace_back(adr::suggestion{
+                .str_ = t->street_names_[hn.street_][adr::kDefaultLangIdx],
+                .location_ = adr::address{.street_ = hn.street_,
+                                          .house_number_ = hn.idx_},
+                .coordinates_ = c,
+                .area_set_ = t->house_areas_[hn.street_][hn.idx_],
+                .matched_area_lang_ = {adr::kDefaultLangIdx} /* TODO */,
+                .matched_areas_ =
+                    std::numeric_limits<decltype(std::declval<adr::suggestion>()
+                                                     .matched_areas_)>::max(),
+                .matched_tokens_ = 0U,
+                .score_ = static_cast<float>(geo::distance(query, c)) - 10.F});
+          } break;
+
+          case adr::entity_type::kPlace: {
+            auto const& p = e.place_;
+            auto const c = t->place_coordinates_[p.place_];
+            results->emplace_back(adr::suggestion{
+                .str_ = t->place_names_[p.place_][adr::kDefaultLangIdx],
+                .location_ = p.place_,
+                .coordinates_ = c,
+                .area_set_ = t->place_areas_[p.place_],
+                .matched_area_lang_ = {adr::kDefaultLangIdx} /* TODO */,
+                .matched_areas_ =
+                    std::numeric_limits<decltype(std::declval<adr::suggestion>()
+                                                     .matched_areas_)>::max(),
+                .matched_tokens_ = 0U,
+                .score_ = static_cast<float>(geo::distance(query, c)) - 10.F});
+          } break;
+
+          case adr::entity_type::kStreet:
+            auto const& s = e.street_segment_;
+            auto const [dist, closest] = distance_to_way(
+                query, r->street_segments_[s.street_][s.segment_]);
+            results->emplace_back(adr::suggestion{
+                .str_ = t->street_names_[s.street_][adr::kDefaultLangIdx],
+                .location_ =
+                    adr::address{.street_ = s.street_,
+                                 .house_number_ = adr::address::kNoHouseNumber},
+                .coordinates_ = adr::coordinates::from_latlng(closest),
+                .area_set_ = t->street_areas_[s.street_][0U] /* TODO */,
+                .matched_area_lang_ = {adr::kDefaultLangIdx} /* TODO */,
+                .matched_areas_ =
+                    std::numeric_limits<decltype(std::declval<adr::suggestion>()
+                                                     .matched_areas_)>::max(),
+                .matched_tokens_ = 0U,
+                .score_ = static_cast<float>(dist)});
+            break;
+        }
+
+        return true;
+      },
+      &udata);
+
+  utl::nth_element(results, 10U);
+  results.resize(10U);
+  utl::sort(results);
+}
 
 void reverse::add_street(import_context& ctx,
                          street_idx_t const street,
@@ -34,6 +135,8 @@ void reverse::write(import_context& ctx) {
 }
 
 rtree* reverse::build_rtree(typeahead const& t) const {
+  auto const timer = utl::scoped_timer{"build rtree"};
+
   auto rt = rtree_new();
 
   // Add street segment bounding boxes.

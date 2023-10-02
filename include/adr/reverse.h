@@ -48,9 +48,15 @@ union rtree_entity {
 static_assert(sizeof(rtree_entity) == sizeof(void*));
 
 struct import_context;
+struct guess_context;
 struct typeahead;
 
 struct reverse {
+  void lookup(typeahead const&,
+              guess_context&,
+              rtree const*,
+              geo::latlng const&,
+              std::size_t const n_guesses) const;
   void add_street(import_context&, street_idx_t const, osmium::Way const&);
   void write(import_context&);
   rtree* build_rtree(typeahead const&) const;
