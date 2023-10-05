@@ -74,7 +74,7 @@ int main(int ac, char** av) {
           auto ss = std::stringstream{};
           ctx.resize(*t);
           uWS::App()
-              .get("/geocode/:req",
+              .get("/v1/autocomplete/:req",
                    [&](uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
                      UTL_START_TIMING(timer);
                      res->writeHeader("Content-Type",
