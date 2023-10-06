@@ -9,7 +9,7 @@
 [cista]
   url=git@github.com:felixguendling/cista.git
   branch=master
-  commit=e27496c4d7befb22a52ddac859bc7a3db7a41190
+  commit=e5a58c750d5432cc4ea2855bbfc42bcea591d0f7
 [googletest]
   url=git@github.com:motis-project/googletest.git
   branch=master
@@ -65,4 +65,4 @@
 [rtree.c]
   url=git@github.com:triptix-tech/rtree.c.git
   branch=master
-  commit=d162284c2af35213f6dbfcf79132dddc629534a6
+  commit=498f993c38e80f21d55ab72f14675b72fca991cc
