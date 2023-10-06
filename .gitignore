@@ -2,3 +2,5 @@
 /deps
 /*build*
 /.pkg.mutex
+*.osm.pbf
+*.adr
