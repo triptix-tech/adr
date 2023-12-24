@@ -5,6 +5,8 @@
 
 #include "fmt/core.h"
 
+#include <openssl/ssl.h>
+
 #include "App.h"
 
 #include "utl/timing.h"
@@ -65,7 +67,6 @@ int main(int ac, char** av) {
   auto cache = adr::cache{.n_strings_ = t->strings_.size(), .max_size_ = 1000U};
 
   std::vector<std::thread*> threads(std::thread::hardware_concurrency());
-
   std::transform(
       threads.begin(), threads.end(), threads.begin(), [&](std::thread* /*t*/) {
         return new std::thread([&]() {
@@ -73,33 +74,45 @@ int main(int ac, char** av) {
           auto ctx = adr::guess_context{cache};
           auto ss = std::stringstream{};
           ctx.resize(*t);
-          uWS::App()
-              .get("/v1/autocomplete/:req",
-                   [&](uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
-                     UTL_START_TIMING(timer);
-                     res->writeHeader("Content-Type",
-                                      "text/plain;charset=UTF-8");
-                     adr::url_decode(req->getParameter(0), in);
-                     adr::get_suggestions<false>(*t, {}, in, 10U, ctx);
-                     ss.str("");
-                     for (auto const& s : ctx.suggestions_) {
-                       s.print(ss, *t);
-                     }
-                     res->end(ss.str());
-                   })
-              .listen(port,
-                      [&](auto* listen_socket) {
-                        if (listen_socket) {
-                          std::cout << "Thread " << std::this_thread::get_id()
-                                    << " listening on port " << port
-                                    << std::endl;
-                        } else {
-                          std::cout << "Thread " << std::this_thread::get_id()
-                                    << " failed to listen on port port"
-                                    << std::endl;
-                        }
+          auto server =
+              uWS::SSLApp(
+                  uWS::SocketContextOptions{
+                      .key_file_name = "deps/uWebSockets/misc/key.pem",
+                      .cert_file_name = "deps/uWebSockets/misc/cert.pem",
+                      .passphrase = "1234",
+                      .ca_file_name = "cert.pem"})
+                  .get(
+                      "/v1/autocomplete/:req",
+                      [&](uWS::HttpResponse<true>* res, uWS::HttpRequest* req) {
+                        UTL_START_TIMING(timer);
+                        res->writeHeader("Content-Type",
+                                         "text/plain;charset=UTF-8");
+                        adr::url_decode(req->getParameter(0), in);
+                        //                     adr::get_suggestions<false>(*t,
+                        //                     {}, in, 10U, ctx);
+                        ss.str("");
+                        //                     for (auto const& s :
+                        //                     ctx.suggestions_) {
+                        //                       s.print(ss, *t);
+                        //                     }
+                        //                     res->end(ss.str());
+                        res->end("HELLO");
                       })
-              .run();
+                  .listen(port, [&](auto* listen_socket) {
+                    if (listen_socket) {
+                      std::cout << "Thread " << std::this_thread::get_id()
+                                << " listening on port " << port << std::endl;
+                    } else {
+                      std::cout << "Thread " << std::this_thread::get_id()
+                                << " failed to listen on port port"
+                                << std::endl;
+                    }
+                  });
+          auto const ssl_context = server.getNativeHandle();
+          SSL_CTX_set_verify((SSL_CTX*)ssl_context,
+                             SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                             NULL);
+          server.run();
         });
       });
 
