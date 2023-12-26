@@ -7,7 +7,7 @@
 namespace adr {
 
 void url_decode(std::string_view from, std::string& to) {
-  constexpr static const char tbl[256] = {
+  constexpr static const int tbl[256] = {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0,  1,  2,  3,  4,  5,
@@ -37,8 +37,8 @@ void url_decode(std::string_view from, std::string& to) {
   while (in != in_end) {
     auto c = *in++;
     if (c == '%') {
-      if ((v1 = tbl[(unsigned char)*in++]) < 0 ||
-          (v2 = tbl[(unsigned char)*in++]) < 0) {
+      if ((v1 = static_cast<char>(tbl[(unsigned char)*in++])) < 0 ||
+          (v2 = static_cast<char>(tbl[(unsigned char)*in++])) < 0) {
         [[unlikely]] throw std::runtime_error{"invalid encoding"};
       }
       c = (v1 << 4) | v2;
