@@ -24,7 +24,7 @@ jobs:
             --endpoint-url ${{ secrets.S3_ENDPOINT }} \
             --key release/adr-extract-`git rev-parse --short $GITHUB_SHA` \
             /opt/adr/adr-extract
-          chmod +x build/adr-extract
+          chmod +x /opt/adr/adr-extract
 
       - name: Download adr-server
         run: |
@@ -33,7 +33,7 @@ jobs:
             --endpoint-url ${{ secrets.S3_ENDPOINT }} \
             --key release/adr-server-`git rev-parse --short $GITHUB_SHA` \
             /opt/adr/adr-server
-          chmod +x build/adr-server
+          chmod +x /opt/adr/adr-server
 
       - name: Extract
         run: /opt/adr/adr-extract /opt/germany-latest.osm.pbf /opt/adr/germany.adr
