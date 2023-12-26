@@ -49,7 +49,7 @@ void parse_get_parameters(std::string_view decoded, Fn&& fn) {
   }
 }
 
-std::optional<geo::latlng> parse_latlng(std::string_view s) {
+inline std::optional<geo::latlng> parse_latlng(std::string_view s) {
   auto const lat = utl::get_until(utl::cstr{s}, ',');
   if (!lat || lat[lat.len] != ',') {
     return std::nullopt;

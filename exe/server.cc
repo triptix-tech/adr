@@ -76,7 +76,6 @@ int main(int ac, char** av) {
       return new std::thread([&]() {
         auto in = std::string{};
         auto ctx = adr::guess_context{cache};
-        auto ss = std::stringstream{};
         auto lang_list =
             std::basic_string<adr::language_idx_t>{adr::kDefaultLang};
         ctx.resize(*t);
@@ -86,44 +85,26 @@ int main(int ac, char** av) {
                             .cert_file_name = "deps/uWebSockets/misc/cert.pem",
                             .passphrase = "1234",
                             .ca_file_name = "cert.pem"})
-                .get("/v1/autocomplete/:req",
+                .get("/g/:req",
                      [&](uWS::HttpResponse<true>* res, uWS::HttpRequest* req) {
+                       adr::url_decode(req->getParameter(0), in);
+                       res->end(request(in, *t, ctx, adr::api::kGPlaces));
                        res->writeHeader("Content-Type",
                                         "application/json;charset=UTF-8");
+                     })
+                .get("/mb/:req",
+                     [&](uWS::HttpResponse<true>* res, uWS::HttpRequest* req) {
                        adr::url_decode(req->getParameter(0), in);
-
-                       auto parser_error = false;
-                       auto language = std::string_view{};
-                       auto input = std::string_view{};
-                       auto location = std::optional<geo::latlng>{};
-                       auto radius = std::numeric_limits<float>::max();
-                       auto strictbounds = false;
-                       adr::parse_get_parameters(
-                           in,
-                           [&](std::string_view key, std::string_view value) {
-                             switch (cista::hash(key)) {
-                               case cista::hash("input"): input = value; break;
-
-                               case cista::hash("location"):
-                                 location = adr::parse_latlng(value);
-                                 if (!location.has_value()) {
-                                   parser_error = true;
-                                 }
-                                 break;
-
-                               case cista::hash("strictbounds"):
-                                 strictbounds = utl::parse<bool>(value);
-                                 break;
-
-                               case cista::hash("language"):
-                                 language = value;
-                                 break;
-                             }
-                           });
-                       adr::get_suggestions<false>(*t, {}, in, 10U, lang_list,
-                                                   ctx);
-                       res->end(adr::to_json(ctx.suggestions_,
-                                             adr::output_format::kGPlaces));
+                       res->end(request(in, *t, ctx, adr::api::kMB));
+                       res->writeHeader("Content-Type",
+                                        "application/json;charset=UTF-8");
+                     })
+                .get("/pelias/:req",
+                     [&](uWS::HttpResponse<true>* res, uWS::HttpRequest* req) {
+                       adr::url_decode(req->getParameter(0), in);
+                       res->end(request(in, *t, ctx, adr::api::kPelias));
+                       res->writeHeader("Content-Type",
+                                        "application/json;charset=UTF-8");
                      })
                 .listen(port, [&](auto* listen_socket) {
                   if (listen_socket) {
