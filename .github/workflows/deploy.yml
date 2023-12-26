@@ -1,0 +1,40 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ dev ]
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: [ self-hosted, linux, ARM64 ]
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Download adr-extract
+        run: |
+          aws s3api get-object \
+            --bucket release \
+            --endpoint-url ${{ secrets.S3_ENDPOINT }} \
+            --key release/adr-extract-`git rev-parse --short $GITHUB_SHA` \
+            outfile=/opt/adr/adr-extract
+
+      - name: Download adr-server
+        run: |
+          aws s3api get-object \
+            --bucket release \
+            --endpoint-url ${{ secrets.S3_ENDPOINT }} \
+            --key release/adr-server-`git rev-parse --short $GITHUB_SHA` \
+            outfile=/opt/adr/adr-server
+
+      - name: Extract
+        run: /opt/adr/adr-extract /opt/germany-latest.osm.pbf /opt/adr/germany.adr
+
+      - name: Restart Server
+        run: /bin/systemctl restart adr
