@@ -1,0 +1,68 @@
+name: Build
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+  release:
+    types:
+      - published
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: [ self-hosted, linux, ARM64 ]
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      BUILDCACHE_COMPRESS: true
+      BUILDCACHE_DIRECT_MODE: true
+      BUILDCACHE_ACCURACY: SLOPPY
+      BUILDCACHE_MAX_CACHE_SIZE: 536870912
+      CLICOLOR_FORCE: 1
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get deps
+        run: mkdir -p ~/deps && mv ~/deps .
+
+      - name: CMake
+        run: |
+          cmake \
+            -G Ninja -S . -B build \
+            -DNO_BUILDCACHE=ON \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_C_COMPILER=gcc-12 \
+            -DCMAKE_CXX_COMPILER=g++-12 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS="-march=native" \
+            -DCMAKE_CXX_FLAGS="-march=native"
+
+      - name: Build
+        run: |
+          ccache -z
+          cmake --build build --target adr-extract adr-server
+          ccache -s
+
+      - name: Upload adr-extract
+        run: |
+          aws s3api put-object \
+            --bucket release \
+            --endpoint-url ${{ secrets.S3_ENDPOINT }} \
+            --key release/adr-extract-`git rev-parse --short $GITHUB_SHA` \
+            --body build/adr-extract
+
+      - name: Upload adr-server
+        run: |
+          aws s3api put-object \
+            --bucket release \
+            --endpoint-url ${{ secrets.S3_ENDPOINT }} \
+            --key release/adr-server-`git rev-parse --short $GITHUB_SHA` \
+            --body build/adr-server
+
+      - name: Save deps
+        if: always()
+        run: mv deps ~
