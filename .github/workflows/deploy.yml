@@ -39,4 +39,4 @@ jobs:
         run: /opt/adr/adr-extract /opt/germany-latest.osm.pbf /opt/adr/germany.adr
 
       - name: Restart Server
-        run: /bin/systemctl restart adr
+        run: sudo /bin/systemctl restart adr
