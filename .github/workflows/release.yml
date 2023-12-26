@@ -44,12 +44,7 @@ jobs:
       - name: Build
         run: |
           ccache -z
-          cmake \
-            -GNinja \
-            --build build \ 
-            --target \
-            adr-extract \
-            adr-server
+          cmake --build build --target adr-extract adr-server
           ccache -s
 
       - name: Upload adr-extract
