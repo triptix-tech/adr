@@ -23,7 +23,7 @@ jobs:
             --bucket release \
             --endpoint-url ${{ secrets.S3_ENDPOINT }} \
             --key release/adr-extract-`git rev-parse --short $GITHUB_SHA` \
-            outfile=/opt/adr/adr-extract
+            /opt/adr/adr-extract
 
       - name: Download adr-server
         run: |
@@ -31,7 +31,7 @@ jobs:
             --bucket release \
             --endpoint-url ${{ secrets.S3_ENDPOINT }} \
             --key release/adr-server-`git rev-parse --short $GITHUB_SHA` \
-            outfile=/opt/adr/adr-server
+            /opt/adr/adr-server
 
       - name: Extract
         run: /opt/adr/adr-extract /opt/germany-latest.osm.pbf /opt/adr/germany.adr
