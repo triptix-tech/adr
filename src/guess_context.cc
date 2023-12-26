@@ -1,15 +1,17 @@
 #include "adr/guess_context.h"
 
+#include "fmt/format.h"
+
 #include "utl/overloaded.h"
 
+#include "adr/area_set.h"
 #include "adr/typeahead.h"
 
 namespace adr {
 
 void suggestion::print(std::ostream& out,
                        adr::typeahead const& t,
-                       language_list_t const& languages,
-                       guess_context const& ctx) const {
+                       language_list_t const& languages) const {
   std::visit(utl::overloaded{
                  [&](place_idx_t const p) {
                    out << "place=" << t.strings_[str_].view();

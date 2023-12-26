@@ -2,6 +2,8 @@
 
 #include "osmium/osm/location.hpp"
 
+#include "geo/latlng.h"
+
 #include "cista/containers/vector.h"
 #include "cista/strong.h"
 
@@ -35,9 +37,27 @@ enum class location_type_t : std::uint8_t {
 
 struct coordinates {
   friend std::ostream& operator<<(std::ostream& out, coordinates const& c) {
-    auto const l = osmium::Location{c.lat_, c.lng_};
+    auto const l = c.as_location();
     return out << '(' << l.lat() << ", " << l.lon() << ')';
   }
+
+  static coordinates from_latlng(geo::latlng const& x) {
+    auto const l = osmium::Location{x.lng_, x.lat_};
+    auto c = coordinates{};
+    c.lat_ = l.x();
+    c.lng_ = l.y();
+    return c;
+  }
+
+  osmium::Location as_location() const { return osmium::Location{lat_, lng_}; }
+
+  geo::latlng as_latlng() const {
+    auto const l = as_location();
+    return {l.lat(), l.lon()};
+  }
+
+  operator geo::latlng() const { return as_latlng(); }
+
   std::int32_t lat_, lng_;
 };
 

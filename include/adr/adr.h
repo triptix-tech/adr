@@ -25,7 +25,7 @@ template <bool Debug>
 void get_suggestions(typeahead const&,
                      geo::latlng const&,
                      std::string_view input,
-                     unsigned names,
+                     unsigned n_suggestions,
                      language_list_t const&,
                      guess_context&);
 

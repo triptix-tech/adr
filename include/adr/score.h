@@ -1,9 +1,12 @@
 #pragma once
 
 #include <bitset>
-#include "adr/normalize.h"
-#include "adr/types.h"
+
 #include "utl/parser/cstr.h"
+
+#include "adr/normalize.h"
+#include "adr/sift4.h"
+#include "adr/types.h"
 
 namespace adr {
 

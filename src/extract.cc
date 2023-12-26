@@ -22,6 +22,8 @@
 #include "rtree.h"
 
 #include "adr/area_database.h"
+#include "adr/import_context.h"
+#include "adr/reverse.h"
 #include "adr/typeahead.h"
 
 namespace osm = osmium;
@@ -36,11 +38,13 @@ namespace adr {
 struct feature_handler : public osmium::handler::Handler {
   feature_handler(area_database& area_db,
                   typeahead& t,
+                  reverse& r,
                   import_context& ctx,
                   rtree* areas,
                   std::mutex& areas_mutex)
       : area_db_{area_db},
         t_{t},
+        r_{r},
         ctx_{ctx},
         areas_{areas},
         areas_mutex_{areas_mutex} {}
@@ -57,10 +61,15 @@ struct feature_handler : public osmium::handler::Handler {
           !tags.has_tag("leisure", "playground") &&
           !tags.has_tag("access", "false") &&
           !tags.has_tag("amenity", "taxi")) {
-        tags.has_key("highway")
-            ? t_.add_street(ctx_, tags, w.nodes().front().location())
-            : t_.add_place(ctx_, w.id(), true, tags,
-                           w.nodes().front().location());
+        if (tags.has_key("highway")) {
+          auto const street =
+              t_.add_street(ctx_, tags, w.nodes().front().location());
+          if (street != street_idx_t::invalid()) {
+            r_.add_street(ctx_, street, w);
+          }
+        } else {
+          t_.add_place(ctx_, w.id(), true, tags, w.nodes().front().location());
+        }
         t_.add_address(ctx_, tags, w.nodes().front().location());
       }
     }
@@ -127,6 +136,7 @@ struct feature_handler : public osmium::handler::Handler {
 
   area_database& area_db_;
   typeahead& t_;
+  reverse& r_;
   import_context& ctx_;
   rtree* areas_;
   std::mutex& areas_mutex_;
@@ -189,6 +199,7 @@ void extract(std::filesystem::path const& in_path,
 
   auto ctx = import_context{};
   auto t = typeahead{};
+  auto r = reverse{};
   t.lang_names_.emplace_back("default");
   auto areas = rtree_new();
   auto areas_mutex = std::mutex{};
@@ -210,7 +221,7 @@ void extract(std::filesystem::path const& in_path,
 
     std::atomic_bool has_exception{false};
     std::vector<std::future<void>> workers;
-    auto handler = feature_handler{area_db, t, ctx, areas, areas_mutex};
+    auto handler = feature_handler{area_db, t, r, ctx, areas, areas_mutex};
     workers.reserve(thread_count / 2);
     for (auto i = 0; i < thread_count / 2; ++i) {
       workers.emplace_back(pool.submit([&] {
@@ -288,6 +299,7 @@ void extract(std::filesystem::path const& in_path,
     }
     t.string_to_location_.resize(t.strings_.size());
     t.string_to_type_.resize(t.strings_.size());
+    r.write(ctx);
     UTL_STOP_TIMING(copy_data);
     std::cout << "copy data timing: " << UTL_TIMING_MS(copy_data) << "\n";
   }
@@ -407,9 +419,19 @@ void extract(std::filesystem::path const& in_path,
   }
 
   {  // Write to disk.
-    auto mmap = cista::buf{
-        cista::mmap{out_path.string().c_str(), cista::mmap::protection::WRITE}};
+    auto const timer = utl::scoped_timer{"write typeahead"};
+    auto mmap =
+        cista::buf{cista::mmap{(out_path.generic_string() + ".t.adr").c_str(),
+                               cista::mmap::protection::WRITE}};
     cista::serialize<cista::mode::WITH_STATIC_VERSION>(mmap, t);
+  }
+
+  {  // Write reverse index to disk.
+    auto const timer = utl::scoped_timer{"write reverse index"};
+    auto mmap =
+        cista::buf{cista::mmap{(out_path.generic_string() + ".r.adr").c_str(),
+                               cista::mmap::protection::WRITE}};
+    cista::serialize<cista::mode::WITH_STATIC_VERSION>(mmap, r);
   }
 }
 

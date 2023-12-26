@@ -7,8 +7,13 @@
 
 namespace adr {
 
-enum class output_format { kGPlaces, kMB, kPelias };
+enum class api { kGPlaces, kMB, kPelias };
 
-std::string to_json(std::vector<suggestion> const&, output_format);
+std::string request(std::string_view,
+                    typeahead const& t,
+                    adr::guess_context&,
+                    api);
+
+std::string to_json(typeahead const& t, std::vector<suggestion> const&, api);
 
 }  // namespace adr
