@@ -19,7 +19,7 @@ endif()
 
 file(GLOB_RECURSE adr-files src/*.cc)
 add_library(adr ${adr-files})
-target_compile_features(adr PRIVATE cxx_std_23)
+target_compile_features(adr PUBLIC cxx_std_23)
 target_include_directories(adr PUBLIC include)
 target_link_libraries(adr
     osmium
@@ -35,6 +35,7 @@ target_link_libraries(adr
     rapidjson
     tg
     rtree
+    crypto
 )
 target_compile_definitions(adr PUBLIC RAPIDJSON_HAS_STDSTRING)
 

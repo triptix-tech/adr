@@ -14,11 +14,12 @@
 #include "blockingconcurrentqueue.h"
 
 #include "adr/adr.h"
+#include "adr/crypto.h"
 #include "adr/json.h"
 #include "adr/parse_get_parameters.h"
+#include "adr/request.h"
 #include "adr/typeahead.h"
 #include "adr/url_decode.h"
-#include "utl/parser/arg_parser.h"
 
 namespace fs = std::filesystem;
 
@@ -26,8 +27,11 @@ int main(int ac, char** av) {
   auto in = fs::path{"adr.cista"};
   auto mapped = false;
   auto host = std::string{"0.0.0.0"};
+  auto key_path = std::string{"./key.txt"};
+  auto iv_path = std::string{"./iv.txt"};
   auto port = 8080;
   auto num_threads = std::thread::hardware_concurrency();
+  auto unsafe = false;
 
   try {
     namespace bpo = boost::program_options;
@@ -39,7 +43,11 @@ int main(int ac, char** av) {
          "OSM input file")  //
         ("host,h", bpo::value(&host)->default_value(host), "host")  //
         ("port,p", bpo::value(&port)->default_value(port), "port")  //
+        ("key_path", bpo::value(&key_path)->default_value(key_path),
+         "key_path")  //
+        ("iv_path", bpo::value(&iv_path)->default_value(iv_path), "iv_path")  //
         ("threads,t", bpo::value(&num_threads)->default_value(num_threads))  //
+        ("unsafe,u", "unsafe")  //
         ("mmap,m", "use memory mapping");
 
     auto const pos_desc =
@@ -61,11 +69,16 @@ int main(int ac, char** av) {
     if (vm.count("mmap")) {
       mapped = true;
     }
+    if (vm.count("unsafe")) {
+      unsafe = true;
+    }
   } catch (std::exception const& ex) {
     std::cerr << ex.what() << '\n';
     return 1;
   }
 
+  auto const key = adr::crypto::read_base64_file(key_path, 32);
+  auto const iv = adr::crypto::read_base64_file(iv_path, 16);
   auto const t = adr::read(in, mapped);
   auto cache = adr::cache{.n_strings_ = t->strings_.size(), .max_size_ = 1000U};
 
@@ -77,33 +90,51 @@ int main(int ac, char** av) {
       auto ctx = adr::guess_context{cache};
       auto lang_list =
           std::basic_string<adr::language_idx_t>{adr::kDefaultLang};
+      auto c = adr::crypto{iv, key};
+      auto h = adr::http{};
+
       ctx.resize(*t);
-      auto server =
-          uWS::SSLApp(uWS::SocketContextOptions{
-                          .key_file_name = "deps/uWebSockets/misc/key.pem",
-                          .cert_file_name = "deps/uWebSockets/misc/cert.pem",
-                          .passphrase = "1234",
-                          .ca_file_name = "cert.pem"})
-              .get("/g/:req",
-                   [&](uWS::HttpResponse<true>* res, uWS::HttpRequest* req) {
-                     adr::url_decode(req->getParameter(0), in);
-                     res->end(request(in, *t, ctx, adr::api::kGPlaces));
-                     res->writeHeader("Content-Type",
-                                      "application/json;charset=UTF-8");
-                   })
-              .listen(port, [&](auto* listen_socket) {
-                if (listen_socket) {
-                  std::cout << "Thread " << std::this_thread::get_id()
-                            << " listening on port " << port << std::endl;
-                } else {
-                  std::cout << "Thread " << std::this_thread::get_id()
-                            << " failed to listen on port port" << std::endl;
-                }
-              });
-      auto const ssl_context = server.getNativeHandle();
-      SSL_CTX_set_verify((SSL_CTX*)ssl_context,
-                         SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
-                         NULL);
+
+      auto server = uWS::App();
+
+      if (unsafe) {
+        server.get("/g/:req", [&](uWS::HttpResponse<false>* res,
+                                  uWS::HttpRequest* req) {
+          adr::url_decode(req->getParameter(0), in);
+          res->end(request(in, *t, ctx, adr::api::kGPlaces));
+          res->writeHeader("Content-Type", "application/json;charset=UTF-8");
+        });
+      }
+
+      server.post("/", [&](uWS::HttpResponse<false>* res,
+                           uWS::HttpRequest* req) {
+        auto aborted = std::make_shared<bool>(false);
+        res->onData([&c, &h, res, req_body = std::make_shared<std::string>(),
+                     aborted](std::string_view chunk, bool const fin) mutable {
+          (*req_body) += chunk;
+          if (fin && !*aborted) {
+            adr::decode(c,
+                        std::span{reinterpret_cast<std::uint8_t const*>(
+                                      req_body->data()),
+                                  req_body->size()},
+                        h);
+            std::cout << h << "\n";
+            auto const response = adr::encode(c, {.body_ = "Hello World!"});
+            res->end({reinterpret_cast<char const*>(response.data()),
+                      response.size()});
+          }
+        });
+        res->onAborted([aborted]() { *aborted = true; });
+      });
+      server.listen(port, [&](auto* listen_socket) {
+        if (listen_socket) {
+          std::cout << "Thread " << std::this_thread::get_id()
+                    << " listening on port " << port << std::endl;
+        } else {
+          std::cout << "Thread " << std::this_thread::get_id()
+                    << " failed to listen on port port" << std::endl;
+        }
+      });
       server.run();
     }};
   }

@@ -53,7 +53,7 @@
 [uWebSockets]
   url=git@github.com:triptix-tech/uWebSockets.git
   branch=master
-  commit=22e346ec2087089cfe46a59d3fc4a328b63561e3
+  commit=6d73aac9097121a3c42b862d6c3019f560764dd7
 [rapidjson]
   url=git@github.com:motis-project/rapidjson.git
   branch=master
