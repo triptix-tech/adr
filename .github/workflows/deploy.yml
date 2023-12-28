@@ -17,26 +17,19 @@ jobs:
     runs-on: [ self-hosted, linux, ARM64 ]
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: Download adr-extract
-        run: |
-          aws s3api get-object \
-            --bucket release \
-            --endpoint-url ${{ secrets.S3_ENDPOINT }} \
-            --key release/adr-extract-`git rev-parse --short $GITHUB_SHA` \
-            /opt/adr/adr-extract
-          chmod +x /opt/adr/adr-extract
+      - uses: actions/checkout@v3
 
-      - name: Download adr-server
+      - name: Download Package
         run: |
+          PACKAGE=`./package.sh name`
           aws s3api get-object \
             --bucket release \
             --endpoint-url ${{ secrets.S3_ENDPOINT }} \
-            --key release/adr-server-`git rev-parse --short $GITHUB_SHA` \
-            /opt/adr/adr-server
-          chmod +x /opt/adr/adr-server
+            --key release/${PACKAGE} \
+            /opt/${PACKAGE}
 
       - name: Extract
-        run: /opt/adr/adr-extract /opt/germany-latest.osm.pbf /opt/adr/germany.adr
+        run: adr-extract /opt/germany-latest.osm.pbf /opt/adr/germany.adr
 
       - name: Restart Server
         run: sudo /bin/systemctl restart adr

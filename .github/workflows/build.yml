@@ -48,21 +48,17 @@ jobs:
           cmake --build build --target adr-extract adr-server
           ccache -s
 
-      - name: Upload adr-extract
-        run: |
-          aws s3api put-object \
-            --bucket release \
-            --endpoint-url ${{ secrets.S3_ENDPOINT }} \
-            --key release/adr-extract-`git rev-parse --short $GITHUB_SHA` \
-            --body build/adr-extract
+      - name: Package
+        run: ./package.sh
 
-      - name: Upload adr-server
+      - name: Upload Package
         run: |
+          PACKAGE=`./package.sh name`
           aws s3api put-object \
             --bucket release \
             --endpoint-url ${{ secrets.S3_ENDPOINT }} \
-            --key release/adr-server-`git rev-parse --short $GITHUB_SHA` \
-            --body build/adr-server
+            --key release/${PACKAGE} \
+            --body ${PACKAGE}
 
       - name: Save deps
         if: always()
