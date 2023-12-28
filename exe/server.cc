@@ -90,7 +90,7 @@ int main(int ac, char** av) {
       auto ctx = adr::guess_context{cache};
       auto lang_list =
           std::basic_string<adr::language_idx_t>{adr::kDefaultLang};
-      auto c = adr::crypto{iv, key};
+      auto c = adr::crypto{key};
       auto h = adr::http{};
 
       ctx.resize(*t);
@@ -108,23 +108,39 @@ int main(int ac, char** av) {
 
       server.post("/", [&](uWS::HttpResponse<false>* res,
                            uWS::HttpRequest* req) {
+        auto const iv_header = req->getHeader("x-iv");
         auto aborted = std::make_shared<bool>(false);
-        res->onData([&c, &h, res, req_body = std::make_shared<std::string>(),
-                     aborted](std::string_view chunk, bool const fin) mutable {
-          (*req_body) += chunk;
-          if (fin && !*aborted) {
-            adr::decode(c,
-                        std::span{reinterpret_cast<std::uint8_t const*>(
-                                      req_body->data()),
-                                  req_body->size()},
-                        h);
-            std::cout << h << "\n";
-            auto const response = adr::encode(c, {.body_ = "Hello World!"});
-            res->end({reinterpret_cast<char const*>(response.data()),
-                      response.size()});
-          }
-        });
-        res->onAborted([aborted]() { *aborted = true; });
+        try {
+          res->onData([&c, &h, res, req_body = std::make_shared<std::string>(),
+                       iv = adr::crypto::decode_base64(iv_header, 16), aborted](
+                          std::string_view chunk, bool const fin) mutable {
+            try {
+              (*req_body) += chunk;
+              if (fin && !*aborted) {
+                adr::decode(c, iv,
+                            std::span{reinterpret_cast<std::uint8_t const*>(
+                                          req_body->data()),
+                                      req_body->size()},
+                            h);
+                std::cout << h << "\n";
+                auto const response = adr::encode(c, {.body_ = "Hello World!"});
+                res->writeHeader("X-Iv", response.iv_);
+                res->end(
+                    {reinterpret_cast<char const*>(response.encrypted_.data()),
+                     response.encrypted_.size()});
+              }
+            } catch (...) {
+              *aborted = true;
+              res->writeStatus("500 Internal Server Error");
+              res->endWithoutBody(std::nullopt, true);
+            }
+          });
+          res->onAborted([aborted]() { *aborted = true; });
+        } catch (...) {
+          *aborted = true;
+          res->writeStatus("500 Internal Server Error");
+          res->endWithoutBody(std::nullopt, true);
+        }
       });
       server.listen(port, [&](auto* listen_socket) {
         if (listen_socket) {

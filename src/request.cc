@@ -1,5 +1,7 @@
 #include "adr/request.h"
 
+#include "openssl/rand.h"
+
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
@@ -10,8 +12,11 @@ namespace json = rapidjson;
 
 namespace adr {
 
-void decode(crypto& c, std::span<std::uint8_t const> encoded, http& req) {
-  auto const decrypted = c.crypt(encoded, adr::crypto::kDecrypt);
+void decode(crypto& c,
+            std::span<std::uint8_t const> iv,
+            std::span<std::uint8_t const> encoded,
+            http& req) {
+  auto const decrypted = c.crypt(iv, encoded, adr::crypto::kDecrypt);
   auto const input = std::string_view{
       reinterpret_cast<char const*>(decrypted.data()), decrypted.size()};
 
@@ -38,7 +43,7 @@ void decode(crypto& c, std::span<std::uint8_t const> encoded, http& req) {
   }
 }
 
-std::span<std::uint8_t const> encode(crypto& c, http const& res) {
+encoded encode(crypto& c, http const& res) {
   auto buf = json::StringBuffer{};
   auto w = json::Writer<json::StringBuffer>{buf};
 
@@ -53,10 +58,16 @@ std::span<std::uint8_t const> encode(crypto& c, http const& res) {
   }
   w.EndObject();
 
-  return c.crypt(
-      std::span{reinterpret_cast<std::uint8_t const*>(buf.GetString()),
-                buf.GetLength()},
-      adr::crypto::kEncrypt);
+  auto iv = std::vector<std::uint8_t>(16);
+  RAND_bytes(iv.data(), iv.size());
+
+  return encoded{
+      .iv_ = crypto::encode_base64(iv),
+      .encrypted_ = c.crypt(
+          iv,
+          std::span{reinterpret_cast<std::uint8_t const*>(buf.GetString()),
+                    buf.GetLength()},
+          adr::crypto::kEncrypt)};
 }
 
 }  // namespace adr

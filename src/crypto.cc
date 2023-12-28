@@ -8,11 +8,8 @@
 
 namespace adr {
 
-crypto::crypto(std::vector<std::uint8_t> const& iv,
-               std::vector<std::uint8_t> const& key)
-    : iv_{iv}, key_{key}, ctx_{EVP_CIPHER_CTX_new()} {
-  utl::verify(iv.size() == 16U,
-              "crypto: IV should be 16 bytes (128 bit), size={}", iv.size());
+crypto::crypto(std::vector<std::uint8_t> const& key)
+    : key_{key}, ctx_{EVP_CIPHER_CTX_new()} {
   utl::verify(key.size() == 32U,
               "crypto: key should be 32 bytes (256 bit), size={}", key.size());
   utl::verify(ctx_ != nullptr, "decrypt_ctx: EVP_CIPHER_CTX_new -> nullptr");
@@ -20,16 +17,15 @@ crypto::crypto(std::vector<std::uint8_t> const& iv,
 
 crypto::~crypto() { EVP_CIPHER_CTX_free(ctx_); }
 
-std::vector<std::uint8_t> crypto::read_base64_file(
-    std::filesystem::path const& path, std::size_t const expected_size) {
-  auto const content = utl::read_file(path.generic_string().c_str());
-  utl::verify(content.has_value(),
-              "read_base64_file: count not read file \"{}\"", path);
+std::vector<std::uint8_t> crypto::decode_base64(
+    std::string_view const s, std::size_t const expected_size) {
+  if (s.empty()) {
+    return {};
+  }
 
-  auto out = std::vector<std::uint8_t>(3U * content->size() / 4U + 1U);
+  auto out = std::vector<std::uint8_t>(3U * s.size() / 4U + 1U);
   auto const length = EVP_DecodeBlock(
-      out.data(), reinterpret_cast<std::uint8_t const*>(content->data()),
-      content->size());
+      out.data(), reinterpret_cast<std::uint8_t const*>(s.data()), s.size());
   utl::verify(length + 1U == out.size(),
               "read_base64_file: expected {} bytes, got {}", out.size(),
               length);
@@ -40,10 +36,32 @@ std::vector<std::uint8_t> crypto::read_base64_file(
   return out;
 }
 
-std::span<std::uint8_t const> crypto::crypt(std::span<std::uint8_t const> input,
+std::vector<std::uint8_t> crypto::read_base64_file(
+    std::filesystem::path const& path, std::size_t const expected_size) {
+  auto const content = utl::read_file(path.generic_string().c_str());
+  utl::verify(content.has_value(),
+              "read_base64_file: count not read file \"{}\"", path);
+  return decode_base64(*content, expected_size);
+}
+
+std::string crypto::encode_base64(std::span<std::uint8_t const> bytes) {
+  auto out = std::string{};
+  out.resize(4 * ((bytes.size() + 2) / 3));
+  auto const length = EVP_EncodeBlock(
+      reinterpret_cast<unsigned char*>(out.data()), bytes.data(), bytes.size());
+  utl::verify(length == out.size(), "encode_base64: expected {} bytes, got {}",
+              out.size(), length);
+  return out;
+}
+
+std::span<std::uint8_t const> crypto::crypt(std::span<std::uint8_t const> iv,
+                                            std::span<std::uint8_t const> input,
                                             mode const m) {
+  utl::verify(iv.size() == 16U,
+              "crypto: IV should be 16 bytes (128 bit), size={}", iv.size());
+
   EVP_CIPHER_CTX_reset(ctx_);
-  EVP_CipherInit(ctx_, EVP_aes_256_cbc(), key_.data(), iv_.data(), m);
+  EVP_CipherInit(ctx_, EVP_aes_256_cbc(), key_.data(), iv.data(), m);
 
   auto out_size = 0;
   buf_.resize(input.size() + AES_BLOCK_SIZE);

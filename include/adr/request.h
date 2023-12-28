@@ -16,8 +16,16 @@ struct http {
   std::string body_;
 };
 
-void decode(crypto& c, std::span<std::uint8_t const> encoded, http& req);
+struct encoded {
+  std::string iv_;
+  std::span<std::uint8_t const> encrypted_;
+};
 
-std::span<std::uint8_t const> encode(crypto& c, http const& res);
+void decode(crypto& c,
+            std::span<std::uint8_t const> iv,
+            std::span<std::uint8_t const> encoded,
+            http& req);
+
+encoded encode(crypto& c, http const& res);
 
 }  // namespace adr
