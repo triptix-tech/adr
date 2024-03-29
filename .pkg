@@ -50,14 +50,6 @@
   url=git@github.com:JuliaStrings/utf8proc.git
   branch=master
   commit=1cb28a66ca79a0845e99433fd1056257456cef8b
-[uWebSockets]
-  url=git@github.com:triptix-tech/uWebSockets.git
-  branch=master
-  commit=f824443bb2e2cac2fe09e2831bb369f10954b235
-[rapidjson]
-  url=git@github.com:motis-project/rapidjson.git
-  branch=master
-  commit=e7a1ac95c7840c6f4351abead02b1f7a02874197
 [tg]
   url=git@github.com:triptix-tech/tg.git
   branch=main
