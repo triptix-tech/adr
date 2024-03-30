@@ -59,7 +59,7 @@ struct suggestion {
 };
 
 struct cos_sim_match {
-  bool operator==(cos_sim_match const& o) const { return false; }
+  bool operator==(cos_sim_match const&) const { return false; }
   bool operator<(cos_sim_match const& o) const { return cos_sim_ > o.cos_sim_; }
   string_idx_t idx_;
   score_t cos_sim_;

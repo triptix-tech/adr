@@ -118,12 +118,14 @@ struct feature_handler : public osmium::handler::Handler {
 
       if (admin_area_idx != area_idx_t::invalid()) {
         rtree_insert(areas_, min_corner.data(), max_corner.data(),
-                     reinterpret_cast<void*>(static_cast<std::size_t>(to_idx(admin_area_idx))));
+                     reinterpret_cast<void*>(
+                         static_cast<std::size_t>(to_idx(admin_area_idx))));
       }
 
       if (postal_code_area_idx != area_idx_t::invalid()) {
         rtree_insert(areas_, min_corner.data(), max_corner.data(),
-                     reinterpret_cast<void*>(static_cast<std::size_t>(to_idx(postal_code_area_idx))));
+                     reinterpret_cast<void*>(static_cast<std::size_t>(
+                         to_idx(postal_code_area_idx))));
       }
     }
 
@@ -267,7 +269,7 @@ void extract(std::filesystem::path const& in_path,
     reader.close();
     pt->update(pt->in_high_);
 
-    std::cout << "Multipolygon Manager Memory:\n";
+    std::clog << "Multipolygon Manager Memory:\n";
     osm_rel::print_used_memory(std::clog, mp_manager.used_memory());
   }
 
@@ -301,7 +303,7 @@ void extract(std::filesystem::path const& in_path,
     t.string_to_type_.resize(t.strings_.size());
     r.write(ctx);
     UTL_STOP_TIMING(copy_data);
-    std::cout << "copy data timing: " << UTL_TIMING_MS(copy_data) << "\n";
+    std::clog << "copy data timing: " << UTL_TIMING_MS(copy_data) << "\n";
   }
 
   {  // Assign place/street/housenumber coordinates to areas.
@@ -414,7 +416,7 @@ void extract(std::filesystem::path const& in_path,
     t.build_ngram_index();
 
     UTL_STOP_TIMING(trigram_index);
-    std::cout << "trigram index timing: " << UTL_TIMING_MS(trigram_index)
+    std::clog << "trigram index timing: " << UTL_TIMING_MS(trigram_index)
               << "\n";
   }
 
