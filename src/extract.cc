@@ -1,5 +1,7 @@
 #include <cista/mmap.h>
 
+#include "fmt/std.h"
+
 #include "osmium/area/assembler.hpp"
 #include "osmium/area/multipolygon_manager.hpp"
 #include "osmium/handler/node_locations_for_ways.hpp"
@@ -116,12 +118,12 @@ struct feature_handler : public osmium::handler::Handler {
 
       if (admin_area_idx != area_idx_t::invalid()) {
         rtree_insert(areas_, min_corner.data(), max_corner.data(),
-                     reinterpret_cast<void*>(to_idx(admin_area_idx)));
+                     reinterpret_cast<void*>(static_cast<std::size_t>(to_idx(admin_area_idx))));
       }
 
       if (postal_code_area_idx != area_idx_t::invalid()) {
         rtree_insert(areas_, min_corner.data(), max_corner.data(),
-                     reinterpret_cast<void*>(to_idx(postal_code_area_idx)));
+                     reinterpret_cast<void*>(static_cast<std::size_t>(to_idx(postal_code_area_idx))));
       }
     }
 
@@ -148,15 +150,13 @@ void extract(std::filesystem::path const& in_path,
   auto input_file = osm_io::File{};
   auto file_size = std::size_t{0U};
   try {
-    input_file = osm_io::File{in_path};
+    input_file = osm_io::File{in_path.generic_string()};
     file_size =
         osm_io::Reader{input_file, osmium::io::read_meta::no}.file_size();
   } catch (...) {
     fmt::print("load_osm failed [file={}]\n", in_path);
     throw;
   }
-
-  std::cout << "size=" << file_size << "\n";
 
   auto pt = utl::get_active_progress_tracker_or_activate("import");
   pt->status("Load OSM").out_mod(3.F).in_high(2 * file_size);

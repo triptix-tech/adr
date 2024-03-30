@@ -97,7 +97,7 @@ struct cache {
   }
 
   std::mutex mtx_;
-  std::size_t n_strings_{0U};
+  string_match_count_vector_t::size_type n_strings_{0U};
   std::size_t max_size_{0U};
   std::deque<ngram_set_t> insert_order_;
   std::map<ngram_set_t, std::shared_ptr<string_match_count_vector_t>> entries_;

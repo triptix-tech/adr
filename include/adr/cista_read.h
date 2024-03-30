@@ -17,7 +17,7 @@ cista::wrapped<T> cista_read(std::filesystem::path const& path_in,
     auto const p = cista::deserialize<T, kMode>(b);
     return cista::wrapped{std::move(b), p};
   } else {
-    auto b = cista::file{path_in.c_str(), "r"}.content();
+    auto b = cista::file{path_in.generic_string().c_str(), "r"}.content();
     auto const p = cista::deserialize<T, kMode>(b);
     return cista::wrapped{std::move(b), p};
   }

@@ -51,7 +51,7 @@ struct typeahead {
                           osmium::Location const&);
 
   void add_place(import_context&,
-                 std::uint64_t id,
+                 std::int64_t id,
                  bool is_way,
                  osmium::TagList const&,
                  osmium::Location const&);

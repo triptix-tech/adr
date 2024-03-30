@@ -3,7 +3,7 @@ project(adr)
 
 include(cmake/pkg.cmake)
 
-option(ADR_MIMALLOC "use mimalloc" ON)
+option(ADR_MIMALLOC "use mimalloc" OFF)
 if (ADR_MIMALLOC)
     if(WIN32)
         set(adr-mimalloc-lib mimalloc)

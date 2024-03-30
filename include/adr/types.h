@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <string_view>
+
 #include "osmium/osm/location.hpp"
 
 #include "geo/latlng.h"
