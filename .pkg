@@ -53,7 +53,7 @@
 [tg]
   url=git@github.com:triptix-tech/tg.git
   branch=main
-  commit=80205a3b81c16459fa308d47e17b0b908a6683e3
+  commit=20c0f298b8ce58de29a790290f44dca7c4ecc364
 [rtree.c]
   url=git@github.com:triptix-tech/rtree.c.git
   branch=master
