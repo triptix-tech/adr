@@ -47,9 +47,9 @@
   branch=master
   commit=0087f000848de31b0090cb6f282348bd2fd3a9b8
 [utf8proc]
-  url=git@github.com:JuliaStrings/utf8proc.git
+  url=git@github.com:triptix-tech/utf8proc.git
   branch=master
-  commit=1cb28a66ca79a0845e99433fd1056257456cef8b
+  commit=9e535cf9b5edaa345a53c2722344fa475d1d1b6b
 [tg]
   url=git@github.com:triptix-tech/tg.git
   branch=main
