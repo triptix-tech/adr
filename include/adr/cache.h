@@ -50,6 +50,10 @@ inline ngram_set_t missing_elements(ngram_set_t const& subset,
 }
 
 struct cache {
+  cache(string_match_count_vector_t::size_type const n_strings,
+        std::size_t const max_size)
+      : n_strings_{n_strings}, max_size_{max_size} {}
+
   void add(ngram_set_t const& ref,
            std::shared_ptr<string_match_count_vector_t> v) {
     auto const lock = std::lock_guard{mtx_};

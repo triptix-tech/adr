@@ -219,7 +219,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
           }
         }
 
-        for (auto const item : items) {
+        for (auto const& item : items) {
           if (item.matched_mask_ != item_matched_mask) {
             continue;
           }
@@ -257,7 +257,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
               .area_set_ = area_set_idx,
               .matched_area_lang_ = area_lang,
               .matched_areas_ = matched_areas,
-              .matched_tokens_ = item.matched_mask_,
+              .matched_tokens_ = matched_mask,
               .score_ = total_score});
         }
       }
@@ -380,6 +380,7 @@ void match_places(std::uint8_t const numeric_tokens_mask,
                    .area_set_ = area_set_idx,
                    .matched_area_lang_ = area_lang,
                    .matched_areas_ = matched_areas_mask,
+                   .matched_tokens_ = matched_tokens_mask,
                    .score_ = total_score});
 
     ++ii;
@@ -472,19 +473,20 @@ void get_scored_matches(typeahead const& t,
 }
 
 template <bool Debug>
-void get_suggestions(typeahead const& t,
-                     geo::latlng const& /* coord */,
-                     std::string_view in,
-                     unsigned n_suggestions,
-                     language_list_t const& languages,
-                     guess_context& ctx) {
+std::vector<token> get_suggestions(typeahead const& t,
+                                   geo::latlng const& /* coord */,
+                                   std::string_view in,
+                                   unsigned n_suggestions,
+                                   language_list_t const& languages,
+                                   guess_context& ctx) {
   UTL_START_TIMING(t);
 
   ctx.suggestions_.clear();
   if (in.size() < 3) {
-    return;
+    return {};
   }
 
+  auto token_pos = std::vector<token>{};
   auto tokens = std::vector<std::string>{};
   auto all_tokens_mask = std::uint8_t{0U};
   utl::for_each_token(utl::cstr{in}, ' ', [&, i = 0U](utl::cstr token) mutable {
@@ -493,6 +495,8 @@ void get_suggestions(typeahead const& t,
     }
     tokens.emplace_back(normalize(token.view(), ctx.normalize_buf_));
     all_tokens_mask |= 1U << (i++);
+
+    token_pos.emplace_back(token.data() - in.data(), token.length());
   });
   ctx.phrases_ = get_phrases(tokens);
 
@@ -513,7 +517,7 @@ void get_suggestions(typeahead const& t,
   trace("{} suggestions [{} ms]\n", ctx.suggestions_.size(), UTL_TIMING_MS(t));
 
   if (ctx.suggestions_.empty()) {
-    return;
+    return token_pos;
   }
 
   UTL_START_TIMING(sort);
@@ -526,19 +530,22 @@ void get_suggestions(typeahead const& t,
   std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
   UTL_STOP_TIMING(sort);
   trace("sort [{} us]\n", UTL_TIMING_US(sort));
+
+  return token_pos;
 }
 
-template void get_suggestions<true>(typeahead const&,
-                                    geo::latlng const&,
-                                    std::string_view,
-                                    unsigned,
-                                    language_list_t const&,
-                                    guess_context&);
-template void get_suggestions<false>(typeahead const&,
-                                     geo::latlng const&,
-                                     std::string_view,
-                                     unsigned,
-                                     language_list_t const&,
-                                     guess_context&);
+template std::vector<token> get_suggestions<true>(typeahead const&,
+                                                  geo::latlng const&,
+                                                  std::string_view,
+                                                  unsigned,
+                                                  language_list_t const&,
+                                                  guess_context&);
+
+template std::vector<token> get_suggestions<false>(typeahead const&,
+                                                   geo::latlng const&,
+                                                   std::string_view,
+                                                   unsigned,
+                                                   language_list_t const&,
+                                                   guess_context&);
 
 }  // namespace adr

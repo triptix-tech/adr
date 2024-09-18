@@ -15,6 +15,11 @@ namespace adr {
 
 struct typeahead;
 
+struct token {
+  std::uint16_t start_idx_;
+  std::uint16_t size_;
+};
+
 void extract(std::filesystem::path const& in,
              std::filesystem::path const& out,
              std::filesystem::path const& tmp_dname);
@@ -22,12 +27,12 @@ void extract(std::filesystem::path const& in,
 cista::wrapped<typeahead> read(std::filesystem::path const&, bool mapped);
 
 template <bool Debug>
-void get_suggestions(typeahead const&,
-                     geo::latlng const&,
-                     std::string_view input,
-                     unsigned n_suggestions,
-                     language_list_t const&,
-                     guess_context&);
+std::vector<token> get_suggestions(typeahead const&,
+                                   geo::latlng const&,
+                                   std::string_view input,
+                                   unsigned n_suggestions,
+                                   language_list_t const&,
+                                   guess_context&);
 
 void print_stats(typeahead const&);
 
