@@ -489,14 +489,15 @@ std::vector<token> get_suggestions(typeahead const& t,
   auto token_pos = std::vector<token>{};
   auto tokens = std::vector<std::string>{};
   auto all_tokens_mask = std::uint8_t{0U};
-  utl::for_each_token(utl::cstr{in}, ' ', [&, i = 0U](utl::cstr token) mutable {
-    if (token.empty()) {
+  utl::for_each_token(utl::cstr{in}, ' ', [&, i = 0U](utl::cstr t) mutable {
+    if (t.empty()) {
       return;
     }
-    tokens.emplace_back(normalize(token.view(), ctx.normalize_buf_));
+    tokens.emplace_back(normalize(t.view(), ctx.normalize_buf_));
     all_tokens_mask |= 1U << (i++);
 
-    token_pos.emplace_back(token.data() - in.data(), token.length());
+    token_pos.push_back(token{static_cast<std::uint16_t>(t.data() - in.data()),
+                              static_cast<std::uint16_t>(t.length())});
   });
   ctx.phrases_ = get_phrases(tokens);
 
