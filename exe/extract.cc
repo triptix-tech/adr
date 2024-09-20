@@ -14,7 +14,7 @@ int main(int ac, char** av) {
   auto const progress_bars = utl::global_progress_bars{false};
 
   auto in = fs::path{"osm.pbf"};
-  auto out = fs::path{"adr.cista"};
+  auto out = fs::path{"adr"};
   auto tmp = fs::path{"."};
 
   try {
@@ -52,5 +52,7 @@ int main(int ac, char** av) {
   std::cout << "IN: " << in << "\n"
             << "OUT: " << out << "\n"
             << "TMP: " << tmp << "\n";
+  auto ec = std::error_code{};
+  fs::create_directories(out, ec);
   adr::extract(in, out, tmp);
 }

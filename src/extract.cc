@@ -168,7 +168,7 @@ void extract(std::filesystem::path const& in_path,
                           .add_rule(true, "boundary", "administrative")
                           .add_rule(true, "admin_level");
 
-  auto area_db = area_database{};
+  auto area_db = area_database{out_path, cista::mmap::protection::WRITE};
   auto const node_idx_file =
       tiles::tmp_file{(tmp_dname / "idx.bin").generic_string()};
   auto const node_dat_file =
@@ -423,7 +423,7 @@ void extract(std::filesystem::path const& in_path,
   {  // Write to disk.
     auto const timer = utl::scoped_timer{"write typeahead"};
     auto mmap =
-        cista::buf{cista::mmap{(out_path.generic_string() + ".t.adr").c_str(),
+        cista::buf{cista::mmap{(out_path / "t.adr").generic_string().c_str(),
                                cista::mmap::protection::WRITE}};
     cista::serialize<cista::mode::WITH_STATIC_VERSION>(mmap, t);
   }
@@ -431,7 +431,7 @@ void extract(std::filesystem::path const& in_path,
   {  // Write reverse index to disk.
     auto const timer = utl::scoped_timer{"write reverse index"};
     auto mmap =
-        cista::buf{cista::mmap{(out_path.generic_string() + ".r.adr").c_str(),
+        cista::buf{cista::mmap{(out_path / "r.adr").generic_string().c_str(),
                                cista::mmap::protection::WRITE}};
     cista::serialize<cista::mode::WITH_STATIC_VERSION>(mmap, r);
   }

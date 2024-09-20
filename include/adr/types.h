@@ -44,6 +44,9 @@ struct coordinates {
     return out << '(' << l.lat() << ", " << l.lon() << ')';
   }
 
+  static coordinates from_location(osmium::Location const& l) {
+    return {.lat_ = l.x(), .lng_ = l.y()};
+  }
   static coordinates from_latlng(geo::latlng const& x) {
     auto const l = osmium::Location{x.lng_, x.lat_};
     auto c = coordinates{};

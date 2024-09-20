@@ -1,5 +1,7 @@
 #include "adr/area_database.h"
 
+#include <ranges>
+
 #include "boost/geometry/algorithms/within.hpp"
 #include "boost/geometry/core/cs.hpp"
 #include "boost/geometry/geometries/register/multi_polygon.hpp"
@@ -17,11 +19,20 @@
 #include "adr/typeahead.h"
 
 namespace osm = osmium;
+namespace fs = std::filesystem;
+namespace v = std::ranges::views;
 
 namespace adr {
 
-using inner_rings_t = data::nvec<area_idx_t, coordinates, 3U>;
-using outer_rings_t = data::nvec<area_idx_t, coordinates, 2U>;
+template <typename T>
+using mm_vec = cista::basic_mmap_vec<T, std::uint64_t>;
+
+template <typename K, typename V, std::size_t N>
+using mm_nvec =
+    cista::basic_nvec<K, mm_vec<V>, mm_vec<std::uint64_t>, N, std::uint64_t>;
+
+using inner_rings_t = mm_nvec<area_idx_t, coordinates, 3U>;
+using outer_rings_t = mm_nvec<area_idx_t, coordinates, 2U>;
 using ring_t = cista::const_bucket<inner_rings_t::data_vec_t,
                                    inner_rings_t::index_vec_t,
                                    inner_rings_t::size_type>;
@@ -107,12 +118,25 @@ struct closure<adr::ring_t> {
 namespace adr {
 
 struct area_database::impl {
-  using ring_t = std::vector<coordinates>;
+  impl(fs::path p, cista::mmap::protection const mode)
+      : p_{std::move(p)},
+        mode_{mode},
+        outer_rings_{{mm_vec<std::uint64_t>{mm("outer_rings_idx_0.bin")},
+                      mm_vec<std::uint64_t>{mm("outer_rings_idx_1.bin")}},
+                     mm_vec<coordinates>{mm("outer_rings_data.bin")}},
+        inner_rings_{{mm_vec<std::uint64_t>{mm("inner_rings_idx_0.bin")},
+                      mm_vec<std::uint64_t>{mm("inner_rings_idx_1.bin")},
+                      mm_vec<std::uint64_t>{mm("inner_rings_idx_1.bin")}},
+                     mm_vec<coordinates>{mm("inner_rings_data.bin")}} {}
 
   ~impl() {
     for (auto const& mp : idx_) {
       tg_geom_free(mp);
     }
+  }
+
+  cista::mmap mm(char const* file) {
+    return cista::mmap{(p_ / file).generic_string().c_str(), mode_};
   }
 
   void add_area(area_idx_t const area_idx, osm::Area const& area) {
@@ -125,6 +149,33 @@ struct area_database::impl {
     };
 
     polys_tmp_.clear();
+
+    auto const nodes_to_coordinates = [](auto&& n) {
+      return coordinates::from_location(n.location());
+    };
+    auto const ring_to_coordinates = [&](auto&& r) {
+      return r | v::transform(nodes_to_coordinates);
+    };
+
+    struct carry {
+      carry(osm::Area const& area, osmium::OuterRing&& outer)
+          : outer_{outer}, inner_{area.inner_rings(outer_)} {}
+
+      osmium::OuterRing outer_;
+      osmium::memory::ItemIteratorRange<const osmium::InnerRing> inner_;
+    };
+
+    outer_rings_.emplace_back(area.outer_rings() |
+                              v::transform(ring_to_coordinates));
+    inner_rings_.emplace_back(area.outer_rings()  //
+                              | v::transform([&](auto&& outer_ring) {
+                                  return carry{area, std::move(outer_ring)};
+                                })  //
+                              | v::transform([&](auto&& x) {
+                                  auto const& [outer_ring, inner_rings] = x;
+                                  return inner_rings |
+                                         v::transform(ring_to_coordinates);
+                                }));
 
     for (auto const& [outer_idx, outer_ring] :
          utl::enumerate(area.outer_rings())) {
@@ -148,6 +199,12 @@ struct area_database::impl {
     return result;
   }
 
+  std::filesystem::path p_;
+  cista::mmap::protection mode_;
+
+  outer_rings_t outer_rings_;
+  inner_rings_t inner_rings_;
+
   std::vector<tg_point> ring_tmp_;
   std::vector<tg_ring*> inner_tmp_;
   std::vector<tg_poly*> polys_tmp_;
@@ -155,8 +212,9 @@ struct area_database::impl {
   std::vector<tg_geom*> idx_;
 };
 
-area_database::area_database()
-    : impl_{std::make_unique<area_database::impl>()} {}
+area_database::area_database(std::filesystem::path p,
+                             cista::mmap::protection const mode)
+    : impl_{std::make_unique<area_database::impl>(std::move(p), mode)} {}
 
 area_database::~area_database() = default;
 

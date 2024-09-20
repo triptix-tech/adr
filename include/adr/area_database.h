@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <memory>
 
+#include "cista/mmap.h"
+
 #include "osmium/osm/area.hpp"
 
 #include "adr/types.h"
@@ -12,7 +14,7 @@ namespace adr {
 struct typeahead;
 
 struct area_database final {
-  area_database();
+  area_database(std::filesystem::path, cista::mmap::protection const mode);
   ~area_database();
 
   void add_area(area_idx_t, osmium::Area const&);
