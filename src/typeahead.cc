@@ -64,7 +64,7 @@ area_idx_t typeahead::add_postal_code_area(import_context& ctx,
   auto const lock = std::scoped_lock{ctx.mutex_};
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(kPostalCodeAdminLevel);
-  area_population_.emplace_back(population{.value_ = 0U });
+  area_population_.emplace_back(population{.value_ = 0U});
   area_names_.emplace_back({get_or_create_string(ctx, postal_code)});
   area_name_lang_.emplace_back({kDefaultLang});
   return idx;
@@ -98,10 +98,10 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
                 });
 
   auto const p = tags["population"];
-  area_population_.emplace_back(population{p == nullptr
-                                    ? std::uint16_t{0U}
-                                    : static_cast<uint16_t>(utl::parse<unsigned>(p) /
-                                          population::kCompressionFactor)});
+  area_population_.emplace_back(population{
+      p == nullptr ? std::uint16_t{0U}
+                   : static_cast<uint16_t>(utl::parse<unsigned>(p) /
+                                           population::kCompressionFactor)});
 
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(admin_level_t{admin_lvl_int});
@@ -138,7 +138,8 @@ void typeahead::add_address(import_context& ctx,
   auto const street_idx = get_or_create_street(ctx, street);
   auto const house_number_idx = get_or_create_string(ctx, house_number);
   ctx.house_numbers_[street_idx].emplace_back(house_number_idx);
-  ctx.house_coordinates_[street_idx].emplace_back(coordinates{l.x(), l.y()});
+  ctx.house_coordinates_[street_idx].emplace_back(
+      coordinates::from_location(l));
 }
 
 street_idx_t typeahead::add_street(import_context& ctx,
@@ -154,13 +155,12 @@ street_idx_t typeahead::add_street(import_context& ctx,
   for (auto const p : ctx.street_pos_[street_idx]) {
     if (osmium::geom::haversine::distance(
             osmium::geom::Coordinates{l},
-            osmium::geom::Coordinates{osmium::Location{p.lat_, p.lng_}}) <
-        1500.0) {
+            osmium::geom::Coordinates{p.as_location()}) < 1500.0) {
       return street_idx;
     }
   }
 
-  ctx.street_pos_[street_idx].emplace_back(coordinates{l.x(), l.y()});
+  ctx.street_pos_[street_idx].emplace_back(coordinates::from_location(l));
 
   return street_idx;
 }
@@ -197,12 +197,13 @@ void typeahead::add_place(import_context& ctx,
                 });
 
   auto const population = tags["population"];
-  place_population_.emplace_back(population == nullptr
-                                     ? std::uint16_t{0U}
-                                     : static_cast<std::uint16_t>(utl::parse<unsigned>(population) /
-                                           population::kCompressionFactor));
+  place_population_.emplace_back(
+      population == nullptr
+          ? std::uint16_t{0U}
+          : static_cast<std::uint16_t>(utl::parse<unsigned>(population) /
+                                       population::kCompressionFactor));
 
-  place_coordinates_.emplace_back(l.x(), l.y());
+  place_coordinates_.emplace_back(coordinates::from_location(l));
   place_osm_ids_.emplace_back(id);
   place_is_way_.resize(place_is_way_.size() + 1U);
   place_is_way_.set(idx, is_way);

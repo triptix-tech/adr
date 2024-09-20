@@ -7,6 +7,8 @@
 
 #include "geo/latlng.h"
 
+#include "tg.h"
+
 #include "cista/containers/vector.h"
 #include "cista/strong.h"
 
@@ -45,17 +47,14 @@ struct coordinates {
   }
 
   static coordinates from_location(osmium::Location const& l) {
-    return {.lat_ = l.x(), .lng_ = l.y()};
-  }
-  static coordinates from_latlng(geo::latlng const& x) {
-    auto const l = osmium::Location{x.lng_, x.lat_};
-    auto c = coordinates{};
-    c.lat_ = l.x();
-    c.lng_ = l.y();
-    return c;
+    return {.lat_ = l.y(), .lng_ = l.x()};
   }
 
-  osmium::Location as_location() const { return osmium::Location{lat_, lng_}; }
+  static coordinates from_latlng(geo::latlng const& x) {
+    return from_location(osmium::Location{x.lng(), x.lat()});
+  }
+
+  osmium::Location as_location() const { return osmium::Location{lng_, lat_}; }
 
   geo::latlng as_latlng() const {
     auto const l = as_location();
@@ -63,6 +62,9 @@ struct coordinates {
   }
 
   operator geo::latlng() const { return as_latlng(); }
+
+  double lat() const { return as_location().lat(); }
+  double lon() const { return as_location().lon(); }
 
   std::int32_t lat_, lng_;
 };

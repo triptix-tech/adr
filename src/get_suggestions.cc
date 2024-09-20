@@ -112,7 +112,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
 
         ctx.area_match_items_[areas_idx].emplace_back(match_item{
             .type_ = match_item::type::kHouseNumber,
-            .score_ = t.strings_[hn].view() == p.s_ ? -1.5F : hn_score,
+            .score_ = t.strings_[hn].view() == p.s_ ? -2.5F : hn_score,
             .index_ = index,
             .house_number_p_idx_ = static_cast<std::uint8_t>(hn_p_idx),
             .matched_mask_ = static_cast<std::uint8_t>(

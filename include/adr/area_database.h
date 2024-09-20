@@ -17,11 +17,11 @@ struct area_database final {
   area_database(std::filesystem::path, cista::mmap::protection const mode);
   ~area_database();
 
+  void lookup(typeahead const&,
+              coordinates,
+              std::basic_string<area_idx_t>&) const;
   void add_area(area_idx_t, osmium::Area const&);
   bool is_within(coordinates, area_idx_t) const;
-  void eliminate_duplicates(typeahead const&,
-                            coordinates,
-                            std::basic_string<area_idx_t>&);
 
   struct impl;
   std::unique_ptr<impl> impl_;

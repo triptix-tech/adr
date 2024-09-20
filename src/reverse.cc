@@ -11,6 +11,7 @@
 #include "adr/guess_context.h"
 #include "adr/import_context.h"
 #include "adr/typeahead.h"
+#include "geo/box.h"
 
 namespace adr {
 
@@ -35,8 +36,10 @@ void reverse::lookup(typeahead const& t,
                      rtree const* rt,
                      geo::latlng const& query,
                      std::size_t const n_guesses) const {
-  auto const min = std::array<double, 2U>{query.lng_ - 0.01, query.lat_ - 0.01};
-  auto const max = std::array<double, 2U>{query.lng_ + 0.01, query.lat_ + 0.01};
+  auto const b = geo::box{query, 1000.0};
+  auto const min = b.min_.lnglat();
+  auto const max = b.max_.lnglat();
+  
   using udata_t = std::tuple<adr::typeahead const*, adr::reverse const*,
                              std::vector<adr::suggestion>*, geo::latlng>;
   auto results = std::vector<adr::suggestion>{};
@@ -123,7 +126,7 @@ void reverse::add_street(import_context& ctx,
   auto bucket =
       ctx.street_segments_[to_idx(street)].add_back_sized(way.nodes().size());
   for (auto const [i, n] : utl::enumerate(way.nodes())) {
-    bucket[i] = coordinates{n.x(), n.y()};
+    bucket[i] = coordinates::from_location(n.location());
   }
 }
 
@@ -142,15 +145,13 @@ rtree* reverse::build_rtree(typeahead const& t) const {
   // Add street segment bounding boxes.
   for (auto const [street, segments] : utl::enumerate(street_segments_)) {
     for (auto const [segment_idx, segment] : utl::enumerate(segments)) {
-      auto b = osmium::Box{};
+      auto b = geo::box{};
       for (auto const& c : segment) {
-        b.extend(osmium::Location{c.lat_, c.lng_});
+        b.extend(c);
       }
 
-      auto const min_corner =
-          std::array<double, 2U>{b.bottom_left().lon(), b.bottom_left().lat()};
-      auto const max_corner =
-          std::array<double, 2U>{b.top_right().lon(), b.top_right().lat()};
+      auto const min_corner = b.min_.lnglat();
+      auto const max_corner = b.max_.lnglat();
 
       rtree_insert(
           rt, min_corner.data(), max_corner.data(),

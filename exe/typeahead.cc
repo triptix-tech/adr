@@ -42,7 +42,7 @@ constexpr auto const kAddresses = std::array<std::string_view, 16>{
     "3833 Princeton Pkwy SW"};
 
 int main(int ac, char** av) {
-  auto in = fs::path{"adr.cista"};
+  auto in = fs::path{"adr"};
   auto guess = std::string{""};
   auto file = std::string{""};
   auto languages = std::vector<std::string>{};
@@ -113,7 +113,7 @@ int main(int ac, char** av) {
     return 1;
   }
 
-  auto const t = adr::read(in, mapped);
+  auto const t = adr::read(in / "t.bin", mapped);
   adr::print_stats(*t);
 
   auto lang_indices =
@@ -201,7 +201,7 @@ int main(int ac, char** av) {
 
     for (auto const& [i, s] : utl::enumerate(ctx.suggestions_)) {
       std::cout << "[" << i << "]\t";
-      s.print(std::cout, *t, lang_indices, ctx);
+      s.print(std::cout, *t, lang_indices);
     }
     return 0;
   } else {
@@ -225,7 +225,7 @@ int main(int ac, char** av) {
       list.emplace_back(text(fmt::format("{} ms", UTL_TIMING_MS(timer))));
       for (auto const& s : ctx.suggestions_) {
         auto ss = std::stringstream{};
-        s.print(ss, *t, lang_indices, ctx);
+        s.print(ss, *t, lang_indices);
         list.push_back(text(ss.str()));
       }
       return vbox(std::move(list)) |

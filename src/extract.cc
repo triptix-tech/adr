@@ -21,8 +21,6 @@
 #include "tiles/osm/tmp_file.h"
 #include "tiles/util_parallel.h"
 
-#include "rtree.h"
-
 #include "adr/area_database.h"
 #include "adr/import_context.h"
 #include "adr/reverse.h"
@@ -42,14 +40,8 @@ struct feature_handler : public osmium::handler::Handler {
                   typeahead& t,
                   reverse& r,
                   import_context& ctx,
-                  rtree* areas,
                   std::mutex& areas_mutex)
-      : area_db_{area_db},
-        t_{t},
-        r_{r},
-        ctx_{ctx},
-        areas_{areas},
-        areas_mutex_{areas_mutex} {}
+      : area_db_{area_db}, t_{t}, r_{r}, ctx_{ctx}, areas_mutex_{areas_mutex} {}
 
   void way(osmium::Way const& w) {
     if (!w.nodes().empty()) {
@@ -109,26 +101,6 @@ struct feature_handler : public osmium::handler::Handler {
     auto const admin_area_idx = t_.add_admin_area(ctx_, a.tags());
     auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
 
-    for (auto const& outer : a.outer_rings()) {
-      auto const outer_env = outer.envelope();
-      auto const min_corner = std::array<double, 2U>{
-          outer_env.bottom_left().lon(), outer_env.bottom_left().lat()};
-      auto const max_corner = std::array<double, 2U>{
-          outer_env.top_right().lon(), outer_env.top_right().lat()};
-
-      if (admin_area_idx != area_idx_t::invalid()) {
-        rtree_insert(areas_, min_corner.data(), max_corner.data(),
-                     reinterpret_cast<void*>(
-                         static_cast<std::size_t>(to_idx(admin_area_idx))));
-      }
-
-      if (postal_code_area_idx != area_idx_t::invalid()) {
-        rtree_insert(areas_, min_corner.data(), max_corner.data(),
-                     reinterpret_cast<void*>(static_cast<std::size_t>(
-                         to_idx(postal_code_area_idx))));
-      }
-    }
-
     if (admin_area_idx != area_idx_t::invalid()) {
       area_db_.add_area(admin_area_idx, a);
     }
@@ -142,7 +114,6 @@ struct feature_handler : public osmium::handler::Handler {
   typeahead& t_;
   reverse& r_;
   import_context& ctx_;
-  rtree* areas_;
   std::mutex& areas_mutex_;
 };
 
@@ -203,7 +174,6 @@ void extract(std::filesystem::path const& in_path,
   auto t = typeahead{};
   auto r = reverse{};
   t.lang_names_.emplace_back("default");
-  auto areas = rtree_new();
   auto areas_mutex = std::mutex{};
   auto mp_queue = tiles::in_order_queue<osm_mem::Buffer>{};
   {  // Extract streets, places, and areas.
@@ -223,7 +193,7 @@ void extract(std::filesystem::path const& in_path,
 
     std::atomic_bool has_exception{false};
     std::vector<std::future<void>> workers;
-    auto handler = feature_handler{area_db, t, r, ctx, areas, areas_mutex};
+    auto handler = feature_handler{area_db, t, r, ctx, areas_mutex};
     workers.reserve(thread_count / 2);
     for (auto i = 0; i < thread_count / 2; ++i) {
       workers.emplace_back(pool.submit([&] {
@@ -311,37 +281,17 @@ void extract(std::filesystem::path const& in_path,
 
     t.house_coordinates_.resize(t.street_names_.size());
 
-    auto const geo_lookup = [&](std::basic_string<area_idx_t>& rtree_results,
-                                coordinates const c) {
-      rtree_results.clear();
-      auto const l = osm::Location{c.lat_, c.lng_};
-      auto const min = std::array<double, 2U>{l.lon(), l.lat()};
-      rtree_search(
-          areas, min.data(), nullptr,
-          [](double const*, double const*, void const* item, void* udata) {
-            auto const area = area_idx_t{static_cast<area_idx_t::value_t>(
-                reinterpret_cast<std::intptr_t>(item))};
-            auto const rtree_results_ptr =
-                reinterpret_cast<std::basic_string<area_idx_t>*>(udata);
-            rtree_results_ptr->push_back(area);
-            return true;
-          },
-          &rtree_results);
-      utl::sort(rtree_results);
-      return rtree_results;
-    };
-
     {
       auto place_areas = std::vector<std::basic_string<area_idx_t>>{};
       place_areas.resize(t.place_coordinates_.size());
+
       utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
           t.place_coordinates_.size(),
           [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
-            auto const c = t.place_coordinates_[place_idx_t{i}];
-            geo_lookup(areas, c);
-            area_db.eliminate_duplicates(t, c, areas);
+            area_db.lookup(t, t.place_coordinates_[place_idx_t{i}], areas);
             place_areas[i] = std::move(areas);
           });
+
       for (auto const& x : place_areas) {
         t.place_areas_.emplace_back(t.get_or_create_area_set(ctx, x));
       }
@@ -355,12 +305,8 @@ void extract(std::filesystem::path const& in_path,
       utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
           t.street_pos_.size(),
           [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
-            auto const street_idx = street_idx_t{i};
-            auto const& coordinates = t.street_pos_[street_idx];
-
-            for (auto const& c : coordinates) {
-              geo_lookup(areas, c);
-              area_db.eliminate_duplicates(t, c, areas);
+            for (auto const& c : t.street_pos_[street_idx_t{i}]) {
+              area_db.lookup(t, c, areas);
               street_areas[i].emplace_back(areas);
             }
           });
@@ -382,13 +328,8 @@ void extract(std::filesystem::path const& in_path,
       utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
           t.house_coordinates_.size(),
           [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
-            auto const street_idx = street_idx_t{i};
-            auto const& coordinates = t.street_pos_[street_idx];
-
-            for (auto const& c :
-                 t.house_coordinates_[street_idx_t{street_idx}]) {
-              geo_lookup(areas, c);
-              area_db.eliminate_duplicates(t, c, areas);
+            for (auto const& c : t.house_coordinates_[street_idx_t{i}]) {
+              area_db.lookup(t, c, areas);
               house_areas[i].emplace_back(areas);
             }
           });
@@ -423,7 +364,7 @@ void extract(std::filesystem::path const& in_path,
   {  // Write to disk.
     auto const timer = utl::scoped_timer{"write typeahead"};
     auto mmap =
-        cista::buf{cista::mmap{(out_path / "t.adr").generic_string().c_str(),
+        cista::buf{cista::mmap{(out_path / "t.bin").generic_string().c_str(),
                                cista::mmap::protection::WRITE}};
     cista::serialize<cista::mode::WITH_STATIC_VERSION>(mmap, t);
   }
@@ -431,7 +372,7 @@ void extract(std::filesystem::path const& in_path,
   {  // Write reverse index to disk.
     auto const timer = utl::scoped_timer{"write reverse index"};
     auto mmap =
-        cista::buf{cista::mmap{(out_path / "r.adr").generic_string().c_str(),
+        cista::buf{cista::mmap{(out_path / "r.bin").generic_string().c_str(),
                                cista::mmap::protection::WRITE}};
     cista::serialize<cista::mode::WITH_STATIC_VERSION>(mmap, r);
   }
