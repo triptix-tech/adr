@@ -1,6 +1,11 @@
 #pragma once
 
+#include <cinttypes>
 #include <iosfwd>
+#include <limits>
+#include <ostream>
+#include <string>
+#include <variant>
 
 #include "adr/types.h"
 
