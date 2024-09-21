@@ -75,7 +75,6 @@ struct area_database::impl {
 
       auto mutex = std::mutex{};
 
-      std::cout << "area_polygons=" << outer_rings_.size() << "\n";
       idx_.resize(outer_rings_.size());
       utl::parallel_for_run_threadlocal<tmp>(
           outer_rings_.size(), [&](tmp& tmp, std::size_t const i) {
