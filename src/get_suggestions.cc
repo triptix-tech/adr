@@ -112,7 +112,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
 
         ctx.area_match_items_[areas_idx].emplace_back(match_item{
             .type_ = match_item::type::kHouseNumber,
-            .score_ = t.strings_[hn].view() == p.s_ ? -1.5F : hn_score,
+            .score_ = t.strings_[hn].view() == p.s_ ? -2.5F : hn_score,
             .index_ = index,
             .house_number_p_idx_ = static_cast<std::uint8_t>(hn_p_idx),
             .matched_mask_ = static_cast<std::uint8_t>(
@@ -142,13 +142,9 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
           auto best_area_idx = 0U;
 
           if ((area_p.token_bits_ & matched_mask) != 0U) {
-            //            std::cout
-            //                <<
-            //                t.strings_[t.street_names_[street][kDefaultLangIdx]].view()
-            //                << " [p=" << ctx.phrases_[street_p_idx].s_ << "] "
-            //                << area_p.s_
-            //                << " -> ALREADY MATCHED"
-            //                << "\n";
+            trace("{} [p={}] {} -> ALREADY MATCHED",
+                  t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+                  ctx.phrases_[street_p_idx].s_, area_p.s_);
             continue;
           }
 
@@ -165,31 +161,22 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
                 );
 
             if (!match_allowed) {
-              //              std::cout
-              //                  <<
-              //                  t.strings_[t.street_names_[street][kDefaultLangIdx]].view()
-              //                  << " [p=" << ctx.phrases_[street_p_idx].s_ <<
-              //                  "]"
-              //                  << "\t\t\t" << *t.get_area_name(area,
-              //                  kDefaultLang) << " vs "
-              //                  << area_p.s_ << " -> NOT ALLOWED"
-              //                  << "\n";
+              trace("{} [p={}]\t\t\t{} vs {} -> NOT ALLOWED",
+                    t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+                    ctx.phrases_[street_p_idx].s_,
+                    t.strings_[t.area_names_[area][kDefaultLangIdx]].view(),
+                    area_p.s_);
               continue;
             }
 
             auto const edit_dist =
                 ctx.area_phrase_match_scores_[area][area_p_idx];
 
-            //            std::cout
-            //                <<
-            //                t.strings_[t.street_names_[street][kDefaultLangIdx]].view()
-            //                << " [p=" << ctx.phrases_[street_p_idx].s_ << "]"
-            //                << "\t\t\t" << *t.get_area_name(area,
-            //                kDefaultLang)
-            //                << " [idx=" << area << "] vs " << area_p.s_
-            //                << " [area_p_idx=" << area_p_idx << "] -> " <<
-            //                edit_dist
-            //                << "\n";
+            trace("{} [p={}]\t\t\t{} [idx={}] vs {} [area_p_idx={}] -> {}",
+                  t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+                  ctx.phrases_[street_p_idx].s_,
+                  t.strings_[t.area_names_[area][kDefaultLangIdx]].view(), area,
+                  area_p.s_, area_p_idx, edit_dist);
 
             if (best_edit_dist > edit_dist) {
               best_edit_dist = edit_dist;
@@ -206,16 +193,14 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
             areas_edit_dist -=
                 (t.area_population_[best_area].get() / 10'000'000.0F) * 2U;
             matched_mask |= area_p.token_bits_;
-            //            std::cout
-            //                <<
-            //                t.strings_[t.street_names_[street][kDefaultLangIdx]].view()
-            //                << "\t\t\t***MATCHED: "
-            //                << t.strings_
-            //                       [t.area_names_[t.area_sets_[area_set_idx][best_area_idx]]
-            //                                     [kDefaultLangIdx]]
-            //                           .view()
-            //                << " vs " << area_p.s_ << ": " << best_edit_dist
-            //                << "\n";
+
+            trace("{}\t\t\t***MATCHED: {} vs {}: {}",
+                  t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+                  t.strings_
+                      [t.area_names_[t.area_sets_[area_set_idx][best_area_idx]]
+                                    [kDefaultLangIdx]]
+                          .view(),
+                  area_p.s_, best_edit_dist);
           }
         }
 
@@ -228,14 +213,11 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
           for (auto const [t_idx, token] : utl::enumerate(tokens)) {
             if ((matched_mask & (1U << t_idx)) == 0U) {
               total_score += token.size() * 3.0F;
-              //              std::cout
-              //                  <<
-              //                  t.strings_[t.street_names_[street][kDefaultLangIdx]].view()
-              //                  << " [p=" << ctx.phrases_[street_p_idx].s_ <<
-              //                  "]"
-              //                  << "\t\t\t***NOTHING MATCHED: " << token << "
-              //                  --> "
-              //                  << (token.size() * 3.0F) << "\n";
+
+              trace("{} [p={}]\t\t\t***NOTHING MATCHED: {} --> penalty={}",
+                    t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+                    ctx.phrases_[street_p_idx].s_, token,
+                    (token.size() * 3.0F));
             }
           }
 
@@ -265,7 +247,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
   }
 
   UTL_STOP_TIMING(t);
-  trace("STREETS: {} ms\n", UTL_TIMING_MS(t));
+  trace("STREETS: {} ms", UTL_TIMING_MS(t));
 }
 
 template <bool Debug>
@@ -281,10 +263,9 @@ void match_places(std::uint8_t const numeric_tokens_mask,
        ctx.scored_place_matches_) {
     auto const area_set_idx = t.place_areas_[place];
 
-    //    std::cout << "[" << ii << "] "
-    //              << t.strings_[t.place_names_[place][kDefaultLangIdx]].view()
-    //              << ": edit_dist=" << place_edit_dist
-    //              << ", phrase=" << ctx.phrases_[place_p_idx].s_ << "\n";
+    trace("[{}] {}: edit_dist={}, phrase={}", ii,
+          t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
+          place_edit_dist, ctx.phrases_[place_p_idx].s_);
 
     activate_areas(t, ctx, numeric_tokens_mask, area_set_idx, languages);
 
@@ -318,15 +299,12 @@ void match_places(std::uint8_t const numeric_tokens_mask,
 
         auto const edit_dist = ctx.area_phrase_match_scores_[area][area_p_idx];
 
-        //        std::cout << "[" << ii << "] "
-        //                  <<
-        //                  t.strings_[t.place_names_[place][kDefaultLangIdx]].view()
-        //                  << " [place_phrase=" << ctx.phrases_[place_p_idx].s_
-        //                  << ", place_edit_dist=" << place_edit_dist
-        //                  << "]: " << ctx.phrases_[area_p_idx].s_ << " vs "
-        //                  <<
-        //                  t.strings_[t.area_names_[area][kDefaultLangIdx]].view()
-        //                  << ", score=" << edit_dist << "\n";
+        trace(
+            "[{}] {} [place_phrase={}, place_edit_dist={}]: {} vs {}, score={}",
+            ii, t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
+            ctx.phrases_[place_p_idx].s_, place_edit_dist,
+            ctx.phrases_[area_p_idx].s_,
+            t.strings_[t.area_names_[area][kDefaultLangIdx]].view(), edit_dist);
 
         if (best_edit_dist > edit_dist) {
           best_edit_dist = edit_dist;
@@ -335,16 +313,14 @@ void match_places(std::uint8_t const numeric_tokens_mask,
       }
 
       if (best_edit_dist != kNoMatch) {
-        //        std::cout <<
-        //        t.strings_[t.place_names_[place][kDefaultLangIdx]].view()
-        //                  << ": matched " << ctx.phrases_[area_p_idx].s_ << "
-        //                  vs "
-        //                  <<
-        //                  t.strings_[t.area_names_[t.area_sets_[area_set_idx]
-        //                                                          [best_area_idx]]
-        //                                             [kDefaultLangIdx]]
-        //                         .view()
-        //                  << ", score=" << best_edit_dist << "\n";
+        trace(
+            "{}: matched {} vs {}, score={}",
+            t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
+            ctx.phrases_[area_p_idx].s_,
+            t.strings_[t.area_names_[t.area_sets_[area_set_idx][best_area_idx]]
+                                    [kDefaultLangIdx]]
+                .view(),
+            best_edit_dist);
 
         auto const best_area = t.area_sets_[area_set_idx][best_area_idx];
         matched_areas_mask |= (1U << best_area_idx);
@@ -360,11 +336,10 @@ void match_places(std::uint8_t const numeric_tokens_mask,
     for (auto const [t_idx, token] : utl::enumerate(tokens)) {
       if ((matched_tokens_mask & (1U << t_idx)) == 0U) {
         total_score += token.size() * 3U;
-        //        std::cout <<
-        //        t.strings_[t.place_names_[place][kDefaultLangIdx]].view()
-        //                  << " [p=" << ctx.phrases_[place_p_idx].s_ << "]"
-        //                  << "\t\t\t***NOTHING MATCHED: " << token << " -- > "
-        //                  << (token.size() * 3.0F) << "\n";
+
+        trace("{} [p={}]\t\t\tNOTHING MATCHED: {} --> {}",
+              t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
+              ctx.phrases_[place_p_idx].s_, token, token.size() * 3.0F);
       }
     }
 
@@ -387,7 +362,7 @@ void match_places(std::uint8_t const numeric_tokens_mask,
   }
 
   UTL_STOP_TIMING(t);
-  trace("PLACES: {} ms\n", UTL_TIMING_MS(t));
+  trace("PLACES: {} ms", UTL_TIMING_MS(t));
 }
 
 template <bool Debug>
@@ -403,7 +378,7 @@ void compute_string_phrase_match_scores(guess_context& ctx,
     }
   }
   UTL_STOP_TIMING(t);
-  trace("match scores [{} ms]\n", UTL_TIMING_MS(t));
+  trace("match scores [{} ms]", UTL_TIMING_MS(t));
 }
 
 template <bool Debug>
@@ -423,10 +398,9 @@ void get_scored_matches(typeahead const& t,
       }
 
       auto const p_match_score = ctx.string_phrase_match_scores_[i][p_idx];
-      //      std::cout << i << ": name=" << t.strings_[m.idx_].view()
-      //                << ", cos_sim=" << m.cos_sim_ << ", match_count="
-      //                << ", score=" << p_match_score
-      //                << ", phrase=" << ctx.phrases_[p_idx].s_ << "\n";
+      trace("{}: name={}, cos_sim={}, score={}, phrase={}", i,
+            t.strings_[m.idx_].view(), m.cos_sim_, p_match_score,
+            ctx.phrases_[p_idx].s_);
 
       if (p_match_score == kNoMatch) {
         continue;
@@ -469,7 +443,7 @@ void get_scored_matches(typeahead const& t,
   }
 
   UTL_STOP_TIMING(t);
-  trace("score matches [{} ms]\n", UTL_TIMING_MS(t));
+  trace("score matches [{} ms]", UTL_TIMING_MS(t));
 }
 
 template <bool Debug>
@@ -515,7 +489,7 @@ std::vector<token> get_suggestions(typeahead const& t,
   match_places<Debug>(numeric_tokens_mask, t, ctx, tokens, languages);
 
   UTL_STOP_TIMING(t);
-  trace("{} suggestions [{} ms]\n", ctx.suggestions_.size(), UTL_TIMING_MS(t));
+  trace("{} suggestions [{} ms]", ctx.suggestions_.size(), UTL_TIMING_MS(t));
 
   if (ctx.suggestions_.empty()) {
     return token_pos;
@@ -530,7 +504,7 @@ std::vector<token> get_suggestions(typeahead const& t,
   ctx.suggestions_.resize(result_count);
   std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
   UTL_STOP_TIMING(sort);
-  trace("sort [{} us]\n", UTL_TIMING_US(sort));
+  trace("sort [{} us]", UTL_TIMING_US(sort));
 
   return token_pos;
 }

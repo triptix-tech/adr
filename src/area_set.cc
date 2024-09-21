@@ -5,11 +5,12 @@
 #include "utl/enumerate.h"
 
 #include "adr/typeahead.h"
+#include "utl/overloaded.h"
 
 namespace adr {
 
 std::ostream& operator<<(std::ostream& out, area_set const& s) {
-  auto const areas = s.t_.area_sets_[s.areas_];
+  auto const areas = s.get_areas();
   auto const city_it =
       std::min_element(begin(areas), end(areas), [&](auto&& a, auto&& b) {
         return std::abs(to_idx(s.t_.area_admin_level_[a]) - 7) <
@@ -23,7 +24,7 @@ std::ostream& operator<<(std::ostream& out, area_set const& s) {
 
   auto print_city = city_idx != -1;
   if (city_idx != -1) {
-    for (auto const& [i, a] : utl::enumerate(s.t_.area_sets_[s.areas_])) {
+    for (auto const& [i, a] : utl::enumerate(areas)) {
       auto const admin_lvl = s.t_.area_admin_level_[a];
       auto const matched = (((1U << i) & s.matched_mask_) != 0U);
       if (city_admin_lvl == admin_lvl && matched) {
@@ -35,7 +36,7 @@ std::ostream& operator<<(std::ostream& out, area_set const& s) {
 
   auto first = true;
   out << " [";
-  for (auto const& [i, a] : utl::enumerate(s.t_.area_sets_[s.areas_])) {
+  for (auto const& [i, a] : utl::enumerate(areas)) {
     auto const admin_lvl = s.t_.area_admin_level_[a];
     auto const matched = (((1U << i) & s.matched_mask_) != 0U);
     auto const is_city =
@@ -70,11 +71,21 @@ std::int16_t area_set::get_area_lang_idx(area_idx_t const a) const {
   for (auto i = 0U; i != languages_.size(); ++i) {
     auto const j = languages_.size() - i - 1U;
     auto const lang_idx = find_lang(t_.area_name_lang_[a], languages_[j]);
-    if (lang_idx == -1) {
+    if (lang_idx != -1) {
       return lang_idx;
     }
   }
   return -1;
+}
+
+std::basic_string<area_idx_t> area_set::get_areas() const {
+  return std::visit(
+      utl::overloaded{[&](area_set_idx_t x) -> std::basic_string<area_idx_t> {
+                        auto const set = t_.area_sets_[x];
+                        return {begin(set), end(set)};
+                      },
+                      [](std::basic_string<area_idx_t> const& x) { return x; }},
+      areas_);
 }
 
 }  // namespace adr

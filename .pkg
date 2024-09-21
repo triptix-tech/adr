@@ -5,19 +5,19 @@
 [geo]
   url=git@github.com:motis-project/geo.git
   branch=master
-  commit=73e4f6fb9b80b178413cf7d9006501e231d41885
+  commit=66b34885c7e96e29ddb78a84ae3ab43302ed94e4
 [cista]
   url=git@github.com:felixguendling/cista.git
   branch=master
-  commit=e5a58c750d5432cc4ea2855bbfc42bcea591d0f7
+  commit=fca2698bd005a4c81985fc11160ab10d2558b063
 [googletest]
   url=git@github.com:motis-project/googletest.git
   branch=master
-  commit=34a46558609e05865c197f0260ab36daa7cbbb6e
+  commit=7b64fca6ea0833628d6f86255a81424365f7cc0c
 [utl]
   url=git@github.com:motis-project/utl.git
   branch=master
-  commit=98387d1bc2e3c57ab1c5bc6a8e1642931472886b
+  commit=538a11dec577de7238c7640491b3d4e091a33e08
 [protozero]
   url=git@github.com:motis-project/protozero.git
   branch=master
@@ -25,15 +25,15 @@
 [boost]
   url=git@github.com:motis-project/boost.git
   branch=master
-  commit=4c256be5b83f0d91898ea48d65bdb33e07d30f65
+  commit=60cae66449fa3c9599b2b7d3d5d44c65301ed3a3
 [zlib]
   url=git@github.com:motis-project/zlib.git
   branch=master
-  commit=8e7c86d3a0e49101b9a67d74c4a07345dcb0e485
+  commit=ee0742244d93c4237154ae16c3db42b5f284b442
 [unordered_dense]
   url=git@github.com:motis-project/unordered_dense.git
   branch=main
-  commit=c11595a7743d20622637584bddf77243d72ae152
+  commit=e9e0577fcb082fc660fd548946f92c42fc85a9fa
 [tiles]
   url=git@github.com:motis-project/tiles.git
   branch=master
@@ -45,11 +45,11 @@
 [mimalloc]
   url=git@github.com:motis-project/mimalloc.git
   branch=master
-  commit=0087f000848de31b0090cb6f282348bd2fd3a9b8
+  commit=2a557cafb2e9e7c872358a83a63c62a7e14330b3
 [utf8proc]
   url=git@github.com:triptix-tech/utf8proc.git
   branch=master
-  commit=779b780da3b99d123133eb99707b65c7e4324cc8
+  commit=3de4596fbe28956855df2ecb3c11c0bbc3535838
 [tg]
   url=git@github.com:triptix-tech/tg.git
   branch=main
@@ -58,3 +58,7 @@
   url=git@github.com:triptix-tech/rtree.c.git
   branch=master
   commit=498f993c38e80f21d55ab72f14675b72fca991cc
+[fmt]
+  url=git@github.com:motis-project/fmt.git
+  branch=master
+  commit=dc10f83be70ac2873d5f8d1ce317596f1fd318a2

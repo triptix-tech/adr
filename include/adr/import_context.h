@@ -32,7 +32,6 @@ struct import_context {
                      cista::raw::pair<std::uint32_t, location_type_t>>
       string_to_location_;
   std::vector<cista::raw::vecvec<std::uint32_t, coordinates>> street_segments_;
-
   std::mutex mutex_;
   std::mutex reverse_mutex_;
 };

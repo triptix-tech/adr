@@ -11,6 +11,7 @@
 #include "adr/guess_context.h"
 #include "adr/import_context.h"
 #include "adr/typeahead.h"
+#include "geo/box.h"
 
 namespace adr {
 
@@ -31,16 +32,17 @@ std::pair<double, geo::latlng> distance_to_way(geo::latlng const& x,
 }
 
 void reverse::lookup(typeahead const& t,
-                     guess_context&,
+                     guess_context& ctx,
                      rtree const* rt,
                      geo::latlng const& query,
                      std::size_t const n_guesses) const {
-  auto const min = std::array<double, 2U>{query.lng_ - 0.01, query.lat_ - 0.01};
-  auto const max = std::array<double, 2U>{query.lng_ + 0.01, query.lat_ + 0.01};
+  auto const b = geo::box{query, 500.0};
+  auto const min = b.min_.lnglat();
+  auto const max = b.max_.lnglat();
+
   using udata_t = std::tuple<adr::typeahead const*, adr::reverse const*,
                              std::vector<adr::suggestion>*, geo::latlng>;
-  auto results = std::vector<adr::suggestion>{};
-  auto udata = udata_t{&t, this, &results, query};
+  auto udata = udata_t{&t, this, &ctx.suggestions_, query};
   rtree_search(
       rt, min.data(), max.data(),
       [](double const* min, double const* max, void const* item, void* udata) {
@@ -107,9 +109,9 @@ void reverse::lookup(typeahead const& t,
       },
       &udata);
 
-  utl::nth_element(results, 10U);
-  results.resize(10U);
-  utl::sort(results);
+  utl::nth_element(ctx.suggestions_, 10U);
+  ctx.suggestions_.resize(10U);
+  utl::sort(ctx.suggestions_);
 }
 
 void reverse::add_street(import_context& ctx,
@@ -123,7 +125,7 @@ void reverse::add_street(import_context& ctx,
   auto bucket =
       ctx.street_segments_[to_idx(street)].add_back_sized(way.nodes().size());
   for (auto const [i, n] : utl::enumerate(way.nodes())) {
-    bucket[i] = coordinates{n.x(), n.y()};
+    bucket[i] = coordinates::from_location(n.location());
   }
 }
 
@@ -142,15 +144,13 @@ rtree* reverse::build_rtree(typeahead const& t) const {
   // Add street segment bounding boxes.
   for (auto const [street, segments] : utl::enumerate(street_segments_)) {
     for (auto const [segment_idx, segment] : utl::enumerate(segments)) {
-      auto b = osmium::Box{};
+      auto b = geo::box{};
       for (auto const& c : segment) {
-        b.extend(osmium::Location{c.lat_, c.lng_});
+        b.extend(c);
       }
 
-      auto const min_corner =
-          std::array<double, 2U>{b.bottom_left().lon(), b.bottom_left().lat()};
-      auto const max_corner =
-          std::array<double, 2U>{b.top_right().lon(), b.top_right().lat()};
+      auto const min_corner = b.min_.lnglat();
+      auto const max_corner = b.max_.lnglat();
 
       rtree_insert(
           rt, min_corner.data(), max_corner.data(),
@@ -165,8 +165,7 @@ rtree* reverse::build_rtree(typeahead const& t) const {
 
   // Add place coordinates.
   for (auto const [place, c] : utl::enumerate(t.place_coordinates_)) {
-    auto const min = osmium::Location{c.lat_, c.lng_};
-    auto const min_corner = std::array<double, 2U>{min.lon(), min.lat()};
+    auto const min_corner = c.as_latlng().lnglat();
     rtree_insert(rt, min_corner.data(), nullptr,
                  rtree_entity{.place_ = {.type_ = entity_type::kPlace,
                                          .place_ = place_idx_t{place}}}
@@ -179,8 +178,7 @@ rtree* reverse::build_rtree(typeahead const& t) const {
     auto const street_idx = street_idx_t{street};
 
     for (auto const [hn_idx, c] : utl::enumerate(house_numbers)) {
-      auto const min = osmium::Location{c.lat_, c.lng_};
-      auto const min_corner = std::array<double, 2U>{min.lon(), min.lat()};
+      auto const min_corner = c.as_latlng().lnglat();
       rtree_insert(
           rt, min_corner.data(), nullptr,
           rtree_entity{.hn_ = {.type_ = entity_type::kHouseNumber,
