@@ -352,7 +352,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
     auto const match_count = string_match_counts[i];
     auto const cos_sim = static_cast<float>(match_count * match_count) /
                          (n_bigrams_[i] * n_in_ngrams);
-    if (cos_sim > cutoff) {
+    if (cos_sim >= cutoff) {
       matches.emplace_back(cos_sim_match{i, cos_sim});
     }
   }
