@@ -49,7 +49,7 @@
 [utf8proc]
   url=git@github.com:triptix-tech/utf8proc.git
   branch=master
-  commit=3de4596fbe28956855df2ecb3c11c0bbc3535838
+  commit=779b780da3b99d123133eb99707b65c7e4324cc8
 [tg]
   url=git@github.com:triptix-tech/tg.git
   branch=main
