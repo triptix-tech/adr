@@ -6,6 +6,7 @@
 
 #include "utl/erase_duplicates.h"
 #include "utl/get_or_create.h"
+#include "utl/insert_sorted.h"
 #include "utl/parser/arg_parser.h"
 #include "utl/timing.h"
 #include "utl/zip.h"
@@ -282,6 +283,8 @@ bool typeahead::verify() {
 
 template <bool Debug>
 void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
+  trace("guess: {}", normalized);
+
   auto& matches = ctx.string_matches_;
   matches.clear();
 
@@ -310,13 +313,15 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   }
   ctx.cache_.add(ngram_set, string_match_counts_ptr);
   UTL_STOP_TIMING(t1);
-  trace("counting matches [{} ms]\n", UTL_TIMING_MS(t1));
+  trace("counting matches [{} ms]", UTL_TIMING_MS(t1));
 
   auto min_match_count = 2U + n_in_ngrams / (4U + n_in_ngrams / 10U);
 
   UTL_START_TIMING(t2);
   std::vector<float> sampling;
-  for (auto i = string_idx_t{0U}; i < strings_.size(); i += 1) {
+  trace("#strings = {}", strings_.size());
+  auto const n_strings = strings_.size();
+  for (auto i = string_idx_t{0U}; i < n_strings; i += 1) {
     if (string_match_counts[i] < min_match_count) {
       continue;
     }
@@ -325,7 +330,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
                          (n_bigrams_[i] * n_in_ngrams);
     if (cos_sim > 0.01) {
       sampling.emplace_back(cos_sim);
-      i += 4096U;
+      i += 3072U;
     }
   }
   auto const q_idx = std::ceil(sampling.size() / (n_in_ngrams * 3.0F));
@@ -336,7 +341,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
     return;
   }
   auto const cutoff = sampling[q_idx == 0 ? 0 : q_idx - 1];
-  trace("cutoff {} [size={}, idx={}] [{} ms]\n", cutoff, sampling.size(), q_idx,
+  trace("cutoff {} [size={}, idx={}] [{} ms]", cutoff, sampling.size(), q_idx,
         UTL_TIMING_MS(t2));
   //  std::cout << "ESTIMATED CUTOFF: " << sampling[q_idx - 1] << "\n";
 
@@ -344,7 +349,6 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   // COMPUTE COS SIM
   // ----------------
   UTL_START_TIMING(t3);
-  auto const n_strings = strings_.size();
   for (auto i = string_idx_t{0U}; i < n_strings; ++i) {
     if (string_match_counts[i] < min_match_count) {
       continue;
@@ -358,8 +362,6 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   }
   std::sort(begin(matches), end(matches));
 
-  //  auto const n_strings = strings_.size();
-  //  //  std::cout << best << " " << min_match_count << "\n";
   //  trace("n_in_ngrams={}, min_match_count={}\n", n_in_ngrams,
   //  min_match_count); for (auto i = string_idx_t{0U}; i < n_strings; ++i) {
   //    if (string_match_counts[i] < min_match_count) {
@@ -378,7 +380,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   //  }
   //  std::cout << "REAL CUTOFF: " << matches.back().cos_sim_ << "\n";
   UTL_STOP_TIMING(t3);
-  trace("{} matches [{} ms]\n", matches.size(), UTL_TIMING_MS(t3));
+  trace("{} matches [{} ms]", matches.size(), UTL_TIMING_MS(t3));
 }
 
 cista::wrapped<typeahead> read(std::filesystem::path const& path_in,

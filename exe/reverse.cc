@@ -70,9 +70,8 @@ int main(int ac, char** av) {
     return 1;
   }
 
-  auto const r =
-      adr::cista_read<adr::reverse>(in.generic_string() + ".r.adr", true);
-  auto const t = adr::read(in.generic_string() + ".t.adr", false);
+  auto const r = adr::cista_read<adr::reverse>(in / "r.bin", true);
+  auto const t = adr::read(in / "t.bin", false);
 
   auto rt = r->build_rtree(*t);
 
