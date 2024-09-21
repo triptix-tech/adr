@@ -32,18 +32,17 @@ std::pair<double, geo::latlng> distance_to_way(geo::latlng const& x,
 }
 
 void reverse::lookup(typeahead const& t,
-                     guess_context&,
+                     guess_context& ctx,
                      rtree const* rt,
                      geo::latlng const& query,
                      std::size_t const n_guesses) const {
-  auto const b = geo::box{query, 1000.0};
+  auto const b = geo::box{query, 500.0};
   auto const min = b.min_.lnglat();
   auto const max = b.max_.lnglat();
-  
+
   using udata_t = std::tuple<adr::typeahead const*, adr::reverse const*,
                              std::vector<adr::suggestion>*, geo::latlng>;
-  auto results = std::vector<adr::suggestion>{};
-  auto udata = udata_t{&t, this, &results, query};
+  auto udata = udata_t{&t, this, &ctx.suggestions_, query};
   rtree_search(
       rt, min.data(), max.data(),
       [](double const* min, double const* max, void const* item, void* udata) {
@@ -110,9 +109,9 @@ void reverse::lookup(typeahead const& t,
       },
       &udata);
 
-  utl::nth_element(results, 10U);
-  results.resize(10U);
-  utl::sort(results);
+  utl::nth_element(ctx.suggestions_, 10U);
+  ctx.suggestions_.resize(10U);
+  utl::sort(ctx.suggestions_);
 }
 
 void reverse::add_street(import_context& ctx,
@@ -166,8 +165,7 @@ rtree* reverse::build_rtree(typeahead const& t) const {
 
   // Add place coordinates.
   for (auto const [place, c] : utl::enumerate(t.place_coordinates_)) {
-    auto const min = osmium::Location{c.lat_, c.lng_};
-    auto const min_corner = std::array<double, 2U>{min.lon(), min.lat()};
+    auto const min_corner = c.as_latlng().lnglat();
     rtree_insert(rt, min_corner.data(), nullptr,
                  rtree_entity{.place_ = {.type_ = entity_type::kPlace,
                                          .place_ = place_idx_t{place}}}
@@ -180,8 +178,7 @@ rtree* reverse::build_rtree(typeahead const& t) const {
     auto const street_idx = street_idx_t{street};
 
     for (auto const [hn_idx, c] : utl::enumerate(house_numbers)) {
-      auto const min = osmium::Location{c.lat_, c.lng_};
-      auto const min_corner = std::array<double, 2U>{min.lon(), min.lat()};
+      auto const min_corner = c.as_latlng().lnglat();
       rtree_insert(
           rt, min_corner.data(), nullptr,
           rtree_entity{.hn_ = {.type_ = entity_type::kHouseNumber,
