@@ -76,6 +76,7 @@ struct area_database::impl {
       auto mutex = std::mutex{};
 
       std::cout << "area_polygons=" << outer_rings_.size() << "\n";
+      idx_.resize(outer_rings_.size());
       utl::parallel_for_run_threadlocal<tmp>(
           outer_rings_.size(), [&](tmp& tmp, std::size_t const i) {
             tmp.polys_tmp_.clear();
@@ -105,22 +106,15 @@ struct area_database::impl {
             auto const min_corner = box.min_.lnglat();
             auto const max_corner = box.max_.lnglat();
 
+            idx_[i] = tg_geom_new_multipolygon(tmp.polys_tmp_.data(),
+                                               tmp.polys_tmp_.size());
+
             {
               auto const lock = std::scoped_lock{mutex};
-
               utl::concat(polys_to_free_, tmp.polys_tmp_);
-              idx_.emplace_back(tg_geom_new_multipolygon(
-                  tmp.polys_tmp_.data(), tmp.polys_tmp_.size()));
-
               rtree_insert(rtree_, min_corner.data(), max_corner.data(),
                            reinterpret_cast<void*>(
                                static_cast<std::uintptr_t>(to_idx(area_idx))));
-
-              if (area_idx == 24492) {
-                auto const len = tg_geom_geojson(idx_.back(), geojson.data(),
-                                                 geojson.size());
-                std::ofstream{"out.geojson"} << geojson.substr(0, len);
-              }
             }
 
             for (auto const& x : tmp.inner_tmp_) {
@@ -177,6 +171,8 @@ struct area_database::impl {
       return r | v::transform(nodes_to_coordinates);
     };
 
+    assert(area_idx == outer_rings_.size());
+    assert(area_idx == inner_rings_.size());
     outer_rings_.emplace_back(area.outer_rings() |
                               v::transform(ring_to_coordinates));
     inner_rings_.emplace_back(area.outer_rings() | v::transform([&](auto&& r) {
@@ -212,7 +208,6 @@ struct area_database::impl {
   }
 
   bool is_within(coordinates const c, area_idx_t const area) const {
-    return true;
     auto const point = tg_geom_new_point(tg_point{c.lon(), c.lat()});
     auto const result = tg_geom_within(point, idx_[to_idx(area)]);
     tg_geom_free(point);

@@ -126,7 +126,7 @@ int main(int ac, char** av) {
     lang_indices.push_back(l_idx);
   }
 
-  auto cache = adr::cache{.n_strings_ = t->strings_.size(), .max_size_ = 1000U};
+  auto cache = adr::cache{t->strings_.size(), 1000U};
   auto ctx = adr::guess_context{cache};
   ctx.resize(*t);
 

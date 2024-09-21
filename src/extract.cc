@@ -99,12 +99,11 @@ struct feature_handler : public osmium::handler::Handler {
     auto const lock = std::scoped_lock{areas_mutex_};
 
     auto const admin_area_idx = t_.add_admin_area(ctx_, a.tags());
-    auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
-
     if (admin_area_idx != area_idx_t::invalid()) {
       area_db_.add_area(admin_area_idx, a);
     }
 
+    auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
     if (postal_code_area_idx != area_idx_t::invalid()) {
       area_db_.add_area(postal_code_area_idx, a);
     }

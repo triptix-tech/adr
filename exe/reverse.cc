@@ -89,7 +89,7 @@ int main(int ac, char** av) {
     lang_indices.push_back(l_idx);
   }
 
-  auto cache = adr::cache{};
+  auto cache = adr::cache{t->strings_.size(), 1000};
   auto ctx = adr::guess_context{cache};
   auto areas = std::basic_string<adr::area_idx_t>{};
 
