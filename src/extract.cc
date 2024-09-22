@@ -7,6 +7,7 @@
 #include "osmium/handler/node_locations_for_ways.hpp"
 #include "osmium/index/map/flex_mem.hpp"
 #include "osmium/io/pbf_input.hpp"
+#include "osmium/io/xml_input.hpp"
 
 #include "utl/enumerate.h"
 #include "utl/helpers/algorithm.h"

@@ -242,6 +242,7 @@ void typeahead::build_ngram_index() {
     });
   }
 
+  bigrams_.clear();
   for (auto& x : tmp) {
     utl::erase_duplicates(x);
     bigrams_.emplace_back(x);

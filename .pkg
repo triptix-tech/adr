@@ -9,7 +9,7 @@
 [cista]
   url=git@github.com:felixguendling/cista.git
   branch=master
-  commit=fca2698bd005a4c81985fc11160ab10d2558b063
+  commit=3241913bddf8c4202c48644466e8d1edf92755c5
 [googletest]
   url=git@github.com:motis-project/googletest.git
   branch=master

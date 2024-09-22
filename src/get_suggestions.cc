@@ -223,6 +223,13 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
 
           total_score -= std::popcount(matched_areas) * 2.0F;
 
+          trace(
+              "[{}] {} FINAL: street_edit_dist={}, areas_edit_dist={}, "
+              "item_score={}, areas_bonus={} => total_score={}",
+              i, t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+              street_edit_dist, areas_edit_dist, item.score_,
+              std::popcount(matched_areas) * 2.0, total_score);
+
           ctx.suggestions_.emplace_back(suggestion{
               .str_ = str_idx,
               .location_ =
@@ -300,7 +307,8 @@ void match_places(std::uint8_t const numeric_tokens_mask,
         auto const edit_dist = ctx.area_phrase_match_scores_[area][area_p_idx];
 
         trace(
-            "[{}] {} [place_phrase={}, place_edit_dist={}]: {} vs {}, score={}",
+            "[{}] {}: [place_phrase={}, place_edit_dist={}]: {} vs {}, "
+            "score={}",
             ii, t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
             ctx.phrases_[place_p_idx].s_, place_edit_dist,
             ctx.phrases_[area_p_idx].s_,
@@ -314,7 +322,7 @@ void match_places(std::uint8_t const numeric_tokens_mask,
 
       if (best_edit_dist != kNoMatch) {
         trace(
-            "{}: matched {} vs {}, score={}",
+            "[{}] {}: matched {} vs {}, score={}", ii,
             t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
             ctx.phrases_[area_p_idx].s_,
             t.strings_[t.area_names_[t.area_sets_[area_set_idx][best_area_idx]]
@@ -337,16 +345,24 @@ void match_places(std::uint8_t const numeric_tokens_mask,
       if ((matched_tokens_mask & (1U << t_idx)) == 0U) {
         total_score += token.size() * 3U;
 
-        trace("{} [p={}]\t\t\tNOTHING MATCHED: {} --> {}",
+        trace("[{}] {}: [p={}]\t\t\tNOTHING MATCHED: {} --> {}", ii,
               t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
               ctx.phrases_[place_p_idx].s_, token, token.size() * 3.0F);
       }
     }
 
-    total_score -= std::popcount(matched_areas_mask);
+    total_score -= std::popcount(matched_areas_mask) * 2.0;
     //    total_score -= std::log2(t.place_population_[place].get()) / 10.0F;
-    total_score -= t.place_population_[place].get() / 1'000'000.F;
+    total_score -= (t.place_population_[place].get() / 1'000'000.F) * 1.5;
     total_score -= 1.5;
+
+    trace(
+        "[{}] {} FINAL: place_edit_dist={}, areas_edit_dist={}, population={}, "
+        "areas_bonus={} => {}",
+        ii, t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
+        place_edit_dist, areas_edit_dist,
+        -(t.place_population_[place].get() / 1'000'000.F) * 1.5,
+        -std::popcount(matched_areas_mask) * 2.0, total_score);
 
     ctx.suggestions_.emplace_back(
         suggestion{.str_ = str_idx,
@@ -505,6 +521,13 @@ std::vector<token> get_suggestions(typeahead const& t,
   std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
   UTL_STOP_TIMING(sort);
   trace("sort [{} us]", UTL_TIMING_US(sort));
+
+  if constexpr (Debug) {
+    for (auto const& [i, s] : utl::enumerate(ctx.suggestions_)) {
+      std::cout << "[" << i << "]\t";
+      s.print(std::cout, t, languages);
+    }
+  }
 
   return token_pos;
 }
