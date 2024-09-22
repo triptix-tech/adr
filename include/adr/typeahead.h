@@ -88,6 +88,7 @@ struct typeahead {
   data::vector_map<place_idx_t, area_set_idx_t> place_areas_;
   data::vector_map<place_idx_t, std::int64_t> place_osm_ids_;
   data::vector_map<place_idx_t, population> place_population_;
+  data::vector_map<place_idx_t, place_type> place_type_;
   data::bitvec place_is_way_;
 
   data::vecvec<street_idx_t, string_idx_t> street_names_;

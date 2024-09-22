@@ -208,6 +208,7 @@ void typeahead::add_place(import_context& ctx,
   place_osm_ids_.emplace_back(id);
   place_is_way_.resize(place_is_way_.size() + 1U);
   place_is_way_.set(idx, is_way);
+  place_type_.emplace_back(place_type::kUnkown);
 }
 
 string_idx_t typeahead::get_or_create_string(import_context& ctx,
