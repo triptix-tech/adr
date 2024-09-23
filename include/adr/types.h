@@ -9,7 +9,10 @@
 
 #include "tg.h"
 
+#include "cista/containers/mmap_vec.h"
+#include "cista/containers/nvec.h"
 #include "cista/containers/vector.h"
+#include "cista/mmap.h"
 #include "cista/strong.h"
 
 namespace cista::raw {}
@@ -17,6 +20,13 @@ namespace cista::raw {}
 namespace adr {
 
 namespace data = cista::raw;
+
+template <typename T>
+using mm_vec = cista::basic_mmap_vec<T, std::uint64_t>;
+
+template <typename K, typename V, std::size_t N>
+using mm_nvec =
+    cista::basic_nvec<K, mm_vec<V>, mm_vec<std::uint64_t>, N, std::uint64_t>;
 
 using area_set_idx_t = cista::strong<std::uint32_t, struct area_set_idx_>;
 using area_idx_t = cista::strong<std::uint32_t, struct area_idx_>;
