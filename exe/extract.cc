@@ -52,7 +52,5 @@ int main(int ac, char** av) {
   std::cout << "IN: " << in << "\n"
             << "OUT: " << out << "\n"
             << "TMP: " << tmp << "\n";
-  auto ec = std::error_code{};
-  fs::create_directories(out, ec);
   adr::extract(in, out, tmp);
 }

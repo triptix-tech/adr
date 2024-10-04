@@ -120,6 +120,9 @@ struct feature_handler : public osmium::handler::Handler {
 void extract(std::filesystem::path const& in_path,
              std::filesystem::path const& out_path,
              std::filesystem::path const& tmp_dname) {
+  auto ec = std::error_code{};
+  std::filesystem::create_directories(out_path, ec);
+
   auto input_file = osm_io::File{};
   auto file_size = std::size_t{0U};
   try {
