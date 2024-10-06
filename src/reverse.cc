@@ -4,6 +4,8 @@
 
 #include "rtree.h"
 
+#include "geo/polyline.h"
+
 #include "utl/enumerate.h"
 #include "utl/pairwise.h"
 #include "utl/timer.h"
@@ -13,38 +15,77 @@
 #include "adr/typeahead.h"
 #include "geo/box.h"
 
+namespace fs = std::filesystem;
+
 namespace adr {
 
-template <typename PolyLine>
-std::pair<double, geo::latlng> distance_to_way(geo::latlng const& x,
-                                               PolyLine&& c) {
-  auto min = std::numeric_limits<double>::max();
-  auto best = geo::latlng{};
-  for (auto const [a, b] : utl::pairwise(c)) {
-    auto const candidate = geo::closest_on_segment(x, a, b);
-    auto const dist = geo::distance(x, candidate);
-    if (dist < min) {
-      min = dist;
-      best = candidate;
-    }
+enum class entity_type : std::uint8_t { kHouseNumber, kStreet, kPlace };
+
+union rtree_entity {
+  void* to_data() const {
+    void* data;
+    std::memcpy(&data, this, sizeof(data));
+    return data;
   }
-  return {min, best};
+
+  static rtree_entity from_data(void const* ptr) {
+    auto e = rtree_entity{};
+    std::memcpy(&e, &ptr, sizeof(ptr));
+    return e;
+  }
+
+  entity_type type_;
+
+  struct house_number {
+    entity_type type_;
+    std::uint16_t idx_;
+    street_idx_t street_;
+  } hn_;
+
+  struct place {
+    entity_type type_;
+    place_idx_t place_;
+  } place_;
+
+  struct street {
+    entity_type type_;
+    std::uint16_t segment_;
+    street_idx_t street_;
+  } street_segment_;
+};
+
+static_assert(sizeof(rtree_entity) == sizeof(void*));
+
+reverse::reverse(fs::path p, cista::mmap::protection const mode)
+    : p_{p},
+      mode_{mode},
+      street_segments_{{mm_vec<std::uint64_t>{mm("street_segments_idx_0.bin")},
+                        mm_vec<std::uint64_t>{mm("street_segments_idx_1.bin")}},
+                       mm_vec<coordinates>{mm("street_segments_data.bin")}} {}
+
+reverse::~reverse() {
+  if (rtree_ != nullptr) {
+    rtree_free(rtree_);
+  }
 }
 
-void reverse::lookup(typeahead const& t,
-                     guess_context& ctx,
-                     rtree const* rt,
-                     geo::latlng const& query,
-                     std::size_t const n_guesses) const {
+cista::mmap reverse::mm(char const* file) {
+  return cista::mmap{(p_ / file).generic_string().c_str(), mode_};
+}
+
+std::vector<suggestion> reverse::lookup(typeahead const& t,
+                                        geo::latlng const& query,
+                                        std::size_t const n_guesses) const {
   auto const b = geo::box{query, 500.0};
   auto const min = b.min_.lnglat();
   auto const max = b.max_.lnglat();
 
   using udata_t = std::tuple<adr::typeahead const*, adr::reverse const*,
                              std::vector<adr::suggestion>*, geo::latlng>;
-  auto udata = udata_t{&t, this, &ctx.suggestions_, query};
+  auto suggestions = std::vector<suggestion>{};
+  auto udata = udata_t{&t, this, &suggestions, query};
   rtree_search(
-      rt, min.data(), max.data(),
+      rtree_, min.data(), max.data(),
       [](double const* min, double const* max, void const* item, void* udata) {
         auto const [t, r, results, query] = *reinterpret_cast<udata_t*>(udata);
         auto const e = adr::rtree_entity::from_data(item);
@@ -87,7 +128,7 @@ void reverse::lookup(typeahead const& t,
 
           case adr::entity_type::kStreet:
             auto const& s = e.street_segment_;
-            auto const [dist, closest] = distance_to_way(
+            auto const [dist, closest, _] = geo::distance_to_polyline(
                 query, r->street_segments_[s.street_][s.segment_]);
             results->emplace_back(adr::suggestion{
                 .str_ = t->street_names_[s.street_][adr::kDefaultLangIdx],
@@ -109,9 +150,11 @@ void reverse::lookup(typeahead const& t,
       },
       &udata);
 
-  utl::nth_element(ctx.suggestions_, 10U);
-  ctx.suggestions_.resize(10U);
-  utl::sort(ctx.suggestions_);
+  utl::nth_element(suggestions, 10U);
+  suggestions.resize(10U);
+  utl::sort(suggestions);
+
+  return suggestions;
 }
 
 void reverse::add_street(import_context& ctx,
@@ -136,10 +179,10 @@ void reverse::write(import_context& ctx) {
   ctx.street_segments_.clear();
 }
 
-rtree* reverse::build_rtree(typeahead const& t) const {
+void reverse::build_rtree(typeahead const& t) {
   auto const timer = utl::scoped_timer{"build rtree"};
 
-  auto rt = rtree_new();
+  rtree_ = rtree_new();
 
   // Add street segment bounding boxes.
   for (auto const [street, segments] : utl::enumerate(street_segments_)) {
@@ -153,7 +196,7 @@ rtree* reverse::build_rtree(typeahead const& t) const {
       auto const max_corner = b.max_.lnglat();
 
       rtree_insert(
-          rt, min_corner.data(), max_corner.data(),
+          rtree_, min_corner.data(), max_corner.data(),
           rtree_entity{
               .street_segment_ = {.type_ = entity_type::kStreet,
                                   .segment_ =
@@ -166,7 +209,7 @@ rtree* reverse::build_rtree(typeahead const& t) const {
   // Add place coordinates.
   for (auto const [place, c] : utl::enumerate(t.place_coordinates_)) {
     auto const min_corner = c.as_latlng().lnglat();
-    rtree_insert(rt, min_corner.data(), nullptr,
+    rtree_insert(rtree_, min_corner.data(), nullptr,
                  rtree_entity{.place_ = {.type_ = entity_type::kPlace,
                                          .place_ = place_idx_t{place}}}
                      .to_data());
@@ -180,15 +223,13 @@ rtree* reverse::build_rtree(typeahead const& t) const {
     for (auto const [hn_idx, c] : utl::enumerate(house_numbers)) {
       auto const min_corner = c.as_latlng().lnglat();
       rtree_insert(
-          rt, min_corner.data(), nullptr,
+          rtree_, min_corner.data(), nullptr,
           rtree_entity{.hn_ = {.type_ = entity_type::kHouseNumber,
                                .idx_ = static_cast<std::uint16_t>(hn_idx),
                                .street_ = street_idx}}
               .to_data());
     }
   }
-
-  return rt;
 }
 
 }  // namespace adr

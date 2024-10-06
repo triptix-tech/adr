@@ -120,6 +120,9 @@ struct feature_handler : public osmium::handler::Handler {
 void extract(std::filesystem::path const& in_path,
              std::filesystem::path const& out_path,
              std::filesystem::path const& tmp_dname) {
+  auto ec = std::error_code{};
+  std::filesystem::create_directories(out_path, ec);
+
   auto input_file = osm_io::File{};
   auto file_size = std::size_t{0U};
   try {
@@ -172,7 +175,7 @@ void extract(std::filesystem::path const& in_path,
 
   auto ctx = import_context{};
   auto t = typeahead{};
-  auto r = reverse{};
+  auto r = reverse{out_path, cista::mmap::protection::WRITE};
   t.lang_names_.emplace_back("default");
   auto areas_mutex = std::mutex{};
   auto mp_queue = tiles::in_order_queue<osm_mem::Buffer>{};
@@ -367,14 +370,6 @@ void extract(std::filesystem::path const& in_path,
         cista::buf{cista::mmap{(out_path / "t.bin").generic_string().c_str(),
                                cista::mmap::protection::WRITE}};
     cista::serialize<cista::mode::WITH_STATIC_VERSION>(mmap, t);
-  }
-
-  {  // Write reverse index to disk.
-    auto const timer = utl::scoped_timer{"write reverse index"};
-    auto mmap =
-        cista::buf{cista::mmap{(out_path / "r.bin").generic_string().c_str(),
-                               cista::mmap::protection::WRITE}};
-    cista::serialize<cista::mode::WITH_STATIC_VERSION>(mmap, r);
   }
 }
 

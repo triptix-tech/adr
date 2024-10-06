@@ -33,13 +33,6 @@ auto geojson = []() {
   return str;
 }();
 
-template <typename T>
-using mm_vec = cista::basic_mmap_vec<T, std::uint64_t>;
-
-template <typename K, typename V, std::size_t N>
-using mm_nvec =
-    cista::basic_nvec<K, mm_vec<V>, mm_vec<std::uint64_t>, N, std::uint64_t>;
-
 using inner_rings_t = mm_nvec<area_idx_t, coordinates, 3U>;
 using outer_rings_t = mm_nvec<area_idx_t, coordinates, 2U>;
 
