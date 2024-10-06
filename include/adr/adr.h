@@ -13,6 +13,8 @@
 
 namespace adr {
 
+constexpr auto const kBinaryVersion = 1U;
+
 struct typeahead;
 
 struct token {

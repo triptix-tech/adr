@@ -64,8 +64,6 @@ struct area_database::impl {
                       mm_vec<std::uint64_t>{mm("inner_rings_idx_2.bin")}},
                      mm_vec<coordinates>{mm("inner_rings_data.bin")}} {
     if (mode == cista::mmap::protection::READ) {
-      auto const t = utl::scoped_timer{"creating area database"};
-
       struct tmp {
         std::vector<tg_point> ring_tmp_;
         std::vector<tg_ring*> inner_tmp_;
