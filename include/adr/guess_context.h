@@ -67,7 +67,7 @@ struct cos_sim_match {
 
 template <typename T>
 struct scored_match {
-  bool operator==(scored_match const& o) const noexcept { return false; }
+  bool operator==(scored_match const&) const noexcept { return false; }
   bool operator<(scored_match const& o) const noexcept {
     return score_ < o.score_;
   }

@@ -81,7 +81,7 @@ struct cache {
       return existing_it->second;
     }
 
-    auto max_size = 0;
+    auto max_size = std::size_t{0U};
     auto max_it = end(entries_);
     for (auto it = begin(entries_); it != end(entries_); ++it) {
       auto const& subset = it->first;

@@ -25,8 +25,9 @@ inline std::string_view normalize(std::string_view v,
                                   utf8_normalize_buf_t& decomposed) {
   decomposed.resize(v.size());
   auto const decomposed_size = utf8proc_decompose(
-      reinterpret_cast<std::uint8_t const*>(v.data()), v.size(),
-      decomposed.data(), decomposed.size(),
+      reinterpret_cast<std::uint8_t const*>(v.data()),
+      static_cast<utf8proc_ssize_t>(v.size()), decomposed.data(),
+      static_cast<utf8proc_ssize_t>(decomposed.size()),
       static_cast<utf8proc_option_t>(utf8proc_option_t::UTF8PROC_DECOMPOSE |
                                      utf8proc_option_t::UTF8PROC_STRIPMARK |
                                      utf8proc_option_t::UTF8PROC_CASEFOLD));
@@ -88,7 +89,7 @@ inline std::uint8_t get_numeric_tokens_mask(
   };
   auto mask = std::uint8_t{0U};
   for (auto const [i, token] : utl::enumerate(tokens)) {
-    if (number_count(token) >= token.size() / 2.0) {
+    if (number_count(token) >= static_cast<unsigned>(token.size() / 2U)) {
       mask |= 1U << i;
     }
   }

@@ -18,7 +18,9 @@ inline bool is_lower_case(char const c) { return c >= 'a' && c <= 'z'; }
 inline bool is_upper_case(char const c) { return c >= 'A' && c <= 'Z'; }
 inline bool is_number(char const c) { return c >= '0' && c <= '9'; }
 
-inline char decompress_char(ngram_t const trigram) { return trigram; }
+inline char decompress_char(ngram_t const trigram) {
+  return static_cast<char>(trigram);
+}
 
 inline std::string decompress_bigram(ngram_t const t) {
   auto s = std::string{};
@@ -28,12 +30,12 @@ inline std::string decompress_bigram(ngram_t const t) {
   return s;
 }
 
-inline ngram_t compress_char(char const c) { return c; }
+inline ngram_t compress_char(char const c) { return static_cast<ngram_t>(c); }
 
 inline ngram_t compress_bigram(std::string_view s) {
   assert(s.size() >= 2);
-  return compress_char(s[0]) << (0U * kNgramCharBitWidth) |
-         compress_char(s[1]) << (1U * kNgramCharBitWidth);
+  return static_cast<ngram_t>(compress_char(s[0]) << (0U * kNgramCharBitWidth) |
+                              compress_char(s[1]) << (1U * kNgramCharBitWidth));
 }
 
 template <typename Fn>

@@ -29,7 +29,7 @@ struct import_context;
 struct guess_context;
 
 template <typename Langs>
-std::int16_t find_lang(Langs const& langs, language_idx_t const l) {
+long find_lang(Langs const& langs, language_idx_t const l) {
   if (l == kDefaultLang) {
     return kDefaultLangIdx;
   }
