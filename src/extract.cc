@@ -2,6 +2,8 @@
 
 #include "fmt/std.h"
 
+#include "cista/io.h"
+
 #include "osmium/area/assembler.hpp"
 #include "osmium/area/multipolygon_manager.hpp"
 #include "osmium/handler/node_locations_for_ways.hpp"
@@ -366,10 +368,7 @@ void extract(std::filesystem::path const& in_path,
 
   {  // Write to disk.
     auto const timer = utl::scoped_timer{"write typeahead"};
-    auto mmap =
-        cista::buf{cista::mmap{(out_path / "t.bin").generic_string().c_str(),
-                               cista::mmap::protection::WRITE}};
-    cista::serialize<cista::mode::WITH_STATIC_VERSION>(mmap, t);
+    cista::write(out_path / "t.bin", t);
   }
 }
 

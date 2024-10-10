@@ -13,8 +13,6 @@
 
 namespace adr {
 
-constexpr auto const kBinaryVersion = 1U;
-
 struct typeahead;
 
 struct token {
@@ -26,7 +24,7 @@ void extract(std::filesystem::path const& in,
              std::filesystem::path const& out,
              std::filesystem::path const& tmp_dname);
 
-cista::wrapped<typeahead> read(std::filesystem::path const&, bool mapped);
+cista::wrapped<typeahead> read(std::filesystem::path const&);
 
 template <bool Debug>
 std::vector<token> get_suggestions(typeahead const&,

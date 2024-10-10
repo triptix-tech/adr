@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#include "cista/mmap.h"
+#include "cista/io.h"
 
 #include "utl/erase_duplicates.h"
 #include "utl/get_or_create.h"
@@ -15,7 +15,6 @@
 #include "osmium/geom/haversine.hpp"
 
 #include "adr/adr.h"
-#include "adr/cista_read.h"
 #include "adr/guess_context.h"
 #include "adr/import_context.h"
 #include "adr/trace.h"
@@ -364,30 +363,32 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   }
   std::sort(begin(matches), end(matches));
 
-  //  trace("n_in_ngrams={}, min_match_count={}\n", n_in_ngrams,
-  //  min_match_count); for (auto i = string_idx_t{0U}; i < n_strings; ++i) {
-  //    if (string_match_counts[i] < min_match_count) {
-  //      continue;
-  //    }
-  //
-  //    auto const match_count = string_match_counts[i];
-  //    auto const cos_sim = static_cast<float>(match_count * match_count) /
-  //                         (n_bigrams_[i] * n_bigrams_[i] * n_in_ngrams);
-  //
-  //    if (cos_sim > 0.01 && (matches.size() != 11'000 || matches.empty() ||
-  //                           matches.back().cos_sim_ < cos_sim)) {
-  //      utl::insert_sorted(matches, {i, cos_sim});
-  //      matches.resize(std::min(std::size_t{11'000}, matches.size()));
-  //    }
-  //  }
-  //  std::cout << "REAL CUTOFF: " << matches.back().cos_sim_ << "\n";
+  if (Debug) {
+    trace("n_in_ngrams={}, min_match_count={}\n", n_in_ngrams, min_match_count);
+    for (auto i = string_idx_t{0U}; i < n_strings; ++i) {
+      if (string_match_counts[i] < min_match_count) {
+        continue;
+      }
+
+      auto const match_count = string_match_counts[i];
+      auto const cos_sim = static_cast<float>(match_count * match_count) /
+                           (n_bigrams_[i] * n_bigrams_[i] * n_in_ngrams);
+
+      if (cos_sim > 0.01 && (matches.size() != 11'000 || matches.empty() ||
+                             matches.back().cos_sim_ < cos_sim)) {
+        utl::insert_sorted(matches, {i, cos_sim});
+        matches.resize(std::min(std::size_t{11'000}, matches.size()));
+      }
+    }
+    std::cout << "REAL CUTOFF: " << matches.back().cos_sim_ << "\n";
+  }
+
   UTL_STOP_TIMING(t3);
   trace("{} matches [{} ms]", matches.size(), UTL_TIMING_MS(t3));
 }
 
-cista::wrapped<typeahead> read(std::filesystem::path const& path_in,
-                               bool const mapped) {
-  return cista_read<typeahead>(path_in, mapped);
+cista::wrapped<typeahead> read(std::filesystem::path const& p) {
+  return cista::read<typeahead>(p);
 }
 
 template void typeahead::guess<true>(std::string_view normalized,
