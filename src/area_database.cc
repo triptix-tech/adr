@@ -27,12 +27,6 @@ namespace v = std::ranges::views;
 
 namespace adr {
 
-auto geojson = []() {
-  auto str = std::string{};
-  str.resize(512 * 1024 * 1024);
-  return str;
-}();
-
 using inner_rings_t = mm_nvec<area_idx_t, coordinates, 3U>;
 using outer_rings_t = mm_nvec<area_idx_t, coordinates, 2U>;
 
