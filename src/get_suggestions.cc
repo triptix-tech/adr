@@ -2,6 +2,7 @@
 
 #include "fmt/ranges.h"
 
+#include "utl/erase_duplicates.h"
 #include "utl/helpers/algorithm.h"
 #include "utl/insert_sorted.h"
 #include "utl/timing.h"
@@ -465,11 +466,17 @@ void get_scored_matches(typeahead const& t,
 template <bool Debug>
 std::vector<token> get_suggestions(typeahead const& t,
                                    geo::latlng const& /* coord */,
-                                   std::string_view in,
+                                   std::string in,
                                    unsigned n_suggestions,
                                    language_list_t const& languages,
                                    guess_context& ctx) {
   UTL_START_TIMING(t);
+
+  std::replace_if(
+      begin(in), end(in), [](auto c) { return c == ',' || c == ';'; }, ' ');
+  in.erase(std::unique(begin(in), end(in),
+                       [](char a, char b) { return a == b && a == ' '; }),
+           end(in));
 
   ctx.suggestions_.clear();
   if (in.size() < 3) {
@@ -534,14 +541,14 @@ std::vector<token> get_suggestions(typeahead const& t,
 
 template std::vector<token> get_suggestions<true>(typeahead const&,
                                                   geo::latlng const&,
-                                                  std::string_view,
+                                                  std::string,
                                                   unsigned,
                                                   language_list_t const&,
                                                   guess_context&);
 
 template std::vector<token> get_suggestions<false>(typeahead const&,
                                                    geo::latlng const&,
-                                                   std::string_view,
+                                                   std::string,
                                                    unsigned,
                                                    language_list_t const&,
                                                    guess_context&);

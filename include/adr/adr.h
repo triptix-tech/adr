@@ -2,7 +2,7 @@
 
 #include <filesystem>
 #include <memory>
-#include <string_view>
+#include <string>
 #include <vector>
 
 #include "geo/latlng.h"
@@ -29,7 +29,7 @@ cista::wrapped<typeahead> read(std::filesystem::path const&);
 template <bool Debug>
 std::vector<token> get_suggestions(typeahead const&,
                                    geo::latlng const&,
-                                   std::string_view input,
+                                   std::string input,
                                    unsigned n_suggestions,
                                    language_list_t const&,
                                    guess_context&);
