@@ -25,11 +25,11 @@
 [boost]
   url=git@github.com:motis-project/boost.git
   branch=master
-  commit=60cae66449fa3c9599b2b7d3d5d44c65301ed3a3
-[zlib]
-  url=git@github.com:motis-project/zlib.git
-  branch=master
-  commit=ee0742244d93c4237154ae16c3db42b5f284b442
+  commit=73549ebca677fe6214202a1ab580362b4f80e653
+[zlib-ng]
+  url=git@github.com:motis-project/zlib-ng.git
+  branch=develop
+  commit=68ab3e2d80253ec5dc3c83691d9ff70477b32cd3
 [unordered_dense]
   url=git@github.com:motis-project/unordered_dense.git
   branch=main
