@@ -259,7 +259,8 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
 }
 
 template <bool Debug>
-void match_places(std::uint8_t const numeric_tokens_mask,
+void match_places(std::uint8_t const all_tokens_mask,
+                  std::uint8_t const numeric_tokens_mask,
                   typeahead const& t,
                   guess_context& ctx,
                   std::vector<std::string> const& tokens,
@@ -352,28 +353,51 @@ void match_places(std::uint8_t const numeric_tokens_mask,
       }
     }
 
-    total_score -= std::popcount(matched_areas_mask) * 2.0;
-    //    total_score -= std::log2(t.place_population_[place].get()) / 10.0F;
-    total_score -= (t.place_population_[place].get() / 1'000'000.F) * 1.5;
-    total_score -= 1.5;
+    auto const extra_score =
+        t.place_type_[place] == place_type::kExtra ? 0.5 : 0;
+    auto const areas_score = std::popcount(matched_areas_mask);
+    auto const no_area_score =
+        !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 3 : 0;
+    auto const population_score =
+        std::min(1.5, (t.place_population_[place].get() / 1'000'000.F) * 1.5);
+    auto const place_score = 1.5;
+
+    total_score -= extra_score;
+    total_score -= areas_score;
+    total_score -= no_area_score;
+    total_score -= population_score;
+    total_score -= place_score;
 
     trace(
-        "[{}] {} FINAL: place_edit_dist={}, areas_edit_dist={}, population={}, "
-        "areas_bonus={} => {}",
+        "[{}] {} FINAL: place_edit_dist={}, areas_edit_dist={}, "
+        "areas_bonus={}, no_area_score={}, population_score={} [{}], "
+        "place_score={} "
+        "=> {}",
         ii, t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
-        place_edit_dist, areas_edit_dist,
-        -(t.place_population_[place].get() / 1'000'000.F) * 1.5,
-        -std::popcount(matched_areas_mask) * 2.0, total_score);
+        place_edit_dist, areas_edit_dist, areas_score, no_area_score,
+        population_score, t.place_population_[place].get(), place_score,
+        total_score);
 
-    ctx.suggestions_.emplace_back(
-        suggestion{.str_ = str_idx,
-                   .location_ = place,
-                   .coordinates_ = t.place_coordinates_[place],
-                   .area_set_ = area_set_idx,
-                   .matched_area_lang_ = area_lang,
-                   .matched_areas_ = matched_areas_mask,
-                   .matched_tokens_ = matched_tokens_mask,
-                   .score_ = total_score});
+    // Add if it's not a duplicate of the previous one
+    // or improves upon the previous one.
+    if (ctx.suggestions_.empty() ||
+        ctx.suggestions_.back().score_ <= total_score ||
+        !holds_alternative<place_idx_t>(ctx.suggestions_.back().location_) ||
+        get<place_idx_t>(ctx.suggestions_.back().location_) != place) {
+      auto& back [[maybe_unused]] = ctx.suggestions_.emplace_back(
+          suggestion{.str_ = str_idx,
+                     .location_ = place,
+                     .coordinates_ = t.place_coordinates_[place],
+                     .area_set_ = area_set_idx,
+                     .matched_area_lang_ = area_lang,
+                     .matched_areas_ = matched_areas_mask,
+                     .matched_tokens_ = matched_tokens_mask,
+                     .score_ = total_score});
+      if constexpr (Debug) {
+        std::cout << "ADDED: ";
+        back.print(std::cout, t, languages);
+      }
+    }
 
     ++ii;
   }
@@ -472,11 +496,7 @@ std::vector<token> get_suggestions(typeahead const& t,
                                    guess_context& ctx) {
   UTL_START_TIMING(t);
 
-  std::replace_if(
-      begin(in), end(in), [](auto c) { return c == ',' || c == ';'; }, ' ');
-  in.erase(std::unique(begin(in), end(in),
-                       [](char a, char b) { return a == b && a == ' '; }),
-           end(in));
+  erase_fillers(in);
 
   ctx.suggestions_.clear();
   if (in.size() < 3) {
@@ -509,7 +529,8 @@ std::vector<token> get_suggestions(typeahead const& t,
   get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, languages);
 
   match_streets<Debug>(numeric_tokens_mask, t, ctx, tokens, languages);
-  match_places<Debug>(numeric_tokens_mask, t, ctx, tokens, languages);
+  match_places<Debug>(all_tokens_mask, numeric_tokens_mask, t, ctx, tokens,
+                      languages);
 
   UTL_STOP_TIMING(t);
   trace("{} suggestions [{} ms]", ctx.suggestions_.size(), UTL_TIMING_MS(t));
@@ -519,13 +540,19 @@ std::vector<token> get_suggestions(typeahead const& t,
   }
 
   UTL_START_TIMING(sort);
-  auto const result_count = static_cast<std::ptrdiff_t>(
-      std::min(std::size_t{n_suggestions}, ctx.suggestions_.size()));
-  std::nth_element(begin(ctx.suggestions_),
-                   begin(ctx.suggestions_) + result_count,
-                   end(ctx.suggestions_));
-  ctx.suggestions_.resize(result_count);
+  //  auto const result_count = static_cast<std::ptrdiff_t>(
+  //      std::min(std::size_t{n_suggestions * 10U}, ctx.suggestions_.size()));
+  //  std::nth_element(begin(ctx.suggestions_),
+  //                   begin(ctx.suggestions_) + result_count,
+  //                   end(ctx.suggestions_));
+  //  ctx.suggestions_.resize(result_count);
   std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
+  ctx.suggestions_.erase(
+      std::unique(begin(ctx.suggestions_), end(ctx.suggestions_),
+                  [&](suggestion const& a, suggestion const& b) {
+                    return a.location_ == b.location_;
+                  }),
+      end(ctx.suggestions_));
   UTL_STOP_TIMING(sort);
   trace("sort [{} us]", UTL_TIMING_US(sort));
 
@@ -535,6 +562,9 @@ std::vector<token> get_suggestions(typeahead const& t,
       s.print(std::cout, t, languages);
     }
   }
+
+  ctx.suggestions_.resize(std::min(static_cast<std::size_t>(n_suggestions),
+                                   ctx.suggestions_.size()));
 
   return token_pos;
 }

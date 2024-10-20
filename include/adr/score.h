@@ -104,7 +104,9 @@ inline score_t get_token_match_score(
   //            << ", first_letter_mismatch_penality="
   //            << first_letter_mismatch_penality
   //            << ", second_letter_mismatch_penality="
-  //            << second_letter_mismatch_penality << ", score=" << score
+  //            << second_letter_mismatch_penality
+  //            << ", common_prefix_bonus=" << common_prefix_bonus
+  //            << ", score=" << score
   //            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F))
   //            << "\n";
 
@@ -184,6 +186,7 @@ inline score_t get_match_score(
   auto const fallback =
       get_token_match_score(normalized_str, p, sift4_offset_arr);
   if (p_tokens.size() == 1U && s_tokens.size() == 1U) {
+    //    std::cout << "p_tokens=1, s_tokens=1 => " << fallback << "\n";
     return fallback;
   }
 
@@ -233,7 +236,7 @@ inline score_t get_match_score(
   for (auto s_idx = 0U; s_idx != s_tokens.size(); ++s_idx) {
     if ((covered & (1U << s_idx)) == 0U) {
       ++n_not_matched;
-      auto const not_matched_penalty = s_tokens[s_idx].size() / 4U;
+      auto const not_matched_penalty = s_tokens[s_idx].size() / 3.F;
       //      std::cout << "PENALITY NOT MATCHED: " << s_tokens[s_idx] << ": "
       //                << not_matched_penalty << "\n";
       sum += not_matched_penalty;

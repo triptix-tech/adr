@@ -14,10 +14,13 @@ void suggestion::print(std::ostream& out,
                        language_list_t const& languages) const {
   std::visit(utl::overloaded{
                  [&](place_idx_t const p) {
-                   out << "place=" << t.strings_[str_].view();
+                   out << "place=" << t.strings_[str_].view() << " [" << p
+                       << (t.place_type_[p] == place_type::kExtra ? " EXT" : "")
+                       << "]";
                  },
                  [&](address const addr) {
-                   out << "street=" << t.strings_[str_].view();
+                   out << "street=" << t.strings_[str_].view() << "["
+                       << addr.street_ << "]";
                    if (addr.house_number_ != address::kNoHouseNumber) {
                      out << ", house_number="
                          << t.strings_[t.house_numbers_[addr.street_]

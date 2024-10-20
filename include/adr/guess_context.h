@@ -32,6 +32,8 @@ struct address {
   static constexpr auto const kNoHouseNumber =
       std::numeric_limits<std::uint16_t>::max();
 
+  bool operator==(address const&) const = default;
+
   street_idx_t street_;
   std::uint32_t house_number_;
 };
@@ -43,7 +45,9 @@ struct matched_area {
 
 struct suggestion {
   void print(std::ostream&, typeahead const&, language_list_t const&) const;
-  bool operator<(suggestion const& o) const { return score_ < o.score_; }
+  bool operator<(suggestion const& o) const {
+    return score_ < o.score_ || (score_ == o.score_ && str_ < o.str_);
+  }
 
   std::string areas(typeahead const&) const;
   std::string description(typeahead const&) const;

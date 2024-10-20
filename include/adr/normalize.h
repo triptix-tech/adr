@@ -21,6 +21,15 @@ inline void replace_all(std::string& s,
 
 using utf8_normalize_buf_t = std::basic_string<utf8proc_int32_t>;
 
+inline void erase_fillers(std::string& in) {
+  std::replace_if(
+      begin(in), end(in),
+      [](auto c) { return c == ',' || c == ';' || c == '-'; }, ' ');
+  in.erase(std::unique(begin(in), end(in),
+                       [](char a, char b) { return a == b && a == ' '; }),
+           end(in));
+}
+
 inline std::string_view normalize(std::string_view v,
                                   utf8_normalize_buf_t& decomposed) {
   decomposed.resize(v.size());
