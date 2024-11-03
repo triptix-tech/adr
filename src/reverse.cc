@@ -30,10 +30,7 @@ reverse::reverse(fs::path p, cista::mmap::protection const mode)
       rtree_{mode == cista::mmap::protection::READ
                  ? *cista::read<reverse::rtree_t::meta>(p_ / "rtree_meta.bin")
                  : reverse::rtree_t::meta{},
-             reverse::rtree_t::vector_t{mm("rtree_data.bin")}} {
-  std::cout << "rtree size: " << rtree_.m_.count_ << "\n";
-  std::cout << "rtree vector size: " << rtree_.nodes_.size() << "\n";
-}
+             reverse::rtree_t::vector_t{mm("rtree_data.bin")}} {}
 
 cista::mmap reverse::mm(char const* file) {
   return cista::mmap{(p_ / file).generic_string().c_str(), mode_};
