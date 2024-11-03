@@ -370,6 +370,12 @@ void extract(std::filesystem::path const& in_path,
     auto const timer = utl::scoped_timer{"write typeahead"};
     cista::write(out_path / "t.bin", t);
   }
+
+  {
+    auto const timer = utl::scoped_timer{"build rtree"};
+    r.build_rtree(t);
+    r.write();
+  }
 }
 
 }  // namespace adr

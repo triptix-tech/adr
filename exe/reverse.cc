@@ -10,7 +10,6 @@
 #include "adr/adr.h"
 #include "adr/area_database.h"
 #include "adr/area_set.h"
-#include "adr/cista_read.h"
 #include "adr/guess_context.h"
 #include "adr/reverse.h"
 #include "adr/typeahead.h"
@@ -72,12 +71,10 @@ int main(int ac, char** av) {
     return 1;
   }
 
-  auto const r = adr::cista_read<adr::reverse>(in / "r.bin", true);
-  auto const t = adr::read(in / "t.bin", false);
+  auto const r = adr::reverse{in, cista::mmap::protection::READ};
+  auto const t = adr::read(in / "t.bin");
   adr::print_stats(*t);
   auto const area_db = adr::area_database{in, cista::mmap::protection::READ};
-
-  auto rt = r->build_rtree(*t);
 
   auto lang_indices =
       std::basic_string<adr::language_idx_t>{{adr::kDefaultLang}};
@@ -94,21 +91,23 @@ int main(int ac, char** av) {
   auto areas = std::basic_string<adr::area_idx_t>{};
 
   for (auto i = 0U; i != guess.size(); i += 2U) {
-    auto const timer = utl::scoped_timer{"lookup"};
     auto const query = geo::latlng{guess[i], guess[i + 1U]};
 
-    r->lookup(*t, ctx, rt, query, 10U);
-
-    area_db.lookup(*t, adr::coordinates::from_latlng(query), areas);
-
     std::cout << "results for " << query << "\n";
-    std::cout << "areas: " << adr::area_set{*t, lang_indices, areas, 0U, {}}
-              << "\n";
-    for (auto const& [j, s] : utl::enumerate(ctx.suggestions_)) {
-      std::cout << "[" << j << "]\t";
-      s.print(std::cout, *t, lang_indices);
+    {
+      auto const timer = utl::scoped_timer{"address+place lookup"};
+      auto const suggestions = r.lookup(*t, query, 10U);
+      for (auto const& [j, s] : utl::enumerate(suggestions)) {
+        std::cout << "[" << j << "]\t";
+        s.print(std::cout, *t, lang_indices);
+      }
+    }
+    {
+      auto const timer = utl::scoped_timer{"area lookup"};
+      area_db.lookup(*t, adr::coordinates::from_latlng(query), areas);
+
+      std::cout << "areas: " << adr::area_set{*t, lang_indices, areas, 0U, {}}
+                << "\n";
     }
   }
-
-  rtree_free(rt);
 }

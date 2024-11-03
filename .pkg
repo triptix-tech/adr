@@ -5,11 +5,11 @@
 [geo]
   url=git@github.com:motis-project/geo.git
   branch=master
-  commit=66b34885c7e96e29ddb78a84ae3ab43302ed94e4
+  commit=de5a3586871b8b76a487d42fcc673c9487a1e233
 [cista]
   url=git@github.com:felixguendling/cista.git
   branch=master
-  commit=48210e6925658163952e458a4d13629ffdb0cea3
+  commit=52577def055e4bdf90eaa461872fc1f7b5b1131d
 [googletest]
   url=git@github.com:motis-project/googletest.git
   branch=master
@@ -37,7 +37,7 @@
 [tiles]
   url=git@github.com:motis-project/tiles.git
   branch=master
-  commit=ef9dbbb09353ce5064c5f6ffe605efa7e19e24d7
+  commit=6b6dc45bc904966640c7207ab91950848a8b3f6c
 [FTXUI]
   url=git@github.com:ArthurSonzogni/FTXUI.git
   branch=main
