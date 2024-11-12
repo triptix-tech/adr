@@ -48,7 +48,6 @@ int main(int ac, char** av) {
   auto languages = std::vector<std::string>{};
   auto verbose = false;
   auto n = 15U;
-  auto mapped = false;
   auto runs = 1U;
   auto warmup = false;
   auto benchmark = false;
@@ -72,7 +71,6 @@ int main(int ac, char** av) {
          "number of suggestions")  //
         ("runs,r", bpo::value<unsigned>(&runs)->default_value(runs),
          "number of runs (for benchmarking)")  //
-        ("mmap,m", "use memory mapping")  //
         ("languages,l", bpo::value(&languages)->multitoken(),
          R"(IANA language tags such as "en", "de", "it")");
 
@@ -96,9 +94,6 @@ int main(int ac, char** av) {
     if (vm.count("verbose")) {
       verbose = true;
     }
-    if (vm.count("mmap")) {
-      mapped = true;
-    }
     if (vm.count("warmup")) {
       warmup = true;
     }
@@ -113,7 +108,7 @@ int main(int ac, char** av) {
     return 1;
   }
 
-  auto const t = adr::read(in / "t.bin", mapped);
+  auto const t = adr::read(in / "t.bin");
   adr::print_stats(*t);
 
   auto lang_indices =

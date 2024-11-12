@@ -4,6 +4,8 @@
 
 #include "cista/io.h"
 
+#include "oneapi/tbb/parallel_pipeline.h"
+
 #include "osmium/area/assembler.hpp"
 #include "osmium/area/multipolygon_manager.hpp"
 #include "osmium/handler/node_locations_for_ways.hpp"
@@ -180,66 +182,36 @@ void extract(std::filesystem::path const& in_path,
   auto r = reverse{out_path, cista::mmap::protection::WRITE};
   t.lang_names_.emplace_back("default");
   auto areas_mutex = std::mutex{};
-  auto mp_queue = tiles::in_order_queue<osm_mem::Buffer>{};
   {  // Extract streets, places, and areas.
     pt->status("Load OSM / Pass 2");
-    auto const thread_count =
-        std::max(2, static_cast<int>(std::thread::hardware_concurrency()));
-
-    // pool must be destructed before handlers!
-    auto pool = osmium::thread::Pool{thread_count,
-                                     static_cast<size_t>(thread_count * 8)};
-
-    auto reader = osm_io::Reader{input_file, pool, osmium::io::read_meta::no};
-    auto seq_reader = tiles::sequential_until_finish<osm_mem::Buffer>{[&] {
-      pt->update(reader.file_size() + reader.offset());
-      return reader.read();
-    }};
-
-    std::atomic_bool has_exception{false};
-    std::vector<std::future<void>> workers;
+    auto reader = osm_io::Reader{input_file};
     auto handler = feature_handler{area_db, t, r, ctx, areas_mutex};
-    workers.reserve(thread_count / 2);
-    for (auto i = 0; i < thread_count / 2; ++i) {
-      workers.emplace_back(pool.submit([&] {
-        try {
-          while (true) {
-            auto opt = seq_reader.process();
-            if (!opt.has_value()) {
-              break;
-            }
-
-            auto& [idx, buf] = *opt;
-            tiles::update_locations(node_idx, buf);
-            osm::apply(buf, handler);
-
-            mp_queue.process_in_order(idx, std::move(buf), [&](auto buf2) {
-              osm::apply(buf2, mp_manager.handler([&](auto&& mp_buffer) {
-                auto p = std::make_shared<osm_mem::Buffer>(
-                    std::forward<decltype(mp_buffer)>(mp_buffer));
-                pool.submit([&, p] { osm::apply(*p, handler); });
-              }));
-            });
-          }
-        } catch (std::exception const& e) {
-          fmt::print(std::clog, "EXCEPTION CAUGHT: {} {}\n",
-                     std::this_thread::get_id(), e.what());
-          has_exception = true;
-        } catch (...) {
-          fmt::print(std::clog, "UNKNOWN EXCEPTION CAUGHT: {} \n",
-                     std::this_thread::get_id());
-          has_exception = true;
-        }
-      }));
-    }
-
-    utl::verify(!workers.empty(), "have no workers");
-    for (auto& worker : workers) {
-      worker.wait();
-    }
-
-    utl::verify(!has_exception, "load_osm: exception caught!");
-    utl::verify(mp_queue.queue_.empty(), "mp_queue not empty!");
+    oneapi::tbb::parallel_pipeline(
+        std::thread::hardware_concurrency() * 4U,
+        oneapi::tbb::make_filter<void, osm_mem::Buffer>(
+            oneapi::tbb::filter_mode::serial_in_order,
+            [&](oneapi::tbb::flow_control& fc) {
+              auto buf = reader.read();
+              pt->update(reader.file_size() + reader.offset());
+              if (!buf) {
+                fc.stop();
+              }
+              return buf;
+            }) &
+            oneapi::tbb::make_filter<osm_mem::Buffer, osm_mem::Buffer>(
+                oneapi::tbb::filter_mode::parallel,
+                [&](osm_mem::Buffer&& buf) {
+                  update_locations(node_idx, buf);
+                  osm::apply(buf, handler);
+                  return std::move(buf);
+                }) &
+            oneapi::tbb::make_filter<osm_mem::Buffer, void>(
+                oneapi::tbb::filter_mode::serial_in_order,
+                [&](osm_mem::Buffer&& buf) {
+                  osm::apply(buf, mp_manager.handler([&](auto&& buf) {
+                    osm::apply(buf, handler);
+                  }));
+                }));
 
     reader.close();
     pt->update(pt->in_high_);
