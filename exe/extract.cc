@@ -13,19 +13,19 @@ namespace fs = std::filesystem;
 int main(int ac, char** av) {
   auto const progress_bars = utl::global_progress_bars{false};
 
-  auto in = fs::path{"osm.pbf"};
-  auto out = fs::path{"adr"};
-  auto tmp = fs::path{"."};
+  auto in = std::string{"osm.pbf"};
+  auto out = std::string{"adr"};
+  auto tmp = std::string{"."};
 
   try {
     bpo::options_description desc{"Options"};
     desc.add_options()  //
         ("help,h", "Help screen")  //
-        ("in,i", bpo::value<fs::path>(&in)->default_value(in),
+        ("in,i", bpo::value(&in)->default_value(in),
          "OSM input file")  //
-        ("out,o", bpo::value<fs::path>(&out)->default_value(out),
+        ("out,o", bpo::value(&out)->default_value(out),
          "output file")  //
-        ("tmp_dir,t", bpo::value<fs::path>(&tmp)->default_value(tmp),
+        ("tmp_dir,t", bpo::value(&tmp)->default_value(tmp),
          "directory for temporary files");
 
     auto const pos_desc =

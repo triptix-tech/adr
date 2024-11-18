@@ -139,7 +139,7 @@ int main(int ac, char** av) {
     }
     utl::for_each_line(utl::cstr{*content}, [&](utl::cstr const line) {
       UTL_START_TIMING(timer);
-      adr::get_suggestions<false>(*t, {}, line.view(), n, lang_indices, ctx);
+      adr::get_suggestions<false>(*t, {}, line.to_str(), n, lang_indices, ctx);
       UTL_STOP_TIMING(timer);
       std::cout << UTL_TIMING_MS(timer) << " ms\n";
     });
@@ -158,9 +158,9 @@ int main(int ac, char** av) {
         ctx.resize(*t);
 
         while (true) {
-          adr::get_suggestions<false>(*t, {},
-                                      kAddresses[count % kAddresses.size()], n,
-                                      lang_indices, ctx);
+          adr::get_suggestions<false>(
+              *t, {}, std::string{kAddresses[count % kAddresses.size()]}, n,
+              lang_indices, ctx);
           ++count;
           if (count > 1'000) {
             break;
