@@ -15,6 +15,8 @@ struct typeahead;
 
 struct area_database final {
   area_database(std::filesystem::path, cista::mmap::protection const mode);
+  area_database(area_database&&);
+  area_database& operator=(area_database&&);
   ~area_database();
 
   void lookup(typeahead const&,

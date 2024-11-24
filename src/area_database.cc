@@ -218,6 +218,9 @@ area_database::area_database(std::filesystem::path p,
                              cista::mmap::protection const mode)
     : impl_{std::make_unique<area_database::impl>(std::move(p), mode)} {}
 
+area_database::area_database(area_database&&) = default;
+area_database& area_database::operator=(adr::area_database&&) = default;
+
 area_database::~area_database() = default;
 
 void area_database::lookup(typeahead const& t,
