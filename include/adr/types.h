@@ -34,7 +34,7 @@ using admin_level_t = cista::strong<std::uint8_t, struct admin_level_idx_>;
 using string_idx_t = cista::strong<std::uint32_t, struct string_idx_>;
 using street_idx_t = cista::strong<std::uint32_t, struct street_idx_>;
 using place_idx_t = cista::strong<std::uint32_t, struct place_idx_>;
-using language_idx_t = cista::strong<std::uint8_t, struct language_idx_>;
+using language_idx_t = cista::strong<std::uint16_t, struct language_idx_>;
 
 constexpr auto const kDefaultLangIdx = 0U;
 constexpr auto const kDefaultLang = language_idx_t{0U};
