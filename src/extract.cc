@@ -143,8 +143,7 @@ void extract(std::filesystem::path const& in_path,
 
   auto const filter = osm::TagsFilter{}
                           .add_rule(true, "boundary", "postal_code")
-                          .add_rule(true, "boundary", "administrative")
-                          .add_rule(true, "admin_level");
+                          .add_rule(true, "boundary", "administrative");
 
   auto area_db = area_database{out_path, cista::mmap::protection::WRITE};
   auto const node_idx_file =
