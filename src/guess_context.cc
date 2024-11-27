@@ -20,7 +20,7 @@ void suggestion::print(std::ostream& out,
                  },
                  [&](address const addr) {
                    out << "street=" << t.strings_[str_].view() << "["
-                       << addr.street_ << "]";
+                       << addr.street_ << ", " << addr.house_number_ << "]";
                    if (addr.house_number_ != address::kNoHouseNumber) {
                      out << ", house_number="
                          << t.strings_[t.house_numbers_[addr.street_]

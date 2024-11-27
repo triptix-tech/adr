@@ -140,6 +140,9 @@ void typeahead::add_address(import_context& ctx,
   ctx.house_numbers_[street_idx].emplace_back(house_number_idx);
   ctx.house_coordinates_[street_idx].emplace_back(
       coordinates::from_location(l));
+
+  assert(ctx.house_numbers_[street_idx].size() ==
+         ctx.house_coordinates_[street_idx].size());
 }
 
 street_idx_t typeahead::add_street(import_context& ctx,

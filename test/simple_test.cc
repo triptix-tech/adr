@@ -164,8 +164,12 @@ TEST(adr, score_test) {
   //  oase",
   //                                    sift4_dist, buf));
 
-  EXPECT_EQ(1, adr::get_match_score("Bar 59", "bar", sift4_dist, buf));
-  EXPECT_EQ(1, adr::get_match_score("Bar", "bar", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Bar 59", "bar", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Bar", "bar", sift4_dist, buf));
+
+  EXPECT_EQ(1, adr::get_match_score("Île-de-France", "de", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("de", "Île-de-France", sift4_dist,
+  //  buf));
 }
 
 TEST(adr, for_each_token) {

@@ -256,6 +256,7 @@ void extract(std::filesystem::path const& in_path,
     auto timer = utl::scoped_timer{"coordinate to area mapping"};
 
     t.house_coordinates_.resize(t.street_names_.size());
+    t.house_numbers_.resize(t.street_names_.size());
 
     {
       auto place_areas = std::vector<std::basic_string<area_idx_t>>{};
@@ -300,6 +301,7 @@ void extract(std::filesystem::path const& in_path,
       auto house_areas =
           std::vector<cista::raw::vecvec<std::uint32_t, area_idx_t>>{};
       house_areas.resize(t.house_coordinates_.size());
+      assert(t.house_coordinates_.size() == t.house_numbers_.size());
 
       utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
           t.house_coordinates_.size(),
@@ -311,11 +313,14 @@ void extract(std::filesystem::path const& in_path,
           });
 
       for (auto const& [i, x] : utl::enumerate(house_areas)) {
+        auto const street = street_idx_t{i};
         t.house_areas_.add_back_sized(0);
         for (auto const& a : x) {
-          t.house_areas_[street_idx_t{i}].push_back(t.get_or_create_area_set(
+          t.house_areas_[street].push_back(t.get_or_create_area_set(
               ctx, std::basic_string_view<area_idx_t>{begin(a), end(a)}));
         }
+        assert(t.house_areas_[street].size() ==
+               t.house_numbers_[street].size());
       }
     }
   }

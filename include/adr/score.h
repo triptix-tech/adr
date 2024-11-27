@@ -211,7 +211,7 @@ inline score_t get_match_score(
 
       auto const s_p_match_score =
           s_phrase.s_ == p_token
-              ? -2.0F
+              ? -1.8F
               : get_token_match_score(s_phrase.s_, p_token, sift4_offset_arr);
       if (best_s_score > s_p_match_score) {
         best_s_idx = s_idx;
@@ -247,11 +247,11 @@ inline score_t get_match_score(
     return kNoMatch;
   }
 
-  //  std::cout << "  SUM: " << sum << "\n";
-
   auto const max = std::ceil(std::min(s.size(), p.size()) / 2.0F);
   auto const score = std::min(fallback, sum);
-  return score > max ? kNoMatch : score;
+  //  std::cout << "  SUM: " << sum << ", MAX=" << max << ", SCORE=" << score
+  //            << "\n";
+  return score >= max ? kNoMatch : score;
 }
 
 }  // namespace adr
