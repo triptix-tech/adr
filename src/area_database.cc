@@ -84,6 +84,7 @@ struct area_database::impl {
               auto const outer = convert_ring(tmp.ring_tmp_, outer_ring);
               auto const poly = tg_poly_new(outer, tmp.inner_tmp_.data(),
                                             tmp.inner_tmp_.size());
+              tg_ring_free(outer);
               tmp.polys_tmp_.emplace_back(poly);
             }
 
@@ -170,13 +171,20 @@ struct area_database::impl {
       for (auto const& inner_ring : area.inner_rings(outer_ring)) {
         inner_tmp_.emplace_back(convert_ring(ring_tmp_, inner_ring));
       }
-      polys_tmp_.emplace_back(tg_poly_new(convert_ring(ring_tmp_, outer_ring),
-                                          inner_tmp_.data(),
-                                          inner_tmp_.size()));
+      auto const outer = convert_ring(ring_tmp_, outer_ring);
+      polys_tmp_.emplace_back(
+          tg_poly_new(outer, inner_tmp_.data(), inner_tmp_.size()));
+      for (auto const r : inner_tmp_) {
+        tg_ring_free(r);
+      }
+      tg_ring_free(outer);
     }
 
     idx_.emplace_back(
         tg_geom_new_multipolygon(polys_tmp_.data(), polys_tmp_.size()));
+    for (auto const p : polys_tmp_) {
+      tg_poly_free(p);
+    }
 
     for (auto const& outer : area.outer_rings()) {
       auto const outer_env = outer.envelope();
