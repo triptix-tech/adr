@@ -32,7 +32,8 @@ std::vector<token> get_suggestions(typeahead const&,
                                    std::string input,
                                    unsigned n_suggestions,
                                    language_list_t const&,
-                                   guess_context&);
+                                   guess_context&,
+                                   bool only_external_places = false);
 
 void print_stats(typeahead const&);
 

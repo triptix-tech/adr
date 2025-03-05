@@ -272,9 +272,14 @@ void match_places(std::uint8_t const all_tokens_mask,
        ctx.scored_place_matches_) {
     auto const area_set_idx = t.place_areas_[place];
 
-    trace("[{}] {}: edit_dist={}, phrase={}", ii,
+    if (t.place_type_[place] != place_type::kExtra) {
+      continue;
+    }
+
+    trace("[{}] {}: edit_dist={}, phrase={}, type={}", ii,
           t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
-          place_edit_dist, ctx.phrases_[place_p_idx].s_);
+          place_edit_dist, ctx.phrases_[place_p_idx].s_,
+          t.place_type_[place] == place_type::kExtra ? "EXT" : "REG");
 
     activate_areas(t, ctx, numeric_tokens_mask, area_set_idx, languages);
 
@@ -426,7 +431,8 @@ template <bool Debug>
 void get_scored_matches(typeahead const& t,
                         guess_context& ctx,
                         std::uint8_t const numeric_tokens_mask,
-                        language_list_t const& languages) {
+                        language_list_t const& languages,
+                        bool only_external_places) {
   UTL_START_TIMING(t);
 
   ctx.scored_street_matches_.clear();
@@ -451,6 +457,9 @@ void get_scored_matches(typeahead const& t,
            utl::zip(t.string_to_location_[m.idx_], t.string_to_type_[m.idx_])) {
         switch (type) {
           case location_type_t::kStreet: {
+            if (only_external_places) {
+              continue;
+            }
             auto const street_idx = street_idx_t{idx};
             if (ctx.scored_street_matches_.size() != kMaxScoredMatches ||
                 ctx.scored_street_matches_.back().score_ > p_match_score) {
@@ -467,6 +476,13 @@ void get_scored_matches(typeahead const& t,
 
           case location_type_t::kPlace:
             auto const place_idx = place_idx_t{idx};
+            trace("  {}: {} [{}]", idx,
+                  t.strings_[t.place_names_[place_idx][kDefaultLangIdx]].view(),
+                  t.place_type_[place_idx] == place_type::kExtra ? "EXT" : "");
+            if (only_external_places &&
+                t.place_type_[place_idx] != place_type::kExtra) {
+              continue;
+            }
             if (ctx.scored_place_matches_.size() != kMaxScoredMatches ||
                 ctx.scored_place_matches_.back().score_ > p_match_score) {
               utl::insert_sorted(ctx.scored_place_matches_,
@@ -493,7 +509,9 @@ std::vector<token> get_suggestions(typeahead const& t,
                                    std::string in,
                                    unsigned n_suggestions,
                                    language_list_t const& languages,
-                                   guess_context& ctx) {
+                                   guess_context& ctx,
+                                   bool only_external_places) {
+
   UTL_START_TIMING(t);
 
   erase_fillers(in);
@@ -526,7 +544,7 @@ std::vector<token> get_suggestions(typeahead const& t,
 
   auto const numeric_tokens_mask = get_numeric_tokens_mask(tokens);
 
-  get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, languages);
+  get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, languages, only_external_places);
 
   match_streets<Debug>(numeric_tokens_mask, t, ctx, tokens, languages);
   match_places<Debug>(all_tokens_mask, numeric_tokens_mask, t, ctx, tokens,
@@ -574,13 +592,15 @@ template std::vector<token> get_suggestions<true>(typeahead const&,
                                                   std::string,
                                                   unsigned,
                                                   language_list_t const&,
-                                                  guess_context&);
+                                                  guess_context&,
+                                                  bool only_external_places);
 
 template std::vector<token> get_suggestions<false>(typeahead const&,
                                                    geo::latlng const&,
                                                    std::string,
                                                    unsigned,
                                                    language_list_t const&,
-                                                   guess_context&);
+                                                   guess_context&,
+                                                   bool only_external_places);
 
 }  // namespace adr

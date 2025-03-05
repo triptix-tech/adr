@@ -362,6 +362,8 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
                          (n_bigrams_[i] * n_in_ngrams);
     if (cos_sim >= cutoff) {
       matches.emplace_back(cos_sim_match{i, cos_sim});
+      // print match
+      fmt::print("MATCH: {} {}\n", cos_sim, strings_[i]);
     }
   }
   std::sort(begin(matches), end(matches));
