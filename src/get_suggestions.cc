@@ -432,7 +432,7 @@ void get_scored_matches(typeahead const& t,
                         guess_context& ctx,
                         std::uint8_t const numeric_tokens_mask,
                         language_list_t const& languages,
-                        bool only_external_places) {
+                        filter_type filter) {
   UTL_START_TIMING(t);
 
   ctx.scored_street_matches_.clear();
@@ -457,7 +457,7 @@ void get_scored_matches(typeahead const& t,
            utl::zip(t.string_to_location_[m.idx_], t.string_to_type_[m.idx_])) {
         switch (type) {
           case location_type_t::kStreet: {
-            if (only_external_places) {
+            if (filter == filter_type::kExtra || filter == filter_type::kPlace) {
               continue;
             }
             auto const street_idx = street_idx_t{idx};
@@ -479,8 +479,8 @@ void get_scored_matches(typeahead const& t,
             trace("  {}: {} [{}]", idx,
                   t.strings_[t.place_names_[place_idx][kDefaultLangIdx]].view(),
                   t.place_type_[place_idx] == place_type::kExtra ? "EXT" : "");
-            if (only_external_places &&
-                t.place_type_[place_idx] != place_type::kExtra) {
+            if (filter == filter_type::kAddress ||
+                (filter == filter_type::kExtra && t.place_type_[place_idx] != place_type::kExtra)) {
               continue;
             }
             if (ctx.scored_place_matches_.size() != kMaxScoredMatches ||
@@ -510,7 +510,7 @@ std::vector<token> get_suggestions(typeahead const& t,
                                    unsigned n_suggestions,
                                    language_list_t const& languages,
                                    guess_context& ctx,
-                                   bool only_external_places) {
+                                   filter_type filter) {
 
   UTL_START_TIMING(t);
 
@@ -544,7 +544,7 @@ std::vector<token> get_suggestions(typeahead const& t,
 
   auto const numeric_tokens_mask = get_numeric_tokens_mask(tokens);
 
-  get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, languages, only_external_places);
+  get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, languages, filter);
 
   match_streets<Debug>(numeric_tokens_mask, t, ctx, tokens, languages);
   match_places<Debug>(all_tokens_mask, numeric_tokens_mask, t, ctx, tokens,
@@ -593,7 +593,7 @@ template std::vector<token> get_suggestions<true>(typeahead const&,
                                                   unsigned,
                                                   language_list_t const&,
                                                   guess_context&,
-                                                  bool only_external_places);
+                                                  filter_type filter);
 
 template std::vector<token> get_suggestions<false>(typeahead const&,
                                                    geo::latlng const&,
@@ -601,6 +601,6 @@ template std::vector<token> get_suggestions<false>(typeahead const&,
                                                    unsigned,
                                                    language_list_t const&,
                                                    guess_context&,
-                                                   bool only_external_places);
+                                                   filter_type filter);
 
 }  // namespace adr

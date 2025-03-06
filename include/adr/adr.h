@@ -33,7 +33,7 @@ std::vector<token> get_suggestions(typeahead const&,
                                    unsigned n_suggestions,
                                    language_list_t const&,
                                    guess_context&,
-                                   bool only_external_places = false);
+                                   filter_type filter = filter_type::kNone);
 
 void print_stats(typeahead const&);
 
