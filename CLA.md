@@ -8,7 +8,7 @@ If you have not already done so, please complete and sign, then scan and email a
 
 Please read this document carefully before signing and keep a copy for your records.
 
-You accept and agree to the following terms and conditions for your present and future Contributions Submitted to triptix GmbH. In return, triptix GmbH shall not use your Contributions in a way that is contrary to the public benefit or inconsistent with its nonprofit status and bylaws in effect at the time of the Contribution. Except for the license granted herein to triptix GmbH and recipients of software distributed by triptix GmbH, You reserve all right, title, and interest in and to your Contributions.
+You accept and agree to the following terms and conditions for your present and future Contributions Submitted to triptix GmbH. In return, triptix GmbH shall not use your Contributions in a way that is contrary to the public interest or inconsistent with the principles of fair use and open-source collaboration. Except for the license granted herein to triptix GmbH and recipients of software distributed by triptix GmbH, You reserve all right, title, and interest in and to your Contributions.
 
 1. Definitions. "You" (or "Contributor") shall mean the copyright owner or legal entity authorized by the copyright owner that is making this CLA with triptix GmbH. For legal entities, the entity making a Contribution and all other entities that control, are controlled by, or are under common control with that entity are considered to be a single Contributor.
 
