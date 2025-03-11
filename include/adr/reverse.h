@@ -48,7 +48,8 @@ struct reverse {
 
   std::vector<suggestion> lookup(typeahead const&,
                                  geo::latlng const&,
-                                 std::size_t const n_guesses) const;
+                                 std::size_t const n_guesses,
+                                 filter_type filter = filter_type::kNone) const;
   void add_street(import_context&, street_idx_t, osmium::Way const&);
   void write(import_context&);
   void build_rtree(typeahead const&);

@@ -38,7 +38,8 @@ cista::mmap reverse::mm(char const* file) {
 
 std::vector<suggestion> reverse::lookup(typeahead const& t,
                                         geo::latlng const& query,
-                                        std::size_t const n_guesses) const {
+                                        std::size_t const n_guesses,
+                                        filter_type filter) const {
   auto const b = geo::box{query, 500.0};
   auto const min = b.min_.lnglat_float();
   auto const max = b.max_.lnglat_float();
@@ -50,6 +51,9 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
           reverse::rtree_t::coord_t const& max, rtree_entity const& e) {
         switch (e.type_) {
           case adr::entity_type::kHouseNumber: {
+            if (filter == filter_type::kPlace || filter == filter_type::kExtra) {
+              return true;
+            }
             auto const& hn = e.hn_;
             auto const c = t.house_coordinates_[hn.street_][hn.idx_];
             suggestions.emplace_back(adr::suggestion{
@@ -67,6 +71,11 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
           } break;
 
           case adr::entity_type::kPlace: {
+            if (filter == filter_type::kAddress ||
+              (filter == filter_type::kExtra
+                && t.place_type_[e.place_.place_] != place_type::kExtra)) {
+              return true;
+            }
             auto const& p = e.place_;
             auto const c = t.place_coordinates_[p.place_];
             suggestions.emplace_back(adr::suggestion{
@@ -83,6 +92,9 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
           } break;
 
           case adr::entity_type::kStreet: {
+            if (filter == filter_type::kPlace || filter == filter_type::kExtra) {
+              return true;
+            }
             auto const& s = e.street_segment_;
             auto const [dist, closest, _] = geo::distance_to_polyline(
                 query, street_segments_[s.street_][s.segment_]);

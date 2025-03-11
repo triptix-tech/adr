@@ -56,6 +56,13 @@ enum class place_type : std::uint8_t {
   kExtra  // for entries that were added externally (not from adr extract)
 };
 
+enum class filter_type : std::uint8_t {
+  kNone,
+  kAddress,
+  kPlace,
+  kExtra,
+};
+
 struct coordinates {
   friend std::ostream& operator<<(std::ostream& out, coordinates const& c) {
     auto const l = c.as_location();
