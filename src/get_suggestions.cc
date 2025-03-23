@@ -457,7 +457,8 @@ void get_scored_matches(typeahead const& t,
            utl::zip(t.string_to_location_[m.idx_], t.string_to_type_[m.idx_])) {
         switch (type) {
           case location_type_t::kStreet: {
-            if (filter == filter_type::kExtra || filter == filter_type::kPlace) {
+            if (filter != filter_type::kNone &&
+                filter != filter_type::kAddress) {
               continue;
             }
             auto const street_idx = street_idx_t{idx};
@@ -476,11 +477,10 @@ void get_scored_matches(typeahead const& t,
 
           case location_type_t::kPlace:
             auto const place_idx = place_idx_t{idx};
-            trace("  {}: {} [{}]", idx,
-                  t.strings_[t.place_names_[place_idx][kDefaultLangIdx]].view(),
-                  t.place_type_[place_idx] == place_type::kExtra ? "EXT" : "");
-            if (filter == filter_type::kAddress ||
-                (filter == filter_type::kExtra && t.place_type_[place_idx] != place_type::kExtra)) {
+            if (filter != filter_type::kNone &&
+                (filter == filter_type::kAddress ||
+                 ((filter == filter_type::kExtra) !=
+                  (t.place_type_[place_idx] == place_type::kExtra)))) {
               continue;
             }
             if (ctx.scored_place_matches_.size() != kMaxScoredMatches ||
