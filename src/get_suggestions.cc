@@ -272,10 +272,6 @@ void match_places(std::uint8_t const all_tokens_mask,
        ctx.scored_place_matches_) {
     auto const area_set_idx = t.place_areas_[place];
 
-    if (t.place_type_[place] != place_type::kExtra) {
-      continue;
-    }
-
     trace("[{}] {}: edit_dist={}, phrase={}, type={}", ii,
           t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
           place_edit_dist, ctx.phrases_[place_p_idx].s_,
@@ -432,7 +428,7 @@ void get_scored_matches(typeahead const& t,
                         guess_context& ctx,
                         std::uint8_t const numeric_tokens_mask,
                         language_list_t const& languages,
-                        filter_type filter) {
+                        filter_type const filter) {
   UTL_START_TIMING(t);
 
   ctx.scored_street_matches_.clear();
@@ -510,8 +506,7 @@ std::vector<token> get_suggestions(typeahead const& t,
                                    unsigned n_suggestions,
                                    language_list_t const& languages,
                                    guess_context& ctx,
-                                   filter_type filter) {
-
+                                   filter_type const filter) {
   UTL_START_TIMING(t);
 
   erase_fillers(in);
