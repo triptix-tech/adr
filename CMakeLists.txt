@@ -34,6 +34,7 @@ target_link_libraries(adr
     utf8proc
     tg
     rtree
+    address_formatting_res
 )
 target_compile_definitions(adr PUBLIC RAPIDJSON_HAS_STDSTRING)
 
@@ -51,6 +52,8 @@ target_link_libraries(adr-typeahead
     ftxui::dom
     ftxui::component
     ${adr-mimalloc-lib}
+    address_formatting_res
+    address_formatting_res-res
 )
 
 if (MOTIS_MIMALLOC AND WIN32)
