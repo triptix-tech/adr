@@ -74,3 +74,7 @@
   url=git@github.com:motis-project/reflect-cpp.git
   branch=main
   commit=165b617ac54400bf34f261b07376437157f19a63
+[Mustache]
+  url=git@github.com:kainjow/Mustache.git
+  branch=master
+  commit=04277d5552c6e46bee41a946b7d175a660ea1b3d

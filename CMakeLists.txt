@@ -34,7 +34,9 @@ target_link_libraries(adr
     utf8proc
     tg
     rtree
+    reflectcpp
     address_formatting_res
+    mustache
 )
 target_compile_definitions(adr PUBLIC RAPIDJSON_HAS_STDSTRING)
 
@@ -52,7 +54,6 @@ target_link_libraries(adr-typeahead
     ftxui::dom
     ftxui::component
     ${adr-mimalloc-lib}
-    address_formatting_res
     address_formatting_res-res
 )
 
@@ -94,4 +95,4 @@ configure_file (
 )
 add_executable(adr-test ${adr-test-files})
 target_include_directories(adr-test PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
-target_link_libraries(adr-test gtest adr utl)
+target_link_libraries(adr-test gtest adr utl address_formatting_res-res)
