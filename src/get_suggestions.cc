@@ -501,11 +501,12 @@ void get_scored_matches(typeahead const& t,
 
 template <bool Debug>
 std::vector<token> get_suggestions(typeahead const& t,
-                                   geo::latlng const& /* coord */,
                                    std::string in,
                                    unsigned n_suggestions,
                                    language_list_t const& languages,
                                    guess_context& ctx,
+                                   std::optional<geo::latlng> const& coord,
+                                   double const bias,
                                    filter_type const filter) {
   UTL_START_TIMING(t);
 
@@ -552,6 +553,13 @@ std::vector<token> get_suggestions(typeahead const& t,
     return token_pos;
   }
 
+  if (coord.has_value()) {
+    for (auto& s : ctx.suggestions_) {
+      s.score_ +=
+          std::log2(geo::distance(s.coordinates_.as_latlng(), *coord)) / bias;
+    }
+  }
+
   UTL_START_TIMING(sort);
   //  auto const result_count = static_cast<std::ptrdiff_t>(
   //      std::min(std::size_t{n_suggestions * 10U}, ctx.suggestions_.size()));
@@ -582,20 +590,24 @@ std::vector<token> get_suggestions(typeahead const& t,
   return token_pos;
 }
 
-template std::vector<token> get_suggestions<true>(typeahead const&,
-                                                  geo::latlng const&,
-                                                  std::string,
-                                                  unsigned,
-                                                  language_list_t const&,
-                                                  guess_context&,
-                                                  filter_type filter);
+template std::vector<token> get_suggestions<true>(
+    typeahead const&,
+    std::string,
+    unsigned,
+    language_list_t const&,
+    guess_context&,
+    std::optional<geo::latlng> const&,
+    double,
+    filter_type filter);
 
-template std::vector<token> get_suggestions<false>(typeahead const&,
-                                                   geo::latlng const&,
-                                                   std::string,
-                                                   unsigned,
-                                                   language_list_t const&,
-                                                   guess_context&,
-                                                   filter_type filter);
+template std::vector<token> get_suggestions<false>(
+    typeahead const&,
+    std::string,
+    unsigned,
+    language_list_t const&,
+    guess_context&,
+    std::optional<geo::latlng> const&,
+    double,
+    filter_type filter);
 
 }  // namespace adr

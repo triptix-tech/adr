@@ -28,11 +28,12 @@ cista::wrapped<typeahead> read(std::filesystem::path const&);
 
 template <bool Debug>
 std::vector<token> get_suggestions(typeahead const&,
-                                   geo::latlng const&,
                                    std::string input,
                                    unsigned n_suggestions,
                                    language_list_t const&,
                                    guess_context&,
+                                   std::optional<geo::latlng> const& coord,
+                                   double bias,
                                    filter_type filter = filter_type::kNone);
 
 void print_stats(typeahead const&);
