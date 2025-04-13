@@ -167,9 +167,22 @@ TEST(adr, score_test) {
   //  EXPECT_EQ(1, adr::get_match_score("Bar 59", "bar", sift4_dist, buf));
   //  EXPECT_EQ(1, adr::get_match_score("Bar", "bar", sift4_dist, buf));
 
-  EXPECT_EQ(1, adr::get_match_score("Île-de-France", "de", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Île-de-France", "de", sift4_dist,
+  //  buf)); EXPECT_EQ(
+  //      1, adr::get_match_score("Celsiusstr. Süd (Berlin)",
+  //                              "S Lichterfelde Süd (Berlin)", sift4_dist,
+  //                              buf));
+  //  EXPECT_EQ(
+  //      1, adr::get_match_score("S Lichterfelde Süd (Berlin)",
+  //                              "S Lichterfelde Süd (Berlin)", sift4_dist,
+  //                              buf));
   //  EXPECT_EQ(1, adr::get_match_score("de", "Île-de-France", sift4_dist,
   //  buf));
+
+  EXPECT_EQ(1, adr::get_match_score("Darmstadt Berliner Allee",
+                                    "berliner allee", sift4_dist, buf));
+  EXPECT_EQ(1, adr::get_match_score("Berliner Allee 8 bis 8f", "berliner allee",
+                                    sift4_dist, buf));
 }
 
 TEST(adr, for_each_token) {

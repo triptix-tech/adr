@@ -75,7 +75,8 @@ void activate_areas(typeahead const& t,
 }
 
 template <bool Debug>
-void match_streets(std::uint8_t const numeric_tokens_mask,
+void match_streets(std::uint8_t const all_tokens_mask,
+                   std::uint8_t const numeric_tokens_mask,
                    typeahead const& t,
                    guess_context& ctx,
                    std::vector<std::string> const& tokens,
@@ -134,16 +135,16 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
       // For each phrase: greedily match an area name
       // IF matching distance is below the no-match-penalty threshold.
       for (auto const item_matched_mask : ctx.item_matched_masks_) {
-        auto matched_mask = item_matched_mask;
-        auto matched_areas = std::uint32_t{0U};
+        auto matched_tokens_mask = item_matched_mask;
+        auto matched_areas_mask = std::uint32_t{0U};
         auto area_lang = area_set_lang_t{};
         auto areas_edit_dist = 0.0F;
         for (auto const& [area_p_idx, area_p] : utl::enumerate(ctx.phrases_)) {
           auto best_edit_dist = std::numeric_limits<float>::max();
           auto best_area_idx = 0U;
 
-          if ((area_p.token_bits_ & matched_mask) != 0U) {
-            trace("{} [p={}] {} -> ALREADY MATCHED",
+          if ((area_p.token_bits_ & matched_tokens_mask) != 0U) {
+            trace("[{}] {} [p={}] {} -> ALREADY MATCHED", street,
                   t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
                   ctx.phrases_[street_p_idx].s_, area_p.s_);
             continue;
@@ -162,7 +163,7 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
                 );
 
             if (!match_allowed) {
-              trace("{} [p={}]\t\t\t{} vs {} -> NOT ALLOWED",
+              trace("[{}] {} [p={}]\t\t\t{} vs {} -> NOT ALLOWED", street,
                     t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
                     ctx.phrases_[street_p_idx].s_,
                     t.strings_[t.area_names_[area][kDefaultLangIdx]].view(),
@@ -173,7 +174,8 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
             auto const edit_dist =
                 ctx.area_phrase_match_scores_[area][area_p_idx];
 
-            trace("{} [p={}]\t\t\t{} [idx={}] vs {} [area_p_idx={}] -> {}",
+            trace("[{}] {} [p={}]\t\t\t{} [idx={}] vs {} [area_p_idx={}] -> {}",
+                  street,
                   t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
                   ctx.phrases_[street_p_idx].s_,
                   t.strings_[t.area_names_[area][kDefaultLangIdx]].view(), area,
@@ -187,15 +189,15 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
 
           if (best_edit_dist != kNoMatch) {
             auto const best_area = t.area_sets_[area_set_idx][best_area_idx];
-            matched_areas |= (1U << best_area_idx);
+            matched_areas_mask |= (1U << best_area_idx);
             area_lang[best_area_idx] =
                 ctx.area_phrase_lang_[best_area][area_p_idx];
             areas_edit_dist += best_edit_dist;
             areas_edit_dist -=
                 (t.area_population_[best_area].get() / 10'000'000.0F) * 2U;
-            matched_mask |= area_p.token_bits_;
+            matched_tokens_mask |= area_p.token_bits_;
 
-            trace("{}\t\t\t***MATCHED: {} vs {}: {}",
+            trace("[{}] {}\t\t\t***MATCHED: {} vs {}: {}", street,
                   t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
                   t.strings_
                       [t.area_names_[t.area_sets_[area_set_idx][best_area_idx]]
@@ -212,24 +214,35 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
 
           auto total_score = street_edit_dist + areas_edit_dist + item.score_;
           for (auto const [t_idx, token] : utl::enumerate(tokens)) {
-            if ((matched_mask & (1U << t_idx)) == 0U) {
+            if ((matched_tokens_mask & (1U << t_idx)) == 0U) {
               total_score += token.size() * 3.0F;
 
-              trace("{} [p={}]\t\t\t***NOTHING MATCHED: {} --> penalty={}",
+              trace("[{}] {} [p={}]\t\t\t***NOTHING MATCHED: {} --> penalty={}",
+                    street,
                     t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
                     ctx.phrases_[street_p_idx].s_, token,
                     (token.size() * 3.0F));
             }
           }
 
-          total_score -= std::popcount(matched_areas) * 2.0F;
+          auto const areas_bonus = std::popcount(matched_areas_mask) * 2.0F;
+          auto const no_area_score =
+              !matched_areas_mask && matched_tokens_mask == all_tokens_mask
+                  ? (item.type_ == match_item::type::kHouseNumber ? 3.F : 1.6F)
+                  : 0.F;
+
+          total_score -= areas_bonus;
+          total_score -= no_area_score;
 
           trace(
               "[{}] {} FINAL: street_edit_dist={}, areas_edit_dist={}, "
-              "item_score={}, areas_bonus={} => total_score={}",
-              i, t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+              "item_score={}, areas_bonus={}, no_area_score={} => "
+              "total_score={}",
+              street,
+              t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
               street_edit_dist, areas_edit_dist, item.score_,
-              std::popcount(matched_areas) * 2.0, total_score);
+              std::popcount(matched_areas_mask) * 2.0, no_area_score,
+              total_score);
 
           ctx.suggestions_.emplace_back(suggestion{
               .str_ = str_idx,
@@ -246,8 +259,8 @@ void match_streets(std::uint8_t const numeric_tokens_mask,
                                   : t.street_pos_[street][item.index_],
               .area_set_ = area_set_idx,
               .matched_area_lang_ = area_lang,
-              .matched_areas_ = matched_areas,
-              .matched_tokens_ = matched_mask,
+              .matched_areas_ = matched_areas_mask,
+              .matched_tokens_ = matched_tokens_mask,
               .score_ = total_score});
         }
       }
@@ -355,13 +368,13 @@ void match_places(std::uint8_t const all_tokens_mask,
     }
 
     auto const extra_score =
-        t.place_type_[place] == place_type::kExtra ? 0.5 : 0;
+        t.place_type_[place] == place_type::kExtra ? 0.75 : 0;
     auto const areas_score = std::popcount(matched_areas_mask);
     auto const no_area_score =
         !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 3 : 0;
     auto const population_score =
         std::min(1.5, (t.place_population_[place].get() / 1'000'000.F) * 1.5);
-    auto const place_score = 1.5;
+    auto const place_score = 1.0;
 
     total_score -= extra_score;
     total_score -= areas_score;
@@ -372,12 +385,11 @@ void match_places(std::uint8_t const all_tokens_mask,
     trace(
         "[{}] {} FINAL: place_edit_dist={}, areas_edit_dist={}, "
         "areas_bonus={}, no_area_score={}, population_score={} [{}], "
-        "place_score={} "
-        "=> {}",
+        "place_score={}, extra_score={} => {}",
         ii, t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
         place_edit_dist, areas_edit_dist, areas_score, no_area_score,
         population_score, t.place_population_[place].get(), place_score,
-        total_score);
+        extra_score, total_score);
 
     // Add if it's not a duplicate of the previous one
     // or improves upon the previous one.
@@ -542,7 +554,8 @@ std::vector<token> get_suggestions(typeahead const& t,
 
   get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, languages, filter);
 
-  match_streets<Debug>(numeric_tokens_mask, t, ctx, tokens, languages);
+  match_streets<Debug>(all_tokens_mask, numeric_tokens_mask, t, ctx, tokens,
+                       languages);
   match_places<Debug>(all_tokens_mask, numeric_tokens_mask, t, ctx, tokens,
                       languages);
 
@@ -555,8 +568,23 @@ std::vector<token> get_suggestions(typeahead const& t,
 
   if (coord.has_value()) {
     for (auto& s : ctx.suggestions_) {
-      s.score_ +=
-          std::log2(geo::distance(s.coordinates_.as_latlng(), *coord)) / bias;
+      auto const dist = geo::distance(s.coordinates_.as_latlng(), *coord);
+
+      auto dist_bonus = 0.0;
+      if (dist < 10'000) {
+        dist_bonus = 8.1 * bias;  // 10 km bonus
+      } else if (dist < 100'000) {
+        dist_bonus = 4.1 * bias;  // 100 km bonus
+      } else if (dist < 1'000'000) {
+        dist_bonus = 2.1 * bias;  // 1000 km bonus
+      }
+
+      if constexpr (Debug) {
+        s.print(std::cout, t, languages);
+        std::cout << "dist=" << dist << "  -> bonus = " << dist_bonus
+                  << " (score=" << s.score_ - dist_bonus << ")" << "\n";
+      }
+      s.score_ -= dist_bonus;
     }
   }
 
@@ -598,7 +626,7 @@ template std::vector<token> get_suggestions<true>(
     guess_context&,
     std::optional<geo::latlng> const&,
     double,
-    filter_type filter);
+    filter_type);
 
 template std::vector<token> get_suggestions<false>(
     typeahead const&,
@@ -608,6 +636,6 @@ template std::vector<token> get_suggestions<false>(
     guess_context&,
     std::optional<geo::latlng> const&,
     double,
-    filter_type filter);
+    filter_type);
 
 }  // namespace adr

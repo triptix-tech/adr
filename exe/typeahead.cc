@@ -108,7 +108,7 @@ int main(int ac, char** av) {
     return 1;
   }
 
-  auto const t = adr::read(in / "t.bin");
+  auto const t = adr::read(in);
   adr::print_stats(*t);
 
   auto lang_indices =
@@ -121,14 +121,17 @@ int main(int ac, char** av) {
     lang_indices.push_back(l_idx);
   }
 
+  auto const coord =
+      std::optional{geo::latlng{49.8731001322536, 8.647738878714677}};
+
   auto cache = adr::cache{t->strings_.size(), 1000U};
   auto ctx = adr::guess_context{cache};
   ctx.resize(*t);
 
   if (warmup) {
     adr::get_suggestions<false>(
-        *t, geo::latlng{0, 0}, "Willy Brandt Platz 64289 Darmstadt Deutschland",
-        n, lang_indices, ctx);
+        *t, "Willy Brandt Platz 64289 Darmstadt Deutschland", n, lang_indices,
+        ctx, coord, 1.0);
   }
 
   if (!file.empty()) {
@@ -139,7 +142,8 @@ int main(int ac, char** av) {
     }
     utl::for_each_line(utl::cstr{*content}, [&](utl::cstr const line) {
       UTL_START_TIMING(timer);
-      adr::get_suggestions<false>(*t, {}, line.to_str(), n, lang_indices, ctx);
+      adr::get_suggestions<false>(*t, line.to_str(), n, lang_indices, ctx,
+                                  coord, 1.0);
       UTL_STOP_TIMING(timer);
       std::cout << UTL_TIMING_MS(timer) << " ms\n";
     });
@@ -159,8 +163,8 @@ int main(int ac, char** av) {
 
         while (true) {
           adr::get_suggestions<false>(
-              *t, {}, std::string{kAddresses[count % kAddresses.size()]}, n,
-              lang_indices, ctx);
+              *t, std::string{kAddresses[count % kAddresses.size()]}, n,
+              lang_indices, ctx, coord, 1.0);
           ++count;
           if (count > 1'000) {
             break;
@@ -180,11 +184,10 @@ int main(int ac, char** av) {
     UTL_START_TIMING(timer);
     for (auto i = 0U; i != runs; ++i) {
       if (verbose) {
-        adr::get_suggestions<true>(*t, geo::latlng{0, 0}, guess, n,
-                                   lang_indices, ctx);
+        adr::get_suggestions<true>(*t, guess, n, lang_indices, ctx, coord, 1.0);
       } else {
-        adr::get_suggestions<false>(*t, geo::latlng{0, 0}, guess, n,
-                                    lang_indices, ctx);
+        adr::get_suggestions<false>(*t, guess, n, lang_indices, ctx, coord,
+                                    1.0);
       }
     }
     UTL_STOP_TIMING(timer);
@@ -212,8 +215,8 @@ int main(int ac, char** av) {
       }
 
       UTL_START_TIMING(timer);
-      adr::get_suggestions<false>(*t, geo::latlng{0, 0}, first_name, n,
-                                  lang_indices, ctx);
+      adr::get_suggestions<false>(*t, first_name, n, lang_indices, ctx, coord,
+                                  1.0);
       UTL_STOP_TIMING(timer);
 
       Elements list;
