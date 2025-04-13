@@ -11,19 +11,13 @@ namespace adr {
 
 std::ostream& operator<<(std::ostream& out, area_set const& s) {
   auto const areas = s.get_areas();
-  auto const city_it =
-      std::min_element(begin(areas), end(areas), [&](auto&& a, auto&& b) {
-        return std::abs(to_idx(s.t_.area_admin_level_[a]) - 7) <
-               std::abs(to_idx(s.t_.area_admin_level_[b]) - 7);
-      });
-  auto const city_idx =
-      city_it == end(areas) ? -1 : std::distance(begin(areas), city_it);
-  auto const city_admin_lvl = city_idx == -1
-                                  ? admin_level_t::invalid()
-                                  : s.t_.area_admin_level_[areas[city_idx]];
+  auto const city_admin_lvl =
+      s.city_area_idx_.has_value()
+          ? s.t_.area_admin_level_[areas[*s.city_area_idx_]]
+          : admin_level_t::invalid();
 
-  auto print_city = city_idx != -1;
-  if (city_idx != -1) {
+  auto print_city = s.city_area_idx_.has_value();
+  if (s.city_area_idx_.has_value()) {
     for (auto const& [i, a] : utl::enumerate(areas)) {
       auto const admin_lvl = s.t_.area_admin_level_[a];
       auto const matched = (((1U << i) & s.matched_mask_) != 0U);
@@ -40,7 +34,8 @@ std::ostream& operator<<(std::ostream& out, area_set const& s) {
     auto const admin_lvl = s.t_.area_admin_level_[a];
     auto const matched = (((1U << i) & s.matched_mask_) != 0U);
     auto const is_city =
-        print_city && s.t_.area_admin_level_[areas[city_idx]] == admin_lvl;
+        print_city &&
+        s.t_.area_admin_level_[areas[*s.city_area_idx_]] == admin_lvl;
     //      if (!is_city && !matched) {
     //        continue;
     //      }

@@ -5,6 +5,7 @@
 #include "utl/erase_duplicates.h"
 #include "utl/helpers/algorithm.h"
 #include "utl/insert_sorted.h"
+#include "utl/pairwise.h"
 #include "utl/timing.h"
 #include "utl/to_vec.h"
 #include "utl/zip.h"
@@ -225,12 +226,15 @@ void match_streets(std::uint8_t const all_tokens_mask,
             }
           }
 
+          auto const house_number_score =
+              item.type_ == match_item::type::kHouseNumber ? 3.F : 0.F;
           auto const areas_bonus = std::popcount(matched_areas_mask) * 2.0F;
           auto const no_area_score =
               !matched_areas_mask && matched_tokens_mask == all_tokens_mask
-                  ? (item.type_ == match_item::type::kHouseNumber ? 3.F : 1.6F)
+                  ? 3.F
                   : 0.F;
 
+          total_score -= house_number_score;
           total_score -= areas_bonus;
           total_score -= no_area_score;
 
@@ -373,7 +377,7 @@ void match_places(std::uint8_t const all_tokens_mask,
     auto const no_area_score =
         !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 3 : 0;
     auto const population_score =
-        std::min(1.5, (t.place_population_[place].get() / 1'000'000.F) * 1.5);
+        std::min(1.5, (t.place_population_[place].get() / 200'000.F) * 1.5);
     auto const place_score = 1.0;
 
     total_score -= extra_score;
@@ -571,12 +575,14 @@ std::vector<token> get_suggestions(typeahead const& t,
       auto const dist = geo::distance(s.coordinates_.as_latlng(), *coord);
 
       auto dist_bonus = 0.0;
-      if (dist < 10'000) {
-        dist_bonus = 8.1 * bias;  // 10 km bonus
+      if (dist < 2'000) {
+        dist_bonus = 2.5 * bias;
+      } else if (dist < 10'000) {
+        dist_bonus = 2 * bias;  // 10 km bonus
       } else if (dist < 100'000) {
-        dist_bonus = 4.1 * bias;  // 100 km bonus
+        dist_bonus = 1 * bias;  // 100 km bonus
       } else if (dist < 1'000'000) {
-        dist_bonus = 2.1 * bias;  // 1000 km bonus
+        dist_bonus = 0.5 * bias;  // 1000 km bonus
       }
 
       if constexpr (Debug) {
@@ -599,11 +605,57 @@ std::vector<token> get_suggestions(typeahead const& t,
   ctx.suggestions_.erase(
       std::unique(begin(ctx.suggestions_), end(ctx.suggestions_),
                   [&](suggestion const& a, suggestion const& b) {
-                    return a.location_ == b.location_;
+                    return a.location_ == b.location_ &&
+                           a.area_set_ == b.area_set_;
                   }),
       end(ctx.suggestions_));
   UTL_STOP_TIMING(sort);
   trace("sort [{} us]", UTL_TIMING_US(sort));
+
+  ctx.suggestions_.resize(std::min(static_cast<std::size_t>(n_suggestions),
+                                   ctx.suggestions_.size()));
+
+  for (auto& s : ctx.suggestions_) {
+    auto const areas = t.area_sets_[s.area_set_];
+
+    // Find zip code area index.
+    auto const zip_it = utl::find_if(
+        areas, [&](auto&& a) { return t.area_admin_level_[a] == 11; });
+    s.zip_area_idx_ = zip_it == end(areas)
+                          ? std::nullopt
+                          : std::optional{std::distance(begin(areas), zip_it)};
+
+    // Find city area index.
+    auto const city_it =
+        std::min_element(begin(areas), end(areas), [&](auto&& a, auto&& b) {
+          constexpr auto const kCloseTo = 8;
+          auto const x = to_idx(t.area_admin_level_[a]);
+          auto const y = to_idx(t.area_admin_level_[b]);
+          return (x > kCloseTo ? 10 : 1) * std::abs(x - kCloseTo) <
+                 (y > kCloseTo ? 10 : 1) * std::abs(y - kCloseTo);
+        });
+    s.city_area_idx_ =
+        city_it == end(areas)
+            ? std::nullopt
+            : std::optional{std::distance(begin(areas), city_it)};
+    s.unique_area_idx_ = s.city_area_idx_;
+  }
+
+  for (auto i = begin(ctx.suggestions_); i != end(ctx.suggestions_) - 1; ++i) {
+    for (auto j = std::next(i); j != end(ctx.suggestions_); ++j) {
+      while (i->location_ == j->location_ &&  //
+             i->unique_area_idx_.has_value() &&
+             j->unique_area_idx_.has_value() &&
+             i->unique_area_idx_ < t.area_sets_[i->area_set_].size() &&
+             j->unique_area_idx_ < t.area_sets_[j->area_set_].size() &&
+             t.area_sets_[i->area_set_][*i->unique_area_idx_] ==
+                 t.area_sets_[j->area_set_][*j->unique_area_idx_]) {
+        [[unlikely]];
+        i->unique_area_idx_ = std::optional{*i->unique_area_idx_ + 1};
+        j->unique_area_idx_ = std::optional{*j->unique_area_idx_ + 1};
+      }
+    }
+  }
 
   if constexpr (Debug) {
     for (auto const& [i, s] : utl::enumerate(ctx.suggestions_)) {
@@ -611,9 +663,6 @@ std::vector<token> get_suggestions(typeahead const& t,
       s.print(std::cout, t, languages);
     }
   }
-
-  ctx.suggestions_.resize(std::min(static_cast<std::size_t>(n_suggestions),
-                                   ctx.suggestions_.size()));
 
   return token_pos;
 }

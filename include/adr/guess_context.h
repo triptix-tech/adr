@@ -32,7 +32,7 @@ struct address {
   static constexpr auto const kNoHouseNumber =
       std::numeric_limits<std::uint16_t>::max();
 
-  bool operator==(address const&) const = default;
+  CISTA_FRIEND_COMPARABLE(address)
 
   street_idx_t street_;
   std::uint32_t house_number_;
@@ -46,7 +46,8 @@ struct matched_area {
 struct suggestion {
   void print(std::ostream&, typeahead const&, language_list_t const&) const;
   bool operator<(suggestion const& o) const {
-    return score_ < o.score_ || (score_ == o.score_ && str_ < o.str_);
+    return std::tie(score_, location_, area_set_) <
+           std::tie(o.score_, o.location_, o.area_set_);
   }
 
   std::string areas(typeahead const&) const;
@@ -60,6 +61,10 @@ struct suggestion {
   std::uint32_t matched_areas_;
   std::uint8_t matched_tokens_;
   float score_;
+
+  std::optional<unsigned> city_area_idx_;
+  std::optional<unsigned> zip_area_idx_;
+  std::optional<unsigned> unique_area_idx_;
 };
 
 struct cos_sim_match {

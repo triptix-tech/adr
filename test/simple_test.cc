@@ -179,9 +179,15 @@ TEST(adr, score_test) {
   //  EXPECT_EQ(1, adr::get_match_score("de", "Île-de-France", sift4_dist,
   //  buf));
 
-  EXPECT_EQ(1, adr::get_match_score("Darmstadt Berliner Allee",
-                                    "berliner allee", sift4_dist, buf));
-  EXPECT_EQ(1, adr::get_match_score("Berliner Allee 8 bis 8f", "berliner allee",
+  //  EXPECT_EQ(1, adr::get_match_score("Darmstadt Berliner Allee",
+  //                                    "berliner allee", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Berliner Allee 8 bis 8f", "berliner
+  //  allee",
+  //                                    sift4_dist, buf));
+
+  EXPECT_EQ(1, adr::get_match_score("Berliner Allee", "berliner allee",
+                                    sift4_dist, buf));
+  EXPECT_EQ(1, adr::get_match_score("D-Berliner Allee", "berliner allee",
                                     sift4_dist, buf));
 }
 

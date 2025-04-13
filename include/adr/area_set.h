@@ -21,6 +21,7 @@ struct area_set {
 
   typeahead const& t_;
   language_list_t const& languages_;
+  std::optional<unsigned> city_area_idx_;
   std::variant<area_set_idx_t, std::basic_string<area_idx_t>> areas_;
   std::uint32_t matched_mask_{std::numeric_limits<std::uint32_t>::max()};
   area_set_lang_t matched_area_lang_;

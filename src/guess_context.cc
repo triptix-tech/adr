@@ -29,8 +29,9 @@ void suggestion::print(std::ostream& out,
                    }
                  }},
              location_);
-  out << ", pos=" << coordinates_ << ", areas="
-      << area_set{t, languages, area_set_, matched_areas_, matched_area_lang_}
+  out << ", pos=" << coordinates_
+      << ", areas=" << area_set{t,         languages,      city_area_idx_,
+                                area_set_, matched_areas_, matched_area_lang_}
       << " -> score=" << static_cast<float>(score_) << "\n";
 }
 
