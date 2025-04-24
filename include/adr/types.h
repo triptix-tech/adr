@@ -46,7 +46,7 @@ using language_idx_t = cista::strong<std::uint16_t, struct language_idx_>;
 constexpr auto const kDefaultLangIdx = 0U;
 constexpr auto const kDefaultLang = language_idx_t{0U};
 
-constexpr auto const kPostalCodeAdminLevel = admin_level_t{11};
+constexpr auto const kPostalCodeAdminLevel = admin_level_t{12};
 
 using language_list_t = basic_string_view<language_idx_t>;
 
