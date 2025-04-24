@@ -73,13 +73,13 @@ std::int16_t area_set::get_area_lang_idx(area_idx_t const a) const {
   return -1;
 }
 
-std::basic_string<area_idx_t> area_set::get_areas() const {
+basic_string<area_idx_t> area_set::get_areas() const {
   return std::visit(
-      utl::overloaded{[&](area_set_idx_t x) -> std::basic_string<area_idx_t> {
+      utl::overloaded{[&](area_set_idx_t x) -> basic_string<area_idx_t> {
                         auto const set = t_.area_sets_[x];
                         return {begin(set), end(set)};
                       },
-                      [](std::basic_string<area_idx_t> const& x) { return x; }},
+                      [](basic_string<area_idx_t> const& x) { return x; }},
       areas_);
 }
 

@@ -259,12 +259,12 @@ void extract(std::filesystem::path const& in_path,
     t.house_numbers_.resize(t.street_names_.size());
 
     {
-      auto place_areas = std::vector<std::basic_string<area_idx_t>>{};
+      auto place_areas = std::vector<basic_string<area_idx_t>>{};
       place_areas.resize(t.place_coordinates_.size());
 
-      utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
+      utl::parallel_for_run_threadlocal<basic_string<area_idx_t>>(
           t.place_coordinates_.size(),
-          [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
+          [&](basic_string<area_idx_t>& areas, std::size_t const i) {
             area_db.lookup(t, t.place_coordinates_[place_idx_t{i}], areas);
             place_areas[i] = std::move(areas);
           });
@@ -279,9 +279,9 @@ void extract(std::filesystem::path const& in_path,
           std::vector<cista::raw::vecvec<std::uint32_t, area_idx_t>>{};
       street_areas.resize(t.street_pos_.size());
 
-      utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
+      utl::parallel_for_run_threadlocal<basic_string<area_idx_t>>(
           t.street_pos_.size(),
-          [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
+          [&](basic_string<area_idx_t>& areas, std::size_t const i) {
             for (auto const& c : t.street_pos_[street_idx_t{i}]) {
               area_db.lookup(t, c, areas);
               street_areas[i].emplace_back(areas);
@@ -292,7 +292,7 @@ void extract(std::filesystem::path const& in_path,
         t.street_areas_.add_back_sized(0);
         for (auto const& a : x) {
           t.street_areas_[street_idx_t{i}].push_back(t.get_or_create_area_set(
-              ctx, std::basic_string_view<area_idx_t>{begin(a), end(a)}));
+              ctx, basic_string_view<area_idx_t>{begin(a), end(a)}));
         }
       }
     }
@@ -303,9 +303,9 @@ void extract(std::filesystem::path const& in_path,
       house_areas.resize(t.house_coordinates_.size());
       assert(t.house_coordinates_.size() == t.house_numbers_.size());
 
-      utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
+      utl::parallel_for_run_threadlocal<basic_string<area_idx_t>>(
           t.house_coordinates_.size(),
-          [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
+          [&](basic_string<area_idx_t>& areas, std::size_t const i) {
             for (auto const& c : t.house_coordinates_[street_idx_t{i}]) {
               area_db.lookup(t, c, areas);
               house_areas[i].emplace_back(areas);
@@ -317,7 +317,7 @@ void extract(std::filesystem::path const& in_path,
         t.house_areas_.add_back_sized(0);
         for (auto const& a : x) {
           t.house_areas_[street].push_back(t.get_or_create_area_set(
-              ctx, std::basic_string_view<area_idx_t>{begin(a), end(a)}));
+              ctx, basic_string_view<area_idx_t>{begin(a), end(a)}));
         }
         assert(t.house_areas_[street].size() ==
                t.house_numbers_[street].size());

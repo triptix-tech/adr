@@ -19,7 +19,7 @@ inline void replace_all(std::string& s,
   }
 }
 
-using utf8_normalize_buf_t = std::basic_string<utf8proc_int32_t>;
+using utf8_normalize_buf_t = basic_string<utf8proc_int32_t>;
 
 inline void erase_fillers(std::string& in) {
   std::replace_if(

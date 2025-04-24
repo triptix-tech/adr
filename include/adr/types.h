@@ -9,6 +9,7 @@
 
 #include "tg.h"
 
+#include "cista/char_traits.h"
 #include "cista/containers/mmap_vec.h"
 #include "cista/containers/nvec.h"
 #include "cista/containers/vector.h"
@@ -28,6 +29,12 @@ template <typename K, typename V, std::size_t N>
 using mm_nvec =
     cista::basic_nvec<K, mm_vec<V>, mm_vec<std::uint64_t>, N, std::uint64_t>;
 
+template <typename T>
+using basic_string = std::basic_string<T, cista::char_traits<T>>;
+
+template <typename T>
+using basic_string_view = std::basic_string<T, cista::char_traits<T>>;
+
 using area_set_idx_t = cista::strong<std::uint32_t, struct area_set_idx_>;
 using area_idx_t = cista::strong<std::uint32_t, struct area_idx_>;
 using admin_level_t = cista::strong<std::uint8_t, struct admin_level_idx_>;
@@ -41,7 +48,7 @@ constexpr auto const kDefaultLang = language_idx_t{0U};
 
 constexpr auto const kPostalCodeAdminLevel = admin_level_t{11};
 
-using language_list_t = std::basic_string_view<language_idx_t>;
+using language_list_t = basic_string_view<language_idx_t>;
 
 using area_set_lang_t = std::array<std::uint8_t, 32U>;
 

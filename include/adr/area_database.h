@@ -19,9 +19,7 @@ struct area_database final {
   area_database& operator=(area_database&&);
   ~area_database();
 
-  void lookup(typeahead const&,
-              coordinates,
-              std::basic_string<area_idx_t>&) const;
+  void lookup(typeahead const&, coordinates, basic_string<area_idx_t>&) const;
   void add_area(area_idx_t, osmium::Area const&);
   bool is_within(coordinates, area_idx_t) const;
 

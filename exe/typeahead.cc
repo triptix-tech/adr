@@ -111,8 +111,7 @@ int main(int ac, char** av) {
   auto const t = adr::read(in);
   adr::print_stats(*t);
 
-  auto lang_indices =
-      std::basic_string<adr::language_idx_t>{{adr::kDefaultLang}};
+  auto lang_indices = basic_string<adr::language_idx_t>{{adr::kDefaultLang}};
   for (auto const& l_str : languages) {
     auto const l_idx = t->resolve_language(l_str);
     if (l_idx == adr::language_idx_t::invalid()) {

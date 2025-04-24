@@ -55,7 +55,7 @@ struct area_database::impl {
         std::vector<tg_point> ring_tmp_;
         std::vector<tg_ring*> inner_tmp_;
         std::vector<tg_poly*> polys_tmp_;
-        std::basic_string<area_idx_t> areas_;
+        basic_string<area_idx_t> areas_;
       };
 
       auto mutex = std::mutex{};
@@ -125,7 +125,7 @@ struct area_database::impl {
 
   void lookup(typeahead const& t,
               coordinates const c,
-              std::basic_string<area_idx_t>& rtree_results) const {
+              basic_string<area_idx_t>& rtree_results) const {
     auto const min = c.as_latlng().lnglat();
     rtree_results.clear();
     rtree_search(
@@ -134,7 +134,7 @@ struct area_database::impl {
           auto const area = area_idx_t{static_cast<area_idx_t::value_t>(
               reinterpret_cast<std::intptr_t>(item))};
           auto const rtree_results_ptr =
-              reinterpret_cast<std::basic_string<area_idx_t>*>(udata);
+              reinterpret_cast<basic_string<area_idx_t>*>(udata);
           rtree_results_ptr->push_back(area);
           return true;
         },
@@ -233,7 +233,7 @@ area_database::~area_database() = default;
 
 void area_database::lookup(typeahead const& t,
                            coordinates const c,
-                           std::basic_string<area_idx_t>& rtree_results) const {
+                           basic_string<area_idx_t>& rtree_results) const {
   impl_->lookup(t, c, rtree_results);
 }
 

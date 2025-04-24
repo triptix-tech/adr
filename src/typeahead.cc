@@ -222,7 +222,7 @@ string_idx_t typeahead::get_or_create_string(import_context& ctx,
 }
 
 area_set_idx_t typeahead::get_or_create_area_set(
-    import_context& ctx, std::basic_string_view<area_idx_t> p) {
+    import_context& ctx, basic_string_view<area_idx_t> p) {
   return utl::get_or_create(ctx.area_set_lookup_, p, [&]() {
     auto const set_idx = area_set_idx_t{area_sets_.size()};
     area_sets_.emplace_back(p);

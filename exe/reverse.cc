@@ -76,8 +76,7 @@ int main(int ac, char** av) {
   adr::print_stats(*t);
   auto const area_db = adr::area_database{in, cista::mmap::protection::READ};
 
-  auto lang_indices =
-      std::basic_string<adr::language_idx_t>{{adr::kDefaultLang}};
+  auto lang_indices = basic_string<adr::language_idx_t>{{adr::kDefaultLang}};
   for (auto const& l_str : languages) {
     auto const l_idx = t->resolve_language(l_str);
     if (l_idx == adr::language_idx_t::invalid()) {
@@ -88,7 +87,7 @@ int main(int ac, char** av) {
 
   auto cache = adr::cache{t->strings_.size(), 1000U};
   auto ctx = adr::guess_context{cache};
-  auto areas = std::basic_string<adr::area_idx_t>{};
+  auto areas = basic_string<adr::area_idx_t>{};
 
   for (auto i = 0U; i != guess.size(); i += 2U) {
     auto const query = geo::latlng{guess[i], guess[i + 1U]};
