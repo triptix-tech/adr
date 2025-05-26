@@ -643,8 +643,9 @@ std::vector<token> get_suggestions(typeahead const& t,
     auto const areas = t.area_sets_[s.area_set_];
 
     // Find zip code area index.
-    auto const zip_it = utl::find_if(
-        areas, [&](auto&& a) { return t.area_admin_level_[a] == 11; });
+    auto const zip_it = utl::find_if(areas, [&](auto&& a) {
+      return t.area_admin_level_[a] == kPostalCodeAdminLevel;
+    });
     s.zip_area_idx_ = zip_it == end(areas)
                           ? std::nullopt
                           : std::optional{std::distance(begin(areas), zip_it)};
