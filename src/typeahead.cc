@@ -35,7 +35,8 @@ template <typename Fn>
 void for_each_name(typeahead& t, osmium::TagList const& tags, Fn&& fn) {
   auto const call_fn = [&](char const* name, language_idx_t const l) {
     if (name != nullptr) {
-      fn(std::string_view{name}, l);
+      utl::for_each_token(
+          name, ';', [&](utl::cstr token) { fn(std::string_view{token}, l); });
     }
   };
 
@@ -44,14 +45,18 @@ void for_each_name(typeahead& t, osmium::TagList const& tags, Fn&& fn) {
   call_fn(tags["alt_name"], kDefaultLang);
   call_fn(tags["official_name"], kDefaultLang);
 
-  for (auto const& tag : tags) {
-    constexpr auto const kNamePrefix = "name:"sv;
-    auto const key = std::string_view{tag.key()};
-    if (key.starts_with(kNamePrefix)) {
-      auto const lang_str = key.substr(kNamePrefix.size());
-      call_fn(tag.value(), t.get_or_create_lang_idx(lang_str));
+  auto const add_lang_by_prefix = [&](std::string_view prefix) {
+    for (auto const& tag : tags) {
+      auto const key = std::string_view{tag.key()};
+      if (key.starts_with(prefix)) {
+        auto const lang_str = key.substr(prefix.size());
+        call_fn(tag.value(), t.get_or_create_lang_idx(lang_str));
+      }
     }
-  }
+  };
+  add_lang_by_prefix("name:");
+  add_lang_by_prefix("alt_name:");
+  add_lang_by_prefix("official_name:");
 }
 
 area_idx_t typeahead::add_postal_code_area(import_context& ctx,
