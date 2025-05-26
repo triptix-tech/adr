@@ -12,6 +12,7 @@
 
 #include "cista/containers/flat_matrix.h"
 
+#include "adr/bitmask.h"
 #include "adr/score.h"
 #include "adr/trace.h"
 #include "adr/typeahead.h"
@@ -84,6 +85,8 @@ void match_streets(std::uint8_t const all_tokens_mask,
                    language_list_t const languages) {
   UTL_START_TIMING(t);
 
+  trace("NUMERIC_TOKENS={}", bitmask{numeric_tokens_mask});
+
   auto i = 0U;
   for (auto const [street_edit_dist, street_p_idx, str_idx, street] :
        ctx.scored_street_matches_) {
@@ -103,6 +106,9 @@ void match_streets(std::uint8_t const all_tokens_mask,
          utl::zip(t.house_numbers_[street], t.house_areas_[street])) {
       for (auto const& [hn_p_idx, p] : utl::enumerate(ctx.phrases_)) {
         if ((p.token_bits_ & numeric_tokens_mask) != p.token_bits_) {
+          trace("[{}] {} HOUSENUMBER: {} is not numeric", street,
+                t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+                p.s_);
           continue;
         }
 
@@ -110,8 +116,15 @@ void match_streets(std::uint8_t const all_tokens_mask,
             get_match_score(t.strings_[hn].view(), p.s_, ctx.sift4_offset_arr_,
                             ctx.normalize_buf_);
         if (hn_score == kNoMatch) {
+          trace("[{}] {} HOUSENUMBER: {} vs {} no match", street,
+                t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+                t.strings_[hn].view(), p.s_);
           continue;
         }
+
+        trace("[{}] {} HOUSENUMBER: {} vs {} => match_score={}", street,
+              t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+              t.strings_[hn].view(), p.s_, hn_score);
 
         ctx.area_match_items_[areas_idx].emplace_back(match_item{
             .type_ = match_item::type::kHouseNumber,
@@ -145,9 +158,13 @@ void match_streets(std::uint8_t const all_tokens_mask,
           auto best_area_idx = 0U;
 
           if ((area_p.token_bits_ & matched_tokens_mask) != 0U) {
-            trace("[{}] {} [p={}] {} -> ALREADY MATCHED", street,
-                  t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
-                  ctx.phrases_[street_p_idx].s_, area_p.s_);
+            trace(
+                "[{}] {} [p={}] {} -> ALREADY MATCHED [area_p={}, "
+                "matched_tokens={}]",
+                street,
+                t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+                ctx.phrases_[street_p_idx].s_, area_p.s_,
+                bitmask{area_p.token_bits_}, bitmask{matched_tokens_mask});
             continue;
           }
 
@@ -209,7 +226,14 @@ void match_streets(std::uint8_t const all_tokens_mask,
         }
 
         for (auto const& item : items) {
+          trace("[{}] {} house_number={}", street,
+                t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+                item.type_ == match_item::type::kHouseNumber
+                    ? t.strings_[t.house_numbers_[street][item.index_]].view()
+                    : "NO");
+
           if (item.matched_mask_ != item_matched_mask) {
+            trace("  -> item not matched");
             continue;
           }
 
