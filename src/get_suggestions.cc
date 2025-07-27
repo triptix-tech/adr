@@ -1,5 +1,7 @@
 #include "adr/adr.h"
 
+#include <ranges>
+
 #include "fmt/ranges.h"
 
 #include "utl/erase_duplicates.h"
@@ -477,6 +479,8 @@ void get_scored_matches(typeahead const& t,
   for (auto const& [i, m] : utl::enumerate(ctx.string_matches_)) {
     for (auto p_idx = phrase_idx_t{0U}; p_idx != ctx.phrases_.size(); ++p_idx) {
       if ((ctx.phrases_[p_idx].token_bits_ & numeric_tokens_mask) != 0U) {
+        trace("{}: name={}, cos_sim={}, phrase={}, NUMERIC", i,
+              t.strings_[m.idx_].view(), m.cos_sim_, ctx.phrases_[p_idx].s_);
         continue;
       }
 
@@ -571,6 +575,9 @@ std::vector<token> get_suggestions(typeahead const& t,
                               static_cast<std::uint16_t>(t.length())});
   });
   ctx.phrases_ = get_phrases(tokens);
+
+  trace("tokens: {}, phrases: {}", tokens,
+        ctx.phrases_ | std::views::transform([](auto&& x) { return x.s_; }));
 
   t.guess<Debug>(normalize(in, ctx.normalize_buf_), ctx);
 
