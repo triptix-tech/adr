@@ -29,29 +29,37 @@ void suggestion::print(std::ostream& out,
                    }
                  }},
              location_);
-  out << ", pos=" << coordinates_
-      << ", areas=" << area_set{t,         languages,      city_area_idx_,
-                                area_set_, matched_areas_, matched_area_lang_}
-      << " -> score=" << static_cast<float>(score_) << "\n";
+  auto const tz = t.get_tz(area_set_);
+  auto const tz_name =
+      tz == timezone_idx_t::invalid() ? "" : t.timezone_names_[tz].view();
+  out << ", pos=" << coordinates_ << ", areas=" << areas(t, languages)
+      << ", tz=" << tz_name << " -> score=" << static_cast<float>(score_)
+      << "\n";
 }
 
-std::string suggestion::areas(typeahead const& t) const { return ""; }
+area_set suggestion::areas(typeahead const& t,
+                           language_list_t const& languages) const {
+  return area_set{t,         languages,      city_area_idx_,
+                  area_set_, matched_areas_, matched_area_lang_};
+}
 
 std::string suggestion::description(adr::typeahead const& t) const {
   return std::visit(
       utl::overloaded{
           [&](place_idx_t const p) {
-            return fmt::format("{}, {}", t.strings_[str_].view(), areas(t));
+            return fmt::format("{}, {}", t.strings_[str_].view(),
+                               fmt::streamed(areas(t, {kDefaultLang})));
           },
           [&](address const addr) {
             if (addr.house_number_ == address::kNoHouseNumber) {
-              return fmt::format("{}, {}", t.strings_[str_].view(), areas(t));
+              return fmt::format("{}, {}", t.strings_[str_].view(),
+                                 fmt::streamed(areas(t, {kDefaultLang})));
             } else {
               return fmt::format(
                   "{} {}, {}", t.strings_[str_].view(),
                   t.strings_[t.house_numbers_[addr.street_][addr.house_number_]]
                       .view(),
-                  areas(t));
+                  fmt::streamed(areas(t, language_list_t{})));
             }
           }},
       location_);

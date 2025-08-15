@@ -31,19 +31,21 @@ std::ostream& operator<<(std::ostream& out, area_set const& s) {
   auto first = true;
   out << " [";
   for (auto const& [i, a] : utl::enumerate(areas)) {
-    auto const admin_lvl = s.t_.area_admin_level_[a];
-    auto const matched = (((1U << i) & s.matched_mask_) != 0U);
-    auto const is_city =
-        print_city &&
-        s.t_.area_admin_level_[areas[*s.city_area_idx_]] == admin_lvl;
-    //      if (!is_city && !matched) {
-    //        continue;
-    //      }
-
     if (!first) {
       out << ", ";
     }
     first = false;
+
+    auto const admin_lvl = s.t_.area_admin_level_[a];
+    if (admin_lvl == kTimezoneAdminLevel) {
+      continue;
+    }
+
+    auto const matched = (((1U << i) & s.matched_mask_) != 0U);
+    auto const is_city =
+        print_city &&
+        s.t_.area_admin_level_[areas[*s.city_area_idx_]] == admin_lvl;
+
     auto const language_idx =
         matched ? s.matched_area_lang_[i] : s.get_area_lang_idx(a);
     auto const name =
@@ -53,9 +55,6 @@ std::ostream& operator<<(std::ostream& out, area_set const& s) {
     if (matched) {
       out << " *";
     }
-    //      out << "(" << name.substr(std::max(static_cast<int>(name.size()) -
-    //      16, 0))
-    //          << ", " << static_cast<int>(to_idx(admin_lvl)) << ")";
     out << "(" << name << ", " << static_cast<int>(to_idx(admin_lvl)) << ")";
   }
   out << "]";

@@ -9,6 +9,7 @@
 
 #include "ankerl/cista_adapter.h"
 
+#include "adr/area_set.h"
 #include "adr/cache.h"
 #include "adr/ngram.h"
 #include "adr/normalize.h"
@@ -50,7 +51,7 @@ struct suggestion {
            std::tie(o.score_, o.location_, o.area_set_);
   }
 
-  std::string areas(typeahead const&) const;
+  area_set areas(typeahead const&, language_list_t const&) const;
   std::string description(typeahead const&) const;
 
   string_idx_t str_;
@@ -65,6 +66,7 @@ struct suggestion {
   std::optional<unsigned> city_area_idx_;
   std::optional<unsigned> zip_area_idx_;
   std::optional<unsigned> unique_area_idx_;
+  timezone_idx_t tz_;
 };
 
 struct cos_sim_match {

@@ -38,7 +38,8 @@ void activate_areas(typeahead const& t,
                     area_set_idx_t const area_set_idx,
                     language_list_t const languages) {
   for (auto const area : t.area_sets_[area_set_idx]) {
-    if (ctx.area_active_[to_idx(area)]) {
+    if (ctx.area_active_[to_idx(area)] ||
+        t.area_admin_level_[area] == kTimezoneAdminLevel) {
       continue;
     }
 
@@ -656,6 +657,9 @@ std::vector<token> get_suggestions(typeahead const& t,
     s.zip_area_idx_ = zip_it == end(areas)
                           ? std::nullopt
                           : std::optional{std::distance(begin(areas), zip_it)};
+
+    // Find timezone area index.
+    s.tz_ = t.get_tz(s.area_set_);
 
     // Find city area index.
     auto const city_it =

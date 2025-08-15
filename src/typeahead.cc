@@ -23,6 +23,21 @@ using namespace std::string_view_literals;
 
 namespace adr {
 
+timezone_idx_t typeahead::get_tz(area_set_idx_t const a) const {
+  auto const areas = area_sets_[a];
+  auto const tz_it =
+      utl::min_element(areas, [&](area_idx_t const a, area_idx_t const b) {
+        // Lexicographically sort by (has timezone) + (admin level precision)
+        auto const key = [&](area_idx_t const x) {
+          return std::tuple{area_timezone_[x] == timezone_idx_t::invalid(),
+                            -to_idx(area_admin_level_[x])};
+        };
+        return key(a) < key(b);
+      });
+  return tz_it == end(areas) ? timezone_idx_t::invalid()
+                             : area_timezone_[*tz_it];
+}
+
 language_idx_t typeahead::get_or_create_lang_idx(std::string_view s) {
   return utl::get_or_create(lang_, s, [&]() {
     // +1 skips zero as 0 == default language
@@ -72,6 +87,24 @@ area_idx_t typeahead::add_postal_code_area(import_context& ctx,
   area_population_.emplace_back(population{.value_ = 0U});
   area_names_.emplace_back({get_or_create_string(ctx, postal_code)});
   area_name_lang_.emplace_back({kDefaultLang});
+  area_timezone_.emplace_back(timezone_idx_t::invalid());
+  return idx;
+}
+
+area_idx_t typeahead::add_timezone_area(import_context& ctx,
+                                        osmium::TagList const& tags) {
+  auto const timezone = tags["timezone"];
+  if (timezone == nullptr) {
+    return area_idx_t::invalid();
+  }
+
+  auto const lock = std::scoped_lock{ctx.mutex_};
+  auto const idx = area_idx_t{area_admin_level_.size()};
+  area_admin_level_.emplace_back(kTimezoneAdminLevel);
+  area_population_.emplace_back(population{.value_ = 0U});
+  area_names_.emplace_back(std::initializer_list<string_idx_t>{});
+  area_name_lang_.emplace_back(std::initializer_list<language_idx_t>{});
+  area_timezone_.emplace_back(get_or_create_timezone(ctx, timezone));
   return idx;
 }
 
@@ -108,10 +141,25 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
                    : static_cast<uint16_t>(utl::parse<unsigned>(p) /
                                            population::kCompressionFactor)});
 
+  auto const tz = tags["timezone"];
+  area_timezone_.emplace_back(tz == nullptr ? timezone_idx_t::invalid()
+                                            : get_or_create_timezone(ctx, tz));
+
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(admin_level_t{admin_lvl_int});
 
   return idx;
+}
+
+timezone_idx_t typeahead::get_or_create_timezone(import_context& ctx,
+                                                 std::string_view tz) {
+  return tz.empty() ? timezone_idx_t::invalid()
+                    : utl::get_or_create(ctx.tz_lookup_, tz, [&]() {
+                        std::clog << "Creating timezone \"" << tz << "\"\n";
+                        auto const idx = timezone_idx_t{timezone_names_.size()};
+                        timezone_names_.emplace_back(tz);
+                        return idx;
+                      });
 }
 
 street_idx_t typeahead::get_or_create_street(import_context& ctx,

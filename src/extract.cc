@@ -92,8 +92,17 @@ struct feature_handler : public osmium::handler::Handler {
   }
 
   void area(osmium::Area const& a) {
-    auto const env = a.envelope();
     auto const& tags = a.tags();
+
+    if (tags.has_key("timezone") && !tags.has_key("admin_level")) {
+      auto const tz_area_idx = t_.add_timezone_area(ctx_, a.tags());
+      if (tz_area_idx != area_idx_t::invalid()) {
+        area_db_.add_area(tz_area_idx, a);
+      }
+      return;
+    }
+
+    auto const env = a.envelope();
     if (!env.valid() ||
         ((!tags.has_key("admin_level") || !tags.has_key("name")) &&
          !tags.has_key("postal_code"))) {
@@ -141,6 +150,7 @@ void extract(std::filesystem::path const& in_path,
   pt->status("Load OSM").out_mod(3.F).in_high(2 * file_size);
 
   auto const filter = osm::TagsFilter{}
+                          .add_rule(true, "timezone")
                           .add_rule(true, "boundary", "postal_code")
                           .add_rule(true, "boundary", "administrative");
 
@@ -335,6 +345,8 @@ void extract(std::filesystem::path const& in_path,
     ctx.street_names_ = {};
 
     t.build_ngram_index();
+
+    t.ext_start_ = t.place_names_.size();
 
     UTL_STOP_TIMING(trigram_index);
     std::clog << "trigram index timing: " << UTL_TIMING_MS(trigram_index)

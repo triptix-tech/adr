@@ -30,6 +30,9 @@ struct guess_context;
 
 template <typename Langs>
 long find_lang(Langs const& langs, language_idx_t const l) {
+  if (langs.empty()) {
+    return -1;
+  }
   if (l == kDefaultLang) {
     return kDefaultLangIdx;
   }
@@ -39,7 +42,7 @@ long find_lang(Langs const& langs, language_idx_t const l) {
 
 struct typeahead {
   area_idx_t add_postal_code_area(import_context&, osmium::TagList const&);
-
+  area_idx_t add_timezone_area(import_context&, osmium::TagList const&);
   area_idx_t add_admin_area(import_context&, osmium::TagList const&);
 
   void add_address(import_context&,
@@ -70,17 +73,20 @@ struct typeahead {
     return it == end(lang_) ? language_idx_t::invalid() : it->second;
   }
 
+  timezone_idx_t get_tz(area_set_idx_t) const;
+
   language_idx_t get_or_create_lang_idx(std::string_view);
-
-  street_idx_t get_or_create_street(import_context&,
-                                    std::string_view street_name);
-
+  timezone_idx_t get_or_create_timezone(import_context&, std::string_view);
+  street_idx_t get_or_create_street(import_context&, std::string_view);
   string_idx_t get_or_create_string(import_context&, std::string_view);
+
+  data::vecvec<timezone_idx_t, char> timezone_names_;
 
   data::vecvec<area_idx_t, string_idx_t> area_names_;
   data::vecvec<area_idx_t, language_idx_t> area_name_lang_;
   data::vector_map<area_idx_t, admin_level_t> area_admin_level_;
   data::vector_map<area_idx_t, population> area_population_;
+  data::vector_map<area_idx_t, timezone_idx_t> area_timezone_;
 
   data::vecvec<place_idx_t, string_idx_t> place_names_;
   data::vecvec<place_idx_t, language_idx_t> place_name_lang_;
@@ -111,6 +117,8 @@ struct typeahead {
 
   lang_map_t lang_;
   data::vecvec<language_idx_t, char, std::uint32_t> lang_names_;
+
+  std::uint32_t ext_start_;
 };
 
 }  // namespace adr
