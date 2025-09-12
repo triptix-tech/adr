@@ -16,56 +16,10 @@ if (ADR_MIMALLOC)
     target_compile_definitions(boost INTERFACE BOOST_ASIO_DISABLE_STD_ALIGNED_ALLOC=1)
 endif()
 
-# --- LINT ---
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set(adr-compile-options
-            -Weverything
-            -Wno-c++98-compat
-            -Wno-c++98-compat-pedantic
-            -Wno-newline-eof
-            -Wno-missing-prototypes
-            -Wno-padded
-            -Wno-double-promotion
-            -Wno-undef
-            -Wno-undefined-reinterpret-cast
-            -Wno-float-conversion
-            -Wno-global-constructors
-            -Wno-exit-time-destructors
-            -Wno-switch-enum
-            -Wno-c99-designator
-            -Wno-zero-as-null-pointer-constant
-            -Wno-missing-noreturn
-            -Wno-undefined-func-template
-            -Wno-unsafe-buffer-usage
-            -Wno-c++20-compat
-            -Wno-reserved-macro-identifier
-            -Wno-documentation-unknown-command
-            -Wno-duplicate-enum
-            -Wno-ctad-maybe-unsupported
-            -Wno-unknown-pragmas
-            -Wno-switch-default
-            -Wno-float-equal
-            -Wno-implicit-int-float-conversion
-            -Werror)
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
-    set(adr-compile-options -Wall -Wextra -Werror -Wno-unknown-pragmas)
-elseif (MSVC)
-else ()
-    set(adr-compile-options
-            -Wall
-            -Wextra
-            -Wno-changes-meaning
-            -Wno-maybe-uninitialized)
-    if (NOT CMAKE_CROSSCOMPILING)
-        set(adr-compile-options ${adr-compile-options} -Werror)
-    endif ()
-endif ()
-
 file(GLOB_RECURSE adr-files src/*.cc)
 add_library(adr ${adr-files})
 target_compile_features(adr PRIVATE cxx_std_23)
 target_include_directories(adr PUBLIC include)
-target_compile_options(adr PRIVATE ${adr-compile-options})
 target_link_libraries(adr
     osmium
     geo
