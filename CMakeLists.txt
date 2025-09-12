@@ -50,7 +50,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
     set(adr-compile-options -Wall -Wextra -Werror -Wno-unknown-pragmas)
 elseif (MSVC)
-    set(adr-compile-options /WX)
 else ()
     set(adr-compile-options
             -Wall
