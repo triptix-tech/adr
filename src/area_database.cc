@@ -35,7 +35,7 @@ tg_ring* convert_ring(std::vector<tg_point>& ring_tmp, auto&& osm_ring) {
   for (auto const& p : osm_ring) {
     ring_tmp.emplace_back(tg_point{p.lon(), p.lat()});
   }
-  return tg_ring_new(ring_tmp.data(), ring_tmp.size());
+  return tg_ring_new(ring_tmp.data(), static_cast<int>(ring_tmp.size()));
 }
 
 struct area_database::impl {
@@ -69,10 +69,10 @@ struct area_database::impl {
             auto const& outer_rings = outer_rings_[area_idx];
 
             auto box = geo::box{};
-            for (auto const& [outer_idx, outer_ring] :
+            for (auto const [outer_idx, outer_ring] :
                  utl::enumerate(outer_rings)) {
               tmp.inner_tmp_.clear();
-              for (auto const& inner_ring : inner_rings_[area_idx][outer_idx]) {
+              for (auto const inner_ring : inner_rings_[area_idx][outer_idx]) {
                 tmp.inner_tmp_.emplace_back(
                     convert_ring(tmp.ring_tmp_, inner_ring));
               }
@@ -82,8 +82,9 @@ struct area_database::impl {
               }
 
               auto const outer = convert_ring(tmp.ring_tmp_, outer_ring);
-              auto const poly = tg_poly_new(outer, tmp.inner_tmp_.data(),
-                                            tmp.inner_tmp_.size());
+              auto const poly =
+                  tg_poly_new(outer, tmp.inner_tmp_.data(),
+                              static_cast<int>(tmp.inner_tmp_.size()));
               tg_ring_free(outer);
               tmp.polys_tmp_.emplace_back(poly);
             }
@@ -91,8 +92,8 @@ struct area_database::impl {
             auto const min_corner = box.min_.lnglat();
             auto const max_corner = box.max_.lnglat();
 
-            idx_[i] = tg_geom_new_multipolygon(tmp.polys_tmp_.data(),
-                                               tmp.polys_tmp_.size());
+            idx_[i] = tg_geom_new_multipolygon(
+                tmp.polys_tmp_.data(), static_cast<int>(tmp.polys_tmp_.size()));
 
             {
               auto const lock = std::scoped_lock{mutex};
@@ -165,23 +166,23 @@ struct area_database::impl {
                                        v::transform(ring_to_coordinates);
                               }));
 
-    for (auto const& [outer_idx, outer_ring] :
+    for (auto const [outer_idx, outer_ring] :
          utl::enumerate(area.outer_rings())) {
       inner_tmp_.clear();
       for (auto const& inner_ring : area.inner_rings(outer_ring)) {
         inner_tmp_.emplace_back(convert_ring(ring_tmp_, inner_ring));
       }
       auto const outer = convert_ring(ring_tmp_, outer_ring);
-      polys_tmp_.emplace_back(
-          tg_poly_new(outer, inner_tmp_.data(), inner_tmp_.size()));
+      polys_tmp_.emplace_back(tg_poly_new(outer, inner_tmp_.data(),
+                                          static_cast<int>(inner_tmp_.size())));
       for (auto const r : inner_tmp_) {
         tg_ring_free(r);
       }
       tg_ring_free(outer);
     }
 
-    idx_.emplace_back(
-        tg_geom_new_multipolygon(polys_tmp_.data(), polys_tmp_.size()));
+    idx_.emplace_back(tg_geom_new_multipolygon(
+        polys_tmp_.data(), static_cast<int>(polys_tmp_.size())));
     for (auto const p : polys_tmp_) {
       tg_poly_free(p);
     }

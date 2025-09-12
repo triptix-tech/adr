@@ -29,7 +29,7 @@ struct import_context;
 struct guess_context;
 
 template <typename Langs>
-long find_lang(Langs const& langs, language_idx_t const l) {
+std::int16_t find_lang(Langs const& langs, language_idx_t const l) {
   if (langs.empty()) {
     return -1;
   }
@@ -37,7 +37,9 @@ long find_lang(Langs const& langs, language_idx_t const l) {
     return kDefaultLangIdx;
   }
   auto const it = std::find(begin(langs), end(langs), l);
-  return it == end(langs) ? -1 : std::distance(begin(langs), it);
+  return it == end(langs)
+             ? -1
+             : static_cast<std::int16_t>(std::distance(begin(langs), it));
 }
 
 struct typeahead {

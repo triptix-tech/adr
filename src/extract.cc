@@ -95,6 +95,7 @@ struct feature_handler : public osmium::handler::Handler {
     auto const& tags = a.tags();
 
     if (tags.has_key("timezone") && !tags.has_key("admin_level")) {
+      std::clog << a.id() << ": " << tags.get_value_by_key("timezone") << "\n";
       auto const tz_area_idx = t_.add_timezone_area(ctx_, a.tags());
       if (tz_area_idx != area_idx_t::invalid()) {
         area_db_.add_area(tz_area_idx, a);
@@ -113,6 +114,10 @@ struct feature_handler : public osmium::handler::Handler {
 
     auto const admin_area_idx = t_.add_admin_area(ctx_, a.tags());
     if (admin_area_idx != area_idx_t::invalid()) {
+      if (tags.has_key("timezone")) {
+        std::clog << a.id() << ": " << tags.get_value_by_key("timezone")
+                  << "\n";
+      }
       area_db_.add_area(admin_area_idx, a);
     }
 
@@ -216,8 +221,8 @@ void extract(std::filesystem::path const& in_path,
             oneapi::tbb::make_filter<osm_mem::Buffer, void>(
                 oneapi::tbb::filter_mode::serial_in_order,
                 [&](osm_mem::Buffer&& buf) {
-                  osm::apply(buf, mp_manager.handler([&](auto&& buf) {
-                    osm::apply(buf, handler);
+                  osm::apply(buf, mp_manager.handler([&](auto&& area_buf) {
+                    osm::apply(area_buf, handler);
                   }));
                 }));
 
@@ -297,9 +302,9 @@ void extract(std::filesystem::path const& in_path,
             }
           });
 
-      for (auto const& [i, x] : utl::enumerate(street_areas)) {
+      for (auto const [i, x] : utl::enumerate(street_areas)) {
         t.street_areas_.add_back_sized(0);
-        for (auto const& a : x) {
+        for (auto const a : x) {
           t.street_areas_[street_idx_t{i}].push_back(t.get_or_create_area_set(
               ctx, basic_string_view<area_idx_t>{begin(a), end(a)}));
         }
@@ -321,10 +326,10 @@ void extract(std::filesystem::path const& in_path,
             }
           });
 
-      for (auto const& [i, x] : utl::enumerate(house_areas)) {
+      for (auto const [i, x] : utl::enumerate(house_areas)) {
         auto const street = street_idx_t{i};
         t.house_areas_.add_back_sized(0);
-        for (auto const& a : x) {
+        for (auto const a : x) {
           t.house_areas_[street].push_back(t.get_or_create_area_set(
               ctx, basic_string_view<area_idx_t>{begin(a), end(a)}));
         }

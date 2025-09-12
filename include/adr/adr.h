@@ -33,7 +33,7 @@ std::vector<token> get_suggestions(typeahead const&,
                                    language_list_t const&,
                                    guess_context&,
                                    std::optional<geo::latlng> const& coord,
-                                   double bias,
+                                   float bias,
                                    filter_type filter = filter_type::kNone);
 
 void print_stats(typeahead const&);

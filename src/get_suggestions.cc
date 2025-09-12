@@ -44,7 +44,7 @@ void activate_areas(typeahead const& t,
     }
 
     ctx.area_active_[to_idx(area)] = true;
-    for (auto const& [j, area_p] : utl::enumerate(ctx.phrases_)) {
+    for (auto const [j, area_p] : utl::enumerate(ctx.phrases_)) {
       auto const match_allowed = (  // Zip-code areas only match numeric tokens.
           (((area_p.token_bits_ & numeric_tokens_mask) == area_p.token_bits_) &&
            t.area_admin_level_[area] == kPostalCodeAdminLevel) ||
@@ -63,16 +63,18 @@ void activate_areas(typeahead const& t,
       auto& lang = ctx.area_phrase_lang_[area][j];
       for (auto const [i, l] : utl::enumerate(languages)) {
         auto const lang_idx = find_lang(t.area_name_lang_[area], l);
-        if (lang_idx == -1) {
+        if (lang_idx < 0) {
           continue;
         }
 
-        auto const area_name = t.strings_[t.area_names_[area][lang_idx]].view();
+        auto const area_name =
+            t.strings_[t.area_names_[area][static_cast<std::uint8_t>(lang_idx)]]
+                .view();
         auto const lang_match_score = get_match_score(
             area_name, area_p.s_, ctx.sift4_offset_arr_, ctx.normalize_buf_);
         if (lang_match_score < score) {
           score = lang_match_score;
-          lang = lang_idx;
+          lang = static_cast<std::uint8_t>(lang_idx);
         }
       }
     }
@@ -90,24 +92,24 @@ void match_streets(std::uint8_t const all_tokens_mask,
 
   trace("NUMERIC_TOKENS={}", bitmask{numeric_tokens_mask});
 
-  auto i = 0U;
   for (auto const [street_edit_dist, street_p_idx, str_idx, street] :
        ctx.scored_street_matches_) {
     ctx.area_match_items_.clear();
 
     for (auto const [index, area_set] :
          utl::enumerate(t.street_areas_[street])) {
-      ctx.area_match_items_[area_set].emplace_back(
-          match_item{.type_ = match_item::type::kStreet,
-                     .score_ = 0.0F,
-                     .index_ = static_cast<std::uint32_t>(index),
-                     .matched_mask_ = ctx.phrases_[street_p_idx].token_bits_});
+      ctx.area_match_items_[area_set].emplace_back(match_item{
+          .type_ = match_item::type::kStreet,
+          .score_ = 0.0F,
+          .index_ = static_cast<std::uint32_t>(index),
+          .house_number_p_idx_ = std::numeric_limits<phrase_idx_t>::max(),
+          .matched_mask_ = ctx.phrases_[street_p_idx].token_bits_});
     }
 
     auto index = 0U;
     for (auto const [hn, areas_idx] :
          utl::zip(t.house_numbers_[street], t.house_areas_[street])) {
-      for (auto const& [hn_p_idx, p] : utl::enumerate(ctx.phrases_)) {
+      for (auto const [hn_p_idx, p] : utl::enumerate(ctx.phrases_)) {
         if ((p.token_bits_ & numeric_tokens_mask) != p.token_bits_) {
           trace("[{}] {} HOUSENUMBER: {} is not numeric", street,
                 t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
@@ -156,7 +158,7 @@ void match_streets(std::uint8_t const all_tokens_mask,
         auto matched_areas_mask = std::uint32_t{0U};
         auto area_lang = area_set_lang_t{};
         auto areas_edit_dist = 0.0F;
-        for (auto const& [area_p_idx, area_p] : utl::enumerate(ctx.phrases_)) {
+        for (auto const [area_p_idx, area_p] : utl::enumerate(ctx.phrases_)) {
           auto best_edit_dist = std::numeric_limits<float>::max();
           auto best_area_idx = 0U;
 
@@ -204,7 +206,7 @@ void match_streets(std::uint8_t const all_tokens_mask,
 
             if (best_edit_dist > edit_dist) {
               best_edit_dist = edit_dist;
-              best_area_idx = area_idx;
+              best_area_idx = static_cast<unsigned>(area_idx);
             }
           }
 
@@ -215,7 +217,9 @@ void match_streets(std::uint8_t const all_tokens_mask,
                 ctx.area_phrase_lang_[best_area][area_p_idx];
             areas_edit_dist += best_edit_dist;
             areas_edit_dist -=
-                (t.area_population_[best_area].get() / 10'000'000.0F) * 2U;
+                (static_cast<float>(t.area_population_[best_area].get()) /
+                 10'000'000.0F) *
+                2U;
             matched_tokens_mask |= area_p.token_bits_;
 
             trace("[{}] {}\t\t\t***MATCHED: {} vs {}: {}", street,
@@ -327,7 +331,7 @@ void match_places(std::uint8_t const all_tokens_mask,
     auto matched_areas_mask = std::uint32_t{0U};
     auto area_lang = area_set_lang_t{};
     auto areas_edit_dist = 0.0F;
-    for (auto const& [area_p_idx, area_p] : utl::enumerate(ctx.phrases_)) {
+    for (auto const [area_p_idx, area_p] : utl::enumerate(ctx.phrases_)) {
       auto best_edit_dist = std::numeric_limits<float>::max();
       auto best_area_idx = 0U;
 
@@ -363,7 +367,7 @@ void match_places(std::uint8_t const all_tokens_mask,
 
         if (best_edit_dist > edit_dist) {
           best_edit_dist = edit_dist;
-          best_area_idx = area_idx;
+          best_area_idx = static_cast<unsigned>(area_idx);
         }
       }
 
@@ -399,13 +403,13 @@ void match_places(std::uint8_t const all_tokens_mask,
     }
 
     auto const extra_score =
-        t.place_type_[place] == place_type::kExtra ? 0.75 : 0;
+        t.place_type_[place] == place_type::kExtra ? 0.75F : 0.F;
     auto const areas_score = std::popcount(matched_areas_mask);
     auto const no_area_score =
         !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 3 : 0;
     auto const population_score =
-        std::min(1.5, (t.place_population_[place].get() / 200'000.F) * 1.5);
-    auto const place_score = 1.0;
+        std::min(1.5F, (t.place_population_[place].get() / 200'000.F) * 1.5F);
+    auto const place_score = 1.0F;
 
     total_score -= extra_score;
     total_score -= areas_score;
@@ -455,8 +459,8 @@ void compute_string_phrase_match_scores(guess_context& ctx,
                                         typeahead const& t) {
   UTL_START_TIMING(t);
   ctx.string_phrase_match_scores_.resize(ctx.string_matches_.size());
-  for (auto const& [i, m] : utl::enumerate(ctx.string_matches_)) {
-    for (auto const& [j, p] : utl::enumerate(ctx.phrases_)) {
+  for (auto const [i, m] : utl::enumerate(ctx.string_matches_)) {
+    for (auto const [j, p] : utl::enumerate(ctx.phrases_)) {
       ctx.string_phrase_match_scores_[i][j] =
           get_match_score(t.strings_[m.idx_].view(), p.s_,
                           ctx.sift4_offset_arr_, ctx.normalize_buf_);
@@ -470,14 +474,14 @@ template <bool Debug>
 void get_scored_matches(typeahead const& t,
                         guess_context& ctx,
                         std::uint8_t const numeric_tokens_mask,
-                        language_list_t const& languages,
+                        language_list_t const&,
                         filter_type const filter) {
   UTL_START_TIMING(t);
 
   ctx.scored_street_matches_.clear();
   ctx.scored_place_matches_.clear();
 
-  for (auto const& [i, m] : utl::enumerate(ctx.string_matches_)) {
+  for (auto const [i, m] : utl::enumerate(ctx.string_matches_)) {
     for (auto p_idx = phrase_idx_t{0U}; p_idx != ctx.phrases_.size(); ++p_idx) {
       if ((ctx.phrases_[p_idx].token_bits_ & numeric_tokens_mask) != 0U) {
         trace("{}: name={}, cos_sim={}, phrase={}, NUMERIC", i,
@@ -551,7 +555,7 @@ std::vector<token> get_suggestions(typeahead const& t,
                                    language_list_t const& languages,
                                    guess_context& ctx,
                                    std::optional<geo::latlng> const& coord,
-                                   double const bias,
+                                   float const bias,
                                    filter_type const filter) {
   UTL_START_TIMING(t);
 
@@ -565,15 +569,16 @@ std::vector<token> get_suggestions(typeahead const& t,
   auto token_pos = std::vector<token>{};
   auto tokens = std::vector<std::string>{};
   auto all_tokens_mask = std::uint8_t{0U};
-  utl::for_each_token(utl::cstr{in}, ' ', [&, i = 0U](utl::cstr t) mutable {
-    if (t.empty()) {
+  utl::for_each_token(utl::cstr{in}, ' ', [&, i = 0U](utl::cstr tok) mutable {
+    if (tok.empty()) {
       return;
     }
-    tokens.emplace_back(normalize(t.view(), ctx.normalize_buf_));
+    tokens.emplace_back(normalize(tok.view(), ctx.normalize_buf_));
     all_tokens_mask |= 1U << (i++);
 
-    token_pos.push_back(token{static_cast<std::uint16_t>(t.data() - in.data()),
-                              static_cast<std::uint16_t>(t.length())});
+    token_pos.push_back(
+        token{static_cast<std::uint16_t>(tok.data() - in.data()),
+              static_cast<std::uint16_t>(tok.length())});
   });
   ctx.phrases_ = get_phrases(tokens);
 
@@ -606,15 +611,15 @@ std::vector<token> get_suggestions(typeahead const& t,
     for (auto& s : ctx.suggestions_) {
       auto const dist = geo::distance(s.coordinates_.as_latlng(), *coord);
 
-      auto dist_bonus = 0.0;
+      auto dist_bonus = 0.F;
       if (dist < 2'000) {
-        dist_bonus = 2.5 * bias;
+        dist_bonus = 2.5F * bias;
       } else if (dist < 10'000) {
-        dist_bonus = 2 * bias;  // 10 km bonus
+        dist_bonus = 2.F * bias;  // 10 km bonus
       } else if (dist < 100'000) {
-        dist_bonus = 1 * bias;  // 100 km bonus
+        dist_bonus = 1.F * bias;  // 100 km bonus
       } else if (dist < 1'000'000) {
-        dist_bonus = 0.5 * bias;  // 1000 km bonus
+        dist_bonus = 0.5F * bias;  // 1000 km bonus
       }
 
       if constexpr (Debug) {
@@ -648,33 +653,7 @@ std::vector<token> get_suggestions(typeahead const& t,
                                    ctx.suggestions_.size()));
 
   for (auto& s : ctx.suggestions_) {
-    auto const areas = t.area_sets_[s.area_set_];
-
-    // Find zip code area index.
-    auto const zip_it = utl::find_if(areas, [&](auto&& a) {
-      return t.area_admin_level_[a] == kPostalCodeAdminLevel;
-    });
-    s.zip_area_idx_ = zip_it == end(areas)
-                          ? std::nullopt
-                          : std::optional{std::distance(begin(areas), zip_it)};
-
-    // Find timezone area index.
-    s.tz_ = t.get_tz(s.area_set_);
-
-    // Find city area index.
-    auto const city_it =
-        std::min_element(begin(areas), end(areas), [&](auto&& a, auto&& b) {
-          constexpr auto const kCloseTo = 8;
-          auto const x = to_idx(t.area_admin_level_[a]);
-          auto const y = to_idx(t.area_admin_level_[b]);
-          return (x > kCloseTo ? 10 : 1) * std::abs(x - kCloseTo) <
-                 (y > kCloseTo ? 10 : 1) * std::abs(y - kCloseTo);
-        });
-    s.city_area_idx_ =
-        city_it == end(areas)
-            ? std::nullopt
-            : std::optional{std::distance(begin(areas), city_it)};
-    s.unique_area_idx_ = s.city_area_idx_;
+    s.populate_areas(t);
   }
 
   for (auto i = begin(ctx.suggestions_); i != end(ctx.suggestions_) - 1; ++i) {
@@ -694,7 +673,7 @@ std::vector<token> get_suggestions(typeahead const& t,
   }
 
   if constexpr (Debug) {
-    for (auto const& [i, s] : utl::enumerate(ctx.suggestions_)) {
+    for (auto const [i, s] : utl::enumerate(ctx.suggestions_)) {
       std::cout << "[" << i << "]\t";
       s.print(std::cout, t, languages);
     }
@@ -710,7 +689,7 @@ template std::vector<token> get_suggestions<true>(
     language_list_t const&,
     guess_context&,
     std::optional<geo::latlng> const&,
-    double,
+    float,
     filter_type);
 
 template std::vector<token> get_suggestions<false>(
@@ -720,7 +699,7 @@ template std::vector<token> get_suggestions<false>(
     language_list_t const&,
     guess_context&,
     std::optional<geo::latlng> const&,
-    double,
+    float,
     filter_type);
 
 }  // namespace adr

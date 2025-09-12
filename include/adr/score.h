@@ -22,16 +22,16 @@ inline edit_dist_t levenshtein_distance(std::string_view source,
   auto const limit = (min_size / 2) + 2;
   lev_dist.resize(min_size + 1);
 
-  for (auto i = 0; i <= min_size; ++i) {
-    lev_dist[i] = i;
+  for (auto i = 0U; i <= min_size; ++i) {
+    lev_dist[i] = static_cast<edit_dist_t>(i);
   }
 
-  for (auto j = 1; j <= max_size; ++j) {
+  for (auto j = 1U; j <= max_size; ++j) {
     auto previous_diagonal = lev_dist[0];
-    auto previous_diagonal_save = 0U;
+    auto previous_diagonal_save = edit_dist_t{0U};
     ++lev_dist[0];
 
-    for (auto i = 1; i <= min_size; ++i) {
+    for (auto i = 1U; i <= min_size; ++i) {
       previous_diagonal_save = lev_dist[i];
       if (source[i - 1] == target[j - 1]) {
         lev_dist[i] = previous_diagonal;
@@ -64,7 +64,9 @@ inline score_t get_token_match_score(
   //  auto const dist = levenshtein_distance(cut_normalized_str, p, lev_dist);
   auto const dist =
       sift4(cut_normalized_str, p, 3,
-            std::min(dataset_token.size(), p.size()) / 2 + 2, sift4_offset_arr);
+            static_cast<edit_dist_t>(
+                std::min(dataset_token.size(), p.size()) / 2U + 2U),
+            sift4_offset_arr);
 
   if (dist >= cut_normalized_str.size()) {
     //    std::cout << "dist=" << static_cast<int>(dist) << " > "
@@ -110,7 +112,9 @@ inline score_t get_token_match_score(
   //            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F))
   //            << "\n";
 
-  return score > std::ceil(cut_normalized_str.size() / 2.0F) ? kNoMatch : score;
+  return score > std::ceil(static_cast<float>(cut_normalized_str.size()) / 2.0F)
+             ? kNoMatch
+             : score;
 }
 
 template <typename... Delimiter>
@@ -180,7 +184,7 @@ inline score_t get_match_score(
 
   if (p_tokens.size() > s_tokens.size()) {
     return get_token_match_score(normalized_str, p, sift4_offset_arr) +
-           (p_tokens.size() - s_tokens.size()) * 2;
+           static_cast<float>((p_tokens.size() - s_tokens.size()) * 2U);
   }
 
   auto const fallback =
@@ -196,7 +200,6 @@ inline score_t get_match_score(
 
   auto covered = std::uint8_t{0U};
   auto sum = 0.0F;
-  auto no_match = false;
   for (auto p_idx = 0U; p_idx != p_tokens.size(); ++p_idx) {
     auto const& p_token = p_tokens[p_idx];
 
@@ -221,7 +224,7 @@ inline score_t get_match_score(
 
     if (best_s_score == kNoMatch) {
       //      std::cout << "  NO MATCH FOUND: " << p_token << "\n";
-      sum += p_tokens.size() * 2.0;
+      sum += static_cast<float>(p_tokens.size()) * 2.F;
       continue;
     }
 
@@ -239,7 +242,7 @@ inline score_t get_match_score(
     if ((covered & (1U << s_idx)) == 0U) {
       ++n_not_matched;
       auto const not_matched_penalty =
-          std::max(1.F, s_tokens[s_idx].size() / 3.2F);
+          std::max(1.F, static_cast<float>(s_tokens[s_idx].size()) / 3.2F);
       //      std::cout << "PENALITY NOT MATCHED: " << s_tokens[s_idx] << ": "
       //                << not_matched_penalty << "\n";
       sum += not_matched_penalty;
@@ -250,7 +253,8 @@ inline score_t get_match_score(
     return kNoMatch;
   }
 
-  auto const max = std::ceil(std::min(s.size(), p.size()) / 2.0F);
+  auto const max =
+      std::ceil(static_cast<float>(std::min(s.size(), p.size())) / 2.0F);
   auto const score = std::min(fallback, sum);
   //  std::cout << "  SUM: " << sum << ", MAX=" << max << ", SCORE=" << score
   //            << "\n";

@@ -23,8 +23,8 @@ using namespace std::string_view_literals;
 
 namespace adr {
 
-timezone_idx_t typeahead::get_tz(area_set_idx_t const a) const {
-  auto const areas = area_sets_[a];
+timezone_idx_t typeahead::get_tz(area_set_idx_t const area_set) const {
+  auto const areas = area_sets_[area_set];
   auto const tz_it =
       utl::min_element(areas, [&](area_idx_t const a, area_idx_t const b) {
         // Lexicographically sort by (has timezone) + (admin level precision)
@@ -130,8 +130,8 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
   auto names = area_names_.add_back_sized(0U);
   auto langs = area_name_lang_.add_back_sized(0U);
   for_each_name(*this, tags,
-                [&](std::string_view name, language_idx_t const lang) {
-                  names.push_back(get_or_create_string(ctx, name));
+                [&](std::string_view alt_name, language_idx_t const lang) {
+                  names.push_back(get_or_create_string(ctx, alt_name));
                   langs.push_back(lang);
                 });
 
@@ -244,12 +244,12 @@ void typeahead::add_place(import_context& ctx,
   auto names = place_names_.add_back_sized(0U);
   auto langs = place_name_lang_.add_back_sized(0U);
   for_each_name(*this, tags,
-                [&](std::string_view name, language_idx_t const l) {
-                  auto const str_idx = get_or_create_string(ctx, name);
+                [&](std::string_view alt_name, language_idx_t const lang) {
+                  auto const str_idx = get_or_create_string(ctx, alt_name);
                   ctx.string_to_location_[str_idx].emplace_back(
                       idx, location_type_t::kPlace);
                   names.push_back(str_idx);
-                  langs.push_back(l);
+                  langs.push_back(lang);
                 });
 
   auto const population = tags["population"];
@@ -290,10 +290,10 @@ void typeahead::build_ngram_index() {
   n_bigrams_.resize(strings_.size());
   for (auto const [i, str_idx] : utl::enumerate(strings_)) {
     auto const normalized = normalize(str_idx.view(), normalize_buf);
-    n_bigrams_[string_idx_t{i}] = std::min(
+    n_bigrams_[string_idx_t{i}] = static_cast<std::uint8_t>(std::min(
         static_cast<std::size_t>(std::numeric_limits<std::uint8_t>::max()),
-        normalized.size() - 1U);
-    for_each_bigram(normalized, [&, i = i](std::string_view bigram) {
+        normalized.size() - 1U));
+    for_each_bigram(normalized, [&, i](std::string_view bigram) {
       tmp[compress_bigram(bigram)].emplace_back(i);
     });
   }
@@ -313,7 +313,7 @@ bool typeahead::verify() {
   auto i = 0U;
   for (auto const [str, locations, types] :
        utl::zip(strings_, string_to_location_, string_to_type_)) {
-    for (auto const& [l, type] : utl::zip(locations, types)) {
+    for (auto const [l, type] : utl::zip(locations, types)) {
       switch (type) {
         case location_type_t::kStreet:
           if (!has(street_names_[street_idx_t{l}], i)) {

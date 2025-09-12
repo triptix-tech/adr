@@ -53,6 +53,7 @@ struct suggestion {
 
   area_set areas(typeahead const&, language_list_t const&) const;
   std::string description(typeahead const&) const;
+  void populate_areas(typeahead const&);
 
   string_idx_t str_;
   std::variant<place_idx_t, address> location_;
@@ -63,10 +64,10 @@ struct suggestion {
   std::uint8_t matched_tokens_;
   float score_;
 
-  std::optional<unsigned> city_area_idx_;
-  std::optional<unsigned> zip_area_idx_;
-  std::optional<unsigned> unique_area_idx_;
-  timezone_idx_t tz_;
+  std::optional<unsigned> city_area_idx_{};
+  std::optional<unsigned> zip_area_idx_{};
+  std::optional<unsigned> unique_area_idx_{};
+  timezone_idx_t tz_{timezone_idx_t::invalid()};
 };
 
 struct cos_sim_match {

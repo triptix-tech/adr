@@ -16,13 +16,11 @@ std::ostream& operator<<(std::ostream& out, area_set const& s) {
           ? s.t_.area_admin_level_[areas[*s.city_area_idx_]]
           : admin_level_t::invalid();
 
-  auto print_city = s.city_area_idx_.has_value();
   if (s.city_area_idx_.has_value()) {
-    for (auto const& [i, a] : utl::enumerate(areas)) {
+    for (auto const [i, a] : utl::enumerate(areas)) {
       auto const admin_lvl = s.t_.area_admin_level_[a];
       auto const matched = (((1U << i) & s.matched_mask_) != 0U);
       if (city_admin_lvl == admin_lvl && matched) {
-        print_city = false;
         break;
       }
     }
@@ -30,7 +28,7 @@ std::ostream& operator<<(std::ostream& out, area_set const& s) {
 
   auto first = true;
   out << " [";
-  for (auto const& [i, a] : utl::enumerate(areas)) {
+  for (auto const [i, a] : utl::enumerate(areas)) {
     if (!first) {
       out << ", ";
     }
@@ -42,15 +40,14 @@ std::ostream& operator<<(std::ostream& out, area_set const& s) {
     }
 
     auto const matched = (((1U << i) & s.matched_mask_) != 0U);
-    auto const is_city =
-        print_city &&
-        s.t_.area_admin_level_[areas[*s.city_area_idx_]] == admin_lvl;
 
     auto const language_idx =
         matched ? s.matched_area_lang_[i] : s.get_area_lang_idx(a);
     auto const name =
-        s.t_.strings_[s.t_.area_names_[a][language_idx == -1 ? kDefaultLangIdx
-                                                             : language_idx]]
+        s.t_.strings_[s.t_.area_names_[a][language_idx < 0
+                                              ? kDefaultLangIdx
+                                              : static_cast<unsigned>(
+                                                    language_idx)]]
             .view();
     if (matched) {
       out << " *";
