@@ -21,6 +21,8 @@ namespace adr {
 
 static_assert(sizeof(rtree_entity) == sizeof(void*));
 
+constexpr auto const kMaxResults = 10U;
+
 reverse::reverse(fs::path p, cista::mmap::protection const mode)
     : p_{p},
       mode_{mode},
@@ -51,11 +53,13 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
           reverse::rtree_t::coord_t const& max, rtree_entity const& e) {
         switch (e.type_) {
           case adr::entity_type::kHouseNumber: {
-            if (filter == filter_type::kPlace || filter == filter_type::kExtra) {
+            if (filter == filter_type::kPlace ||
+                filter == filter_type::kExtra) {
               return true;
             }
             auto const& hn = e.hn_;
             auto const c = t.house_coordinates_[hn.street_][hn.idx_];
+
             suggestions.emplace_back(adr::suggestion{
                 .str_ = t.street_names_[hn.street_][adr::kDefaultLangIdx],
                 .location_ = adr::address{.street_ = hn.street_,
@@ -72,8 +76,8 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
 
           case adr::entity_type::kPlace: {
             if (filter == filter_type::kAddress ||
-              (filter == filter_type::kExtra
-                && t.place_type_[e.place_.place_] != place_type::kExtra)) {
+                (filter == filter_type::kExtra &&
+                 t.place_type_[e.place_.place_] != place_type::kExtra)) {
               return true;
             }
             auto const& p = e.place_;
@@ -92,12 +96,14 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
           } break;
 
           case adr::entity_type::kStreet: {
-            if (filter == filter_type::kPlace || filter == filter_type::kExtra) {
+            if (filter == filter_type::kPlace ||
+                filter == filter_type::kExtra) {
               return true;
             }
             auto const& s = e.street_segment_;
             auto const [dist, closest, _] = geo::distance_to_polyline(
                 query, street_segments_[s.street_][s.segment_]);
+
             suggestions.emplace_back(adr::suggestion{
                 .str_ = t.street_names_[s.street_][adr::kDefaultLangIdx],
                 .location_ =
@@ -118,8 +124,10 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
         return true;
       });
 
-  utl::nth_element(suggestions, 10U);
-  suggestions.resize(10U);
+  if (suggestions.size() > kMaxResults) {
+    utl::nth_element(suggestions, kMaxResults);
+    suggestions.resize(kMaxResults);
+  }
   utl::sort(suggestions);
 
   return suggestions;
