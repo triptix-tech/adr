@@ -19,7 +19,7 @@ TEST(adr, for_each_trigram) {
   constexpr auto const in = std::string_view{"Landwehrstraße"};
   std::vector<std::string> v;
   auto s = std::string{};
-  auto decomposed_buf = std::basic_string<utf8proc_int32_t>{};
+  auto decomposed_buf = basic_string<utf8proc_int32_t>{};
   auto const normalized = adr::normalize(in, decomposed_buf);
   adr::for_each_trigram(normalized,
                         [&](std::string_view s) { v.emplace_back(s); });
@@ -167,9 +167,28 @@ TEST(adr, score_test) {
   //  EXPECT_EQ(1, adr::get_match_score("Bar 59", "bar", sift4_dist, buf));
   //  EXPECT_EQ(1, adr::get_match_score("Bar", "bar", sift4_dist, buf));
 
-  EXPECT_EQ(1, adr::get_match_score("Île-de-France", "de", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Île-de-France", "de", sift4_dist,
+  //  buf)); EXPECT_EQ(
+  //      1, adr::get_match_score("Celsiusstr. Süd (Berlin)",
+  //                              "S Lichterfelde Süd (Berlin)", sift4_dist,
+  //                              buf));
+  //  EXPECT_EQ(
+  //      1, adr::get_match_score("S Lichterfelde Süd (Berlin)",
+  //                              "S Lichterfelde Süd (Berlin)", sift4_dist,
+  //                              buf));
   //  EXPECT_EQ(1, adr::get_match_score("de", "Île-de-France", sift4_dist,
   //  buf));
+
+  //  EXPECT_EQ(1, adr::get_match_score("Darmstadt Berliner Allee",
+  //                                    "berliner allee", sift4_dist, buf));
+  //  EXPECT_EQ(1, adr::get_match_score("Berliner Allee 8 bis 8f", "berliner
+  //  allee",
+  //                                    sift4_dist, buf));
+
+  EXPECT_EQ(1, adr::get_match_score("Berliner Allee", "berliner allee",
+                                    sift4_dist, buf));
+  EXPECT_EQ(1, adr::get_match_score("D-Berliner Allee", "berliner allee",
+                                    sift4_dist, buf));
 }
 
 TEST(adr, for_each_token) {

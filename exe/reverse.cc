@@ -13,6 +13,7 @@
 #include "adr/guess_context.h"
 #include "adr/reverse.h"
 #include "adr/typeahead.h"
+#include "adr/types.h"
 
 namespace bpo = boost::program_options;
 namespace fs = std::filesystem;
@@ -77,7 +78,7 @@ int main(int ac, char** av) {
   auto const area_db = adr::area_database{in, cista::mmap::protection::READ};
 
   auto lang_indices =
-      std::basic_string<adr::language_idx_t>{{adr::kDefaultLang}};
+      adr::basic_string<adr::language_idx_t>{{adr::kDefaultLang}};
   for (auto const& l_str : languages) {
     auto const l_idx = t->resolve_language(l_str);
     if (l_idx == adr::language_idx_t::invalid()) {
@@ -88,7 +89,7 @@ int main(int ac, char** av) {
 
   auto cache = adr::cache{t->strings_.size(), 1000U};
   auto ctx = adr::guess_context{cache};
-  auto areas = std::basic_string<adr::area_idx_t>{};
+  auto areas = adr::basic_string<adr::area_idx_t>{};
 
   for (auto i = 0U; i != guess.size(); i += 2U) {
     auto const query = geo::latlng{guess[i], guess[i + 1U]};
@@ -106,8 +107,8 @@ int main(int ac, char** av) {
       auto const timer = utl::scoped_timer{"area lookup"};
       area_db.lookup(*t, adr::coordinates::from_latlng(query), areas);
 
-      std::cout << "areas: " << adr::area_set{*t, lang_indices, areas, 0U, {}}
-                << "\n";
+      std::cout << "areas: "
+                << adr::area_set{*t, lang_indices, {}, areas, 0U, {}} << "\n";
     }
   }
 }

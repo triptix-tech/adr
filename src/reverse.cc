@@ -45,82 +45,86 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
   auto const max = b.max_.lnglat_float();
 
   auto suggestions = std::vector<suggestion>{};
-  rtree_.search(
-      min, max,
-      [&](reverse::rtree_t::coord_t const& min,
-          reverse::rtree_t::coord_t const& max, rtree_entity const& e) {
-        switch (e.type_) {
-          case adr::entity_type::kHouseNumber: {
-            if (filter == filter_type::kPlace || filter == filter_type::kExtra) {
-              return true;
-            }
-            auto const& hn = e.hn_;
-            auto const c = t.house_coordinates_[hn.street_][hn.idx_];
-            suggestions.emplace_back(adr::suggestion{
-                .str_ = t.street_names_[hn.street_][adr::kDefaultLangIdx],
-                .location_ = adr::address{.street_ = hn.street_,
-                                          .house_number_ = hn.idx_},
-                .coordinates_ = c,
-                .area_set_ = t.house_areas_[hn.street_][hn.idx_],
-                .matched_area_lang_ = {adr::kDefaultLangIdx} /* TODO */,
-                .matched_areas_ =
-                    std::numeric_limits<decltype(std::declval<adr::suggestion>()
-                                                     .matched_areas_)>::max(),
-                .matched_tokens_ = 0U,
-                .score_ = static_cast<float>(geo::distance(query, c)) - 10.F});
-          } break;
-
-          case adr::entity_type::kPlace: {
-            if (filter == filter_type::kAddress ||
-              (filter == filter_type::kExtra
-                && t.place_type_[e.place_.place_] != place_type::kExtra)) {
-              return true;
-            }
-            auto const& p = e.place_;
-            auto const c = t.place_coordinates_[p.place_];
-            suggestions.emplace_back(adr::suggestion{
-                .str_ = t.place_names_[p.place_][adr::kDefaultLangIdx],
-                .location_ = p.place_,
-                .coordinates_ = c,
-                .area_set_ = t.place_areas_[p.place_],
-                .matched_area_lang_ = {adr::kDefaultLangIdx} /* TODO */,
-                .matched_areas_ =
-                    std::numeric_limits<decltype(std::declval<adr::suggestion>()
-                                                     .matched_areas_)>::max(),
-                .matched_tokens_ = 0U,
-                .score_ = static_cast<float>(geo::distance(query, c)) - 10.F});
-          } break;
-
-          case adr::entity_type::kStreet: {
-            if (filter == filter_type::kPlace || filter == filter_type::kExtra) {
-              return true;
-            }
-            auto const& s = e.street_segment_;
-            auto const [dist, closest, _] = geo::distance_to_polyline(
-                query, street_segments_[s.street_][s.segment_]);
-            suggestions.emplace_back(adr::suggestion{
-                .str_ = t.street_names_[s.street_][adr::kDefaultLangIdx],
-                .location_ =
-                    adr::address{.street_ = s.street_,
-                                 .house_number_ = adr::address::kNoHouseNumber},
-                .coordinates_ = adr::coordinates::from_latlng(closest),
-                .area_set_ = t.street_areas_[s.street_][0U] /* TODO */,
-                .matched_area_lang_ = {adr::kDefaultLangIdx} /* TODO */,
-                .matched_areas_ =
-                    std::numeric_limits<decltype(std::declval<adr::suggestion>()
-                                                     .matched_areas_)>::max(),
-                .matched_tokens_ = 0U,
-                .score_ = static_cast<float>(dist)});
-            break;
-          }
+  rtree_.search(min, max, [&](auto&&, auto&&, rtree_entity const& e) {
+    switch (e.type_) {
+      case adr::entity_type::kHouseNumber: {
+        if (filter == filter_type::kPlace || filter == filter_type::kExtra) {
+          return true;
         }
+        auto const& hn = e.hn_;
+        auto const c = t.house_coordinates_[hn.street_][hn.idx_];
 
-        return true;
-      });
+        suggestions.emplace_back(adr::suggestion{
+            .str_ = t.street_names_[hn.street_][adr::kDefaultLangIdx],
+            .location_ =
+                adr::address{.street_ = hn.street_, .house_number_ = hn.idx_},
+            .coordinates_ = c,
+            .area_set_ = t.house_areas_[hn.street_][hn.idx_],
+            .matched_area_lang_ = {adr::kDefaultLangIdx} /* TODO */,
+            .matched_areas_ =
+                std::numeric_limits<decltype(std::declval<adr::suggestion>()
+                                                 .matched_areas_)>::max(),
+            .matched_tokens_ = 0U,
+            .score_ = static_cast<float>(geo::distance(query, c)) - 10.F});
+      } break;
 
-  utl::nth_element(suggestions, 10U);
-  suggestions.resize(10U);
+      case adr::entity_type::kPlace: {
+        if (filter == filter_type::kAddress ||
+            (filter == filter_type::kExtra &&
+             t.place_type_[e.place_.place_] != place_type::kExtra)) {
+          return true;
+        }
+        auto const& p = e.place_;
+        auto const c = t.place_coordinates_[p.place_];
+        suggestions.emplace_back(adr::suggestion{
+            .str_ = t.place_names_[p.place_][adr::kDefaultLangIdx],
+            .location_ = p.place_,
+            .coordinates_ = c,
+            .area_set_ = t.place_areas_[p.place_],
+            .matched_area_lang_ = {adr::kDefaultLangIdx} /* TODO */,
+            .matched_areas_ =
+                std::numeric_limits<decltype(std::declval<adr::suggestion>()
+                                                 .matched_areas_)>::max(),
+            .matched_tokens_ = 0U,
+            .score_ = static_cast<float>(geo::distance(query, c)) - 10.F});
+      } break;
+
+      case adr::entity_type::kStreet: {
+        if (filter == filter_type::kPlace || filter == filter_type::kExtra) {
+          return true;
+        }
+        auto const& s = e.street_segment_;
+        auto const [dist, closest, _] = geo::distance_to_polyline(
+            query, street_segments_[s.street_][s.segment_]);
+
+        suggestions.emplace_back(adr::suggestion{
+            .str_ = t.street_names_[s.street_][adr::kDefaultLangIdx],
+            .location_ =
+                adr::address{.street_ = s.street_,
+                             .house_number_ = adr::address::kNoHouseNumber},
+            .coordinates_ = adr::coordinates::from_latlng(closest),
+            .area_set_ = t.street_areas_[s.street_][0U] /* TODO */,
+            .matched_area_lang_ = {adr::kDefaultLangIdx} /* TODO */,
+            .matched_areas_ =
+                std::numeric_limits<decltype(std::declval<adr::suggestion>()
+                                                 .matched_areas_)>::max(),
+            .matched_tokens_ = 0U,
+            .score_ = static_cast<float>(dist)});
+        break;
+      }
+    }
+
+    return true;
+  });
+
+  if (suggestions.size() > n_guesses) {
+    utl::nth_element(suggestions, n_guesses);
+    suggestions.resize(n_guesses);
+  }
   utl::sort(suggestions);
+  for (auto& s : suggestions) {
+    s.populate_areas(t);
+  }
 
   return suggestions;
 }

@@ -19,7 +19,7 @@ inline void replace_all(std::string& s,
   }
 }
 
-using utf8_normalize_buf_t = std::basic_string<utf8proc_int32_t>;
+using utf8_normalize_buf_t = basic_string<utf8proc_int32_t>;
 
 inline void erase_fillers(std::string& in) {
   std::replace_if(
@@ -72,7 +72,7 @@ template <typename String>
 inline std::vector<phrase> get_phrases(std::vector<String> const& in_tokens) {
   auto r = std::vector<phrase>{};
   for (auto from = 0U; from != in_tokens.size(); ++from) {
-    for (auto length = 1U; from + length <= in_tokens.size() && length != 4U;
+    for (auto length = 1U; from + length <= in_tokens.size() && length != 5U;
          ++length) {
       auto p = phrase{};
       for (auto to = from; to < from + length && to < in_tokens.size(); ++to) {
@@ -98,7 +98,8 @@ inline std::uint8_t get_numeric_tokens_mask(
   };
   auto mask = std::uint8_t{0U};
   for (auto const [i, token] : utl::enumerate(tokens)) {
-    if (number_count(token) >= static_cast<unsigned>(token.size() / 2U)) {
+    auto const c = number_count(token);
+    if (c != 0U && c >= static_cast<unsigned>((token.size() + 1U) / 2U)) {
       mask |= 1U << i;
     }
   }

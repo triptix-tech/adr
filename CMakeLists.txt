@@ -16,7 +16,6 @@ if (ADR_MIMALLOC)
     target_compile_definitions(boost INTERFACE BOOST_ASIO_DISABLE_STD_ALIGNED_ALLOC=1)
 endif()
 
-
 file(GLOB_RECURSE adr-files src/*.cc)
 add_library(adr ${adr-files})
 target_compile_features(adr PRIVATE cxx_std_23)

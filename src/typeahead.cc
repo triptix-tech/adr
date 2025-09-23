@@ -23,6 +23,21 @@ using namespace std::string_view_literals;
 
 namespace adr {
 
+timezone_idx_t typeahead::get_tz(area_set_idx_t const area_set) const {
+  auto const areas = area_sets_[area_set];
+  auto const tz_it =
+      utl::min_element(areas, [&](area_idx_t const a, area_idx_t const b) {
+        // Lexicographically sort by (has timezone) + (admin level precision)
+        auto const key = [&](area_idx_t const x) {
+          return std::tuple{area_timezone_[x] == timezone_idx_t::invalid(),
+                            -to_idx(area_admin_level_[x])};
+        };
+        return key(a) < key(b);
+      });
+  return tz_it == end(areas) ? timezone_idx_t::invalid()
+                             : area_timezone_[*tz_it];
+}
+
 language_idx_t typeahead::get_or_create_lang_idx(std::string_view s) {
   return utl::get_or_create(lang_, s, [&]() {
     // +1 skips zero as 0 == default language
@@ -35,7 +50,8 @@ template <typename Fn>
 void for_each_name(typeahead& t, osmium::TagList const& tags, Fn&& fn) {
   auto const call_fn = [&](char const* name, language_idx_t const l) {
     if (name != nullptr) {
-      fn(std::string_view{name}, l);
+      utl::for_each_token(
+          name, ';', [&](utl::cstr token) { fn(std::string_view{token}, l); });
     }
   };
 
@@ -44,14 +60,18 @@ void for_each_name(typeahead& t, osmium::TagList const& tags, Fn&& fn) {
   call_fn(tags["alt_name"], kDefaultLang);
   call_fn(tags["official_name"], kDefaultLang);
 
-  for (auto const& tag : tags) {
-    constexpr auto const kNamePrefix = "name:"sv;
-    auto const key = std::string_view{tag.key()};
-    if (key.starts_with(kNamePrefix)) {
-      auto const lang_str = key.substr(kNamePrefix.size());
-      call_fn(tag.value(), t.get_or_create_lang_idx(lang_str));
+  auto const add_lang_by_prefix = [&](std::string_view prefix) {
+    for (auto const& tag : tags) {
+      auto const key = std::string_view{tag.key()};
+      if (key.starts_with(prefix)) {
+        auto const lang_str = key.substr(prefix.size());
+        call_fn(tag.value(), t.get_or_create_lang_idx(lang_str));
+      }
     }
-  }
+  };
+  add_lang_by_prefix("name:");
+  add_lang_by_prefix("alt_name:");
+  add_lang_by_prefix("official_name:");
 }
 
 area_idx_t typeahead::add_postal_code_area(import_context& ctx,
@@ -67,6 +87,24 @@ area_idx_t typeahead::add_postal_code_area(import_context& ctx,
   area_population_.emplace_back(population{.value_ = 0U});
   area_names_.emplace_back({get_or_create_string(ctx, postal_code)});
   area_name_lang_.emplace_back({kDefaultLang});
+  area_timezone_.emplace_back(timezone_idx_t::invalid());
+  return idx;
+}
+
+area_idx_t typeahead::add_timezone_area(import_context& ctx,
+                                        osmium::TagList const& tags) {
+  auto const timezone = tags["timezone"];
+  if (timezone == nullptr) {
+    return area_idx_t::invalid();
+  }
+
+  auto const lock = std::scoped_lock{ctx.mutex_};
+  auto const idx = area_idx_t{area_admin_level_.size()};
+  area_admin_level_.emplace_back(kTimezoneAdminLevel);
+  area_population_.emplace_back(population{.value_ = 0U});
+  area_names_.emplace_back(std::initializer_list<string_idx_t>{});
+  area_name_lang_.emplace_back(std::initializer_list<language_idx_t>{});
+  area_timezone_.emplace_back(get_or_create_timezone(ctx, timezone));
   return idx;
 }
 
@@ -83,7 +121,7 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
   }
 
   auto const admin_lvl_int = utl::parse<unsigned>(admin_lvl);
-  if (admin_lvl_int < 2 || admin_lvl_int > 10) {
+  if (admin_lvl_int < 2 || admin_lvl_int > 11) {
     return area_idx_t::invalid();
   }
 
@@ -92,8 +130,8 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
   auto names = area_names_.add_back_sized(0U);
   auto langs = area_name_lang_.add_back_sized(0U);
   for_each_name(*this, tags,
-                [&](std::string_view name, language_idx_t const lang) {
-                  names.push_back(get_or_create_string(ctx, name));
+                [&](std::string_view alt_name, language_idx_t const lang) {
+                  names.push_back(get_or_create_string(ctx, alt_name));
                   langs.push_back(lang);
                 });
 
@@ -102,6 +140,10 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
       p == nullptr ? std::uint16_t{0U}
                    : static_cast<uint16_t>(utl::parse<unsigned>(p) /
                                            population::kCompressionFactor)});
+
+  auto const tz = tags["timezone"];
+  area_timezone_.emplace_back(tz == nullptr ? timezone_idx_t::invalid()
+                                            : get_or_create_timezone(ctx, tz));
 
   auto const c = tags["ISO3166-1"];
   area_country_code_.emplace_back(
@@ -113,6 +155,17 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
   area_admin_level_.emplace_back(admin_level_t{admin_lvl_int});
 
   return idx;
+}
+
+timezone_idx_t typeahead::get_or_create_timezone(import_context& ctx,
+                                                 std::string_view tz) {
+  return tz.empty() ? timezone_idx_t::invalid()
+                    : utl::get_or_create(ctx.tz_lookup_, tz, [&]() {
+                        std::clog << "Creating timezone \"" << tz << "\"\n";
+                        auto const idx = timezone_idx_t{timezone_names_.size()};
+                        timezone_names_.emplace_back(tz);
+                        return idx;
+                      });
 }
 
 street_idx_t typeahead::get_or_create_street(import_context& ctx,
@@ -197,12 +250,12 @@ void typeahead::add_place(import_context& ctx,
   auto names = place_names_.add_back_sized(0U);
   auto langs = place_name_lang_.add_back_sized(0U);
   for_each_name(*this, tags,
-                [&](std::string_view name, language_idx_t const l) {
-                  auto const str_idx = get_or_create_string(ctx, name);
+                [&](std::string_view alt_name, language_idx_t const lang) {
+                  auto const str_idx = get_or_create_string(ctx, alt_name);
                   ctx.string_to_location_[str_idx].emplace_back(
                       idx, location_type_t::kPlace);
                   names.push_back(str_idx);
-                  langs.push_back(l);
+                  langs.push_back(lang);
                 });
 
   auto const population = tags["population"];
@@ -228,7 +281,7 @@ string_idx_t typeahead::get_or_create_string(import_context& ctx,
 }
 
 area_set_idx_t typeahead::get_or_create_area_set(
-    import_context& ctx, std::basic_string_view<area_idx_t> p) {
+    import_context& ctx, basic_string_view<area_idx_t> p) {
   return utl::get_or_create(ctx.area_set_lookup_, p, [&]() {
     auto const set_idx = area_set_idx_t{area_sets_.size()};
     area_sets_.emplace_back(p);
@@ -243,10 +296,10 @@ void typeahead::build_ngram_index() {
   n_bigrams_.resize(strings_.size());
   for (auto const [i, str_idx] : utl::enumerate(strings_)) {
     auto const normalized = normalize(str_idx.view(), normalize_buf);
-    n_bigrams_[string_idx_t{i}] = std::min(
+    n_bigrams_[string_idx_t{i}] = static_cast<std::uint8_t>(std::min(
         static_cast<std::size_t>(std::numeric_limits<std::uint8_t>::max()),
-        normalized.size() - 1U);
-    for_each_bigram(normalized, [&, i = i](std::string_view bigram) {
+        normalized.size() - 1U));
+    for_each_bigram(normalized, [&, i](std::string_view bigram) {
       tmp[compress_bigram(bigram)].emplace_back(i);
     });
   }
@@ -266,7 +319,7 @@ bool typeahead::verify() {
   auto i = 0U;
   for (auto const [str, locations, types] :
        utl::zip(strings_, string_to_location_, string_to_type_)) {
-    for (auto const& [l, type] : utl::zip(locations, types)) {
+    for (auto const [l, type] : utl::zip(locations, types)) {
       switch (type) {
         case location_type_t::kStreet:
           if (!has(street_names_[street_idx_t{l}], i)) {

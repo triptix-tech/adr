@@ -56,7 +56,6 @@ struct feature_handler : public osmium::handler::Handler {
           !tags.has_tag("information", "board") && !tags.has_key("tunnel") &&
           !tags.has_tag("amenity", "toilets") &&
           !tags.has_tag("natural", "wood") &&
-          !tags.has_tag("building", "industrial") &&
           !tags.has_tag("leisure", "playground") &&
           !tags.has_tag("access", "false") &&
           !tags.has_tag("amenity", "taxi")) {
@@ -93,8 +92,18 @@ struct feature_handler : public osmium::handler::Handler {
   }
 
   void area(osmium::Area const& a) {
-    auto const env = a.envelope();
     auto const& tags = a.tags();
+
+    if (tags.has_key("timezone") && !tags.has_key("admin_level")) {
+      std::clog << a.id() << ": " << tags.get_value_by_key("timezone") << "\n";
+      auto const tz_area_idx = t_.add_timezone_area(ctx_, a.tags());
+      if (tz_area_idx != area_idx_t::invalid()) {
+        area_db_.add_area(tz_area_idx, a);
+      }
+      return;
+    }
+
+    auto const env = a.envelope();
     if (!env.valid() ||
         ((!tags.has_key("admin_level") || !tags.has_key("name")) &&
          !tags.has_key("postal_code"))) {
@@ -105,6 +114,10 @@ struct feature_handler : public osmium::handler::Handler {
 
     auto const admin_area_idx = t_.add_admin_area(ctx_, a.tags());
     if (admin_area_idx != area_idx_t::invalid()) {
+      if (tags.has_key("timezone")) {
+        std::clog << a.id() << ": " << tags.get_value_by_key("timezone")
+                  << "\n";
+      }
       area_db_.add_area(admin_area_idx, a);
     }
 
@@ -142,6 +155,7 @@ void extract(std::filesystem::path const& in_path,
   pt->status("Load OSM").out_mod(3.F).in_high(2 * file_size);
 
   auto const filter = osm::TagsFilter{}
+                          .add_rule(true, "timezone")
                           .add_rule(true, "boundary", "postal_code")
                           .add_rule(true, "boundary", "administrative");
 
@@ -207,8 +221,8 @@ void extract(std::filesystem::path const& in_path,
             oneapi::tbb::make_filter<osm_mem::Buffer, void>(
                 oneapi::tbb::filter_mode::serial_in_order,
                 [&](osm_mem::Buffer&& buf) {
-                  osm::apply(buf, mp_manager.handler([&](auto&& buf) {
-                    osm::apply(buf, handler);
+                  osm::apply(buf, mp_manager.handler([&](auto&& area_buf) {
+                    osm::apply(area_buf, handler);
                   }));
                 }));
 
@@ -259,12 +273,12 @@ void extract(std::filesystem::path const& in_path,
     t.house_numbers_.resize(t.street_names_.size());
 
     {
-      auto place_areas = std::vector<std::basic_string<area_idx_t>>{};
+      auto place_areas = std::vector<basic_string<area_idx_t>>{};
       place_areas.resize(t.place_coordinates_.size());
 
-      utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
+      utl::parallel_for_run_threadlocal<basic_string<area_idx_t>>(
           t.place_coordinates_.size(),
-          [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
+          [&](basic_string<area_idx_t>& areas, std::size_t const i) {
             area_db.lookup(t, t.place_coordinates_[place_idx_t{i}], areas);
             place_areas[i] = std::move(areas);
           });
@@ -279,20 +293,20 @@ void extract(std::filesystem::path const& in_path,
           std::vector<cista::raw::vecvec<std::uint32_t, area_idx_t>>{};
       street_areas.resize(t.street_pos_.size());
 
-      utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
+      utl::parallel_for_run_threadlocal<basic_string<area_idx_t>>(
           t.street_pos_.size(),
-          [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
+          [&](basic_string<area_idx_t>& areas, std::size_t const i) {
             for (auto const& c : t.street_pos_[street_idx_t{i}]) {
               area_db.lookup(t, c, areas);
               street_areas[i].emplace_back(areas);
             }
           });
 
-      for (auto const& [i, x] : utl::enumerate(street_areas)) {
+      for (auto const [i, x] : utl::enumerate(street_areas)) {
         t.street_areas_.add_back_sized(0);
-        for (auto const& a : x) {
+        for (auto const a : x) {
           t.street_areas_[street_idx_t{i}].push_back(t.get_or_create_area_set(
-              ctx, std::basic_string_view<area_idx_t>{begin(a), end(a)}));
+              ctx, basic_string_view<area_idx_t>{begin(a), end(a)}));
         }
       }
     }
@@ -303,21 +317,21 @@ void extract(std::filesystem::path const& in_path,
       house_areas.resize(t.house_coordinates_.size());
       assert(t.house_coordinates_.size() == t.house_numbers_.size());
 
-      utl::parallel_for_run_threadlocal<std::basic_string<area_idx_t>>(
+      utl::parallel_for_run_threadlocal<basic_string<area_idx_t>>(
           t.house_coordinates_.size(),
-          [&](std::basic_string<area_idx_t>& areas, std::size_t const i) {
+          [&](basic_string<area_idx_t>& areas, std::size_t const i) {
             for (auto const& c : t.house_coordinates_[street_idx_t{i}]) {
               area_db.lookup(t, c, areas);
               house_areas[i].emplace_back(areas);
             }
           });
 
-      for (auto const& [i, x] : utl::enumerate(house_areas)) {
+      for (auto const [i, x] : utl::enumerate(house_areas)) {
         auto const street = street_idx_t{i};
         t.house_areas_.add_back_sized(0);
-        for (auto const& a : x) {
+        for (auto const a : x) {
           t.house_areas_[street].push_back(t.get_or_create_area_set(
-              ctx, std::basic_string_view<area_idx_t>{begin(a), end(a)}));
+              ctx, basic_string_view<area_idx_t>{begin(a), end(a)}));
         }
         assert(t.house_areas_[street].size() ==
                t.house_numbers_[street].size());
@@ -336,6 +350,8 @@ void extract(std::filesystem::path const& in_path,
     ctx.street_names_ = {};
 
     t.build_ngram_index();
+
+    t.ext_start_ = t.place_names_.size();
 
     UTL_STOP_TIMING(trigram_index);
     std::clog << "trigram index timing: " << UTL_TIMING_MS(trigram_index)
