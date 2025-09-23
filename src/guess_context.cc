@@ -5,12 +5,37 @@
 #include "utl/overloaded.h"
 
 #include "adr/area_set.h"
+#include "adr/formatter.h"
 #include "adr/typeahead.h"
 
 namespace adr {
 
+std::string suggestion::format(typeahead const& t, formatter const& f) {
+  auto const areas = t.area_sets_[area_set_];
+  auto const country_it = utl::find_if(areas, [&](area_idx_t const area) {
+    return t.area_country_code_[area] != kNoCountryCode;
+  });
+  auto a = formatter::address{};
+  a.country_code_ = std::string_view{country_it == end(areas)
+                                         ? country_code_t{'U', 'S'}
+                                         : t.area_country_code_[*country_it]};
+  std::visit(
+      utl::overloaded{
+          [&](place_idx_t const p) { a.road_ = t.strings_[str_].view(); },
+          [&](address const addr) {
+            a.road_ = t.strings_[str_].view();
+            if (addr.house_number_ != address::kNoHouseNumber) {
+              a.house_number_ =
+                  t.strings_[t.house_numbers_[addr.street_][addr.house_number_]]
+                      .view();
+            }
+          }},
+      location_);
+  return f.format(a);
+}
+
 void suggestion::print(std::ostream& out,
-                       adr::typeahead const& t,
+                       typeahead const& t,
                        language_list_t const& languages) const {
   std::visit(utl::overloaded{
                  [&](place_idx_t const p) {
@@ -36,7 +61,7 @@ void suggestion::print(std::ostream& out,
 
 std::string suggestion::areas(typeahead const& t) const { return ""; }
 
-std::string suggestion::description(adr::typeahead const& t) const {
+std::string suggestion::description(typeahead const& t) const {
   return std::visit(
       utl::overloaded{
           [&](place_idx_t const p) {
@@ -56,7 +81,7 @@ std::string suggestion::description(adr::typeahead const& t) const {
       location_);
 }
 
-void guess_context::resize(adr::typeahead const& t) {
+void guess_context::resize(typeahead const& t) {
   area_phrase_lang_.resize(t.area_names_.size());
   area_phrase_match_scores_.resize(t.area_names_.size());
   area_active_.resize(t.area_names_.size());

@@ -6,7 +6,7 @@
 #include <variant>
 #include <vector>
 
-#include "boost/algorithm/string/trim.hpp"
+#include "boost/algorithm/string/replace.hpp"
 
 #include "rfl.hpp"
 #include "rfl/yaml.hpp"
@@ -84,9 +84,7 @@ struct formatter::impl {
   config_t formatting_info_;
 };
 
-std::string formatter::format(adr::suggestion const& s) { return ""; }
-
-std::string formatter::format(address const& x) {
+std::string formatter::format(address const& x) const {
   auto const it = impl_->formatting_info_.find(x.country_code_);
   if (it == end(impl_->formatting_info_) ||
       !std::holds_alternative<formatting_info>(it->second) ||
@@ -97,10 +95,6 @@ std::string formatter::format(address const& x) {
   using namespace kainjow::mustache;
   auto const& address_template =
       *std::get<formatting_info>(it->second).address_template_;
-
-  std::cout << "---\n";
-  std::cout << address_template << "\n";
-  std::cout << "---\n";
 
   auto d = data{};
   d["house_number"] = x.house_number_;
@@ -130,7 +124,28 @@ std::string formatter::format(address const& x) {
     }
     return std::string{""};
   }}};
-  return mustache{address_template}.render(d);
+  auto formatted = mustache{address_template}.render(d);
+
+  auto remove_next_new_line = true;
+  for (auto j = begin(formatted); j != end(formatted);) {
+    remove_next_new_line |= (j + 1 == end(formatted));
+    if (*j == '\n') {
+      if (remove_next_new_line) {
+        j = formatted.erase(j);
+      } else {
+        ++j;
+      }
+      remove_next_new_line = true;
+    } else {
+      remove_next_new_line = false;
+      ++j;
+    }
+  }
+  while (!formatted.empty() && std::iswspace(formatted.back())) {
+    formatted.resize(formatted.size() - 1);
+  }
+  boost::replace_all(formatted, "\n", ", ");
+  return formatted;
 }
 
 formatter::formatter() : impl_{std::make_unique<impl>()} {}

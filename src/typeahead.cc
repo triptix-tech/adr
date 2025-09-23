@@ -103,6 +103,12 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
                    : static_cast<uint16_t>(utl::parse<unsigned>(p) /
                                            population::kCompressionFactor)});
 
+  auto const c = tags["ISO3166-1"];
+  area_country_code_.emplace_back(
+      (c == nullptr || std::string_view{c}.size() <= 2U)
+          ? kNoCountryCode
+          : country_code_t{c[0], c[1]});
+
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(admin_level_t{admin_lvl_int});
 

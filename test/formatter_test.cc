@@ -3,7 +3,8 @@
 #include "adr/formatter.h"
 
 TEST(adr, formatting) {
-  auto const a = adr::address{.house_number_ = "17",
+  auto const a =
+      adr::formatter::address{.house_number_ = "17",
                               .road_ = "Rue du Médecin-Colonel Calbairac",
                               .neighbourhood_ = "Lafourguette",
                               .suburb_ = "Toulouse Ouest",
@@ -14,5 +15,7 @@ TEST(adr, formatting) {
                               .country_ = "France",
                               .country_code_ = "FR"};
   auto f = adr::formatter{};
-  std::cout << f.format(a) << "\n";
+  auto const formatted = f.format(a);
+  EXPECT_EQ("17 Rue du Médecin-Colonel Calbairac, 31000 Toulouse, France",
+            formatted);
 }
