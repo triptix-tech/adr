@@ -10,15 +10,22 @@
 
 namespace adr {
 
-std::string suggestion::format(typeahead const& t, formatter const& f) {
+std::optional<std::string_view> suggestion::get_country_code(
+    typeahead const& t) const {
   auto const areas = t.area_sets_[area_set_];
   auto const country_it = utl::find_if(areas, [&](area_idx_t const area) {
     return t.area_country_code_[area] != kNoCountryCode;
   });
+  return country_it == end(areas) ? std::nullopt
+                                  : std::optional{std::string_view{
+                                        t.area_country_code_[*country_it]}};
+}
+
+std::string suggestion::format(typeahead const& t,
+                               formatter const& f,
+                               std::string_view country_code) const {
   auto a = formatter::address{};
-  a.country_code_ = std::string_view{country_it == end(areas)
-                                         ? country_code_t{'U', 'S'}
-                                         : t.area_country_code_[*country_it]};
+  a.country_code_ = country_code;
   std::visit(
       utl::overloaded{
           [&](place_idx_t const p) { a.road_ = t.strings_[str_].view(); },
