@@ -20,6 +20,7 @@ namespace adr {
 
 struct typeahead;
 struct guess_context;
+struct formatter;
 
 constexpr auto const kNoMatchScores = []() {
   auto a = phrase_match_scores_t{};
@@ -45,6 +46,10 @@ struct matched_area {
 };
 
 struct suggestion {
+  std::optional<std::string_view> get_country_code(typeahead const&) const;
+  std::string format(typeahead const&,
+                     formatter const&,
+                     std::string_view country_code) const;
   void print(std::ostream&, typeahead const&, language_list_t const&) const;
   bool operator<(suggestion const& o) const {
     return std::tie(score_, location_, area_set_) <

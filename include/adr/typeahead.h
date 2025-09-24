@@ -89,6 +89,7 @@ struct typeahead {
   data::vector_map<area_idx_t, admin_level_t> area_admin_level_;
   data::vector_map<area_idx_t, population> area_population_;
   data::vector_map<area_idx_t, timezone_idx_t> area_timezone_;
+  data::vector_map<area_idx_t, country_code_t> area_country_code_;
 
   data::vecvec<place_idx_t, string_idx_t> place_names_;
   data::vecvec<place_idx_t, language_idx_t> place_name_lang_;

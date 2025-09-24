@@ -62,3 +62,23 @@
   url=git@github.com:motis-project/fmt.git
   branch=master
   commit=dc10f83be70ac2873d5f8d1ce317596f1fd318a2
+[address-formatting]
+  url=git@github.com:motis-project/address-formatting.git
+  branch=master
+  commit=d08c98b5b2c57f51bf03cae6c4f6586edab23a5c
+[yaml-cpp]
+  url=git@github.com:triptix-tech/yaml-cpp.git
+  branch=master
+  commit=39f737443b05e4135e697cb91c2b7b18095acd53
+[reflect-cpp]
+  url=git@github.com:motis-project/reflect-cpp.git
+  branch=main
+  commit=86fdcdd09a54b0f55de97110e1911d27f60e498a
+[Mustache]
+  url=git@github.com:kainjow/Mustache.git
+  branch=master
+  commit=3f654942a70c46a775070d7a09ca7acfa3e205b7
+[Nominatim]
+  url=git@github.com:triptix-tech/Nominatim.git
+  branch=master
+  commit=c0c8a26c3915c928ff5fcc2a78e47e851603a06b

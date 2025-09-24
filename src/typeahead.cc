@@ -88,6 +88,7 @@ area_idx_t typeahead::add_postal_code_area(import_context& ctx,
   area_names_.emplace_back({get_or_create_string(ctx, postal_code)});
   area_name_lang_.emplace_back({kDefaultLang});
   area_timezone_.emplace_back(timezone_idx_t::invalid());
+  area_country_code_.emplace_back(kNoCountryCode);
   return idx;
 }
 
@@ -105,6 +106,7 @@ area_idx_t typeahead::add_timezone_area(import_context& ctx,
   area_names_.emplace_back(std::initializer_list<string_idx_t>{});
   area_name_lang_.emplace_back(std::initializer_list<language_idx_t>{});
   area_timezone_.emplace_back(get_or_create_timezone(ctx, timezone));
+  area_country_code_.emplace_back(kNoCountryCode);
   return idx;
 }
 
@@ -144,6 +146,12 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
   auto const tz = tags["timezone"];
   area_timezone_.emplace_back(tz == nullptr ? timezone_idx_t::invalid()
                                             : get_or_create_timezone(ctx, tz));
+
+  auto const c = tags["ISO3166-1"];
+  area_country_code_.emplace_back(
+      (c == nullptr || std::string_view{c}.size() < 2U)
+          ? kNoCountryCode
+          : country_code_t{c[0], c[1]});
 
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(admin_level_t{admin_lvl_int});

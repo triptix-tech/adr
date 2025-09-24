@@ -44,6 +44,9 @@ using street_idx_t = cista::strong<std::uint32_t, struct street_idx_>;
 using place_idx_t = cista::strong<std::uint32_t, struct place_idx_>;
 using language_idx_t = cista::strong<std::uint16_t, struct language_idx_>;
 
+using country_code_t = std::array<char, 2U>;
+constexpr auto const kNoCountryCode = country_code_t{'\0', '\0'};
+
 constexpr auto const kDefaultLangIdx = 0U;
 constexpr auto const kDefaultLang = language_idx_t{0U};
 
