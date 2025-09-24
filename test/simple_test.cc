@@ -11,6 +11,8 @@
 #include "adr/score.h"
 #include "adr/sift4.h"
 
+using adr::basic_string;
+
 TEST(adr, simple) {
   adr::extract("test/Darmstadt.osm.pbf", "adr_darmstadt.cista", "/tmp");
 }
