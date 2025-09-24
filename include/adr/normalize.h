@@ -8,6 +8,8 @@
 
 #include "utl/enumerate.h"
 
+#include "adr/types.h"
+
 namespace adr {
 
 inline void replace_all(std::string& s,

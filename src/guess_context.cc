@@ -106,7 +106,8 @@ void suggestion::populate_areas(typeahead const& t) {
   });
   zip_area_idx_ = zip_it == end(areas)
                       ? std::nullopt
-                      : std::optional{std::distance(begin(areas), zip_it)};
+                      : std::optional{static_cast<unsigned>(
+                            std::distance(begin(areas), zip_it))};
 
   // Find timezone area index.
   tz_ = t.get_tz(area_set_);
