@@ -141,10 +141,15 @@ std::string formatter::format(address const& x) const {
       ++j;
     }
   }
-  while (!formatted.empty() && std::iswspace(formatted.back())) {
+
+  auto const is_white_space = [](auto const c) {
+    return c == '\n' || c == '\t' || c == '\r' || c == ' ';
+  };
+  while (!formatted.empty() && is_white_space(formatted.back())) {
     formatted.resize(formatted.size() - 1);
   }
   boost::replace_all(formatted, "\n", ", ");
+
   return formatted;
 }
 
