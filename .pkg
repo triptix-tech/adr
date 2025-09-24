@@ -81,4 +81,4 @@
 [Nominatim]
   url=git@github.com:triptix-tech/Nominatim.git
   branch=master
-  commit=39928fa28611f0c6ad84fb385670e9c89ef7e3bf
+  commit=c0c8a26c3915c928ff5fcc2a78e47e851603a06b
