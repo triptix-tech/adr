@@ -93,7 +93,7 @@ std::string formatter::format(address const& x) const {
   }
 
   using namespace kainjow::mustache;
-  auto const& address_template =
+  auto address_template =
       *std::get<formatting_info>(it->second).address_template_;
 
   auto d = data{};
@@ -124,6 +124,7 @@ std::string formatter::format(address const& x) const {
     }
     return std::string{""};
   }}};
+  boost::replace_all(address_template, ", ", "\n");
   auto formatted = mustache{address_template}.render(d);
 
   auto remove_next_new_line = true;
@@ -150,7 +151,7 @@ std::string formatter::format(address const& x) const {
   }
   boost::replace_all(formatted, "\n", ", ");
 
-  return formatted;
+  return utl::cstr{formatted}.trim().to_str();
 }
 
 formatter::formatter() : impl_{std::make_unique<impl>()} {}

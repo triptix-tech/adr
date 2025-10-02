@@ -18,4 +18,9 @@ TEST(adr, formatting) {
   auto const formatted = f.format(a);
   EXPECT_EQ("17 Rue du Médecin-Colonel Calbairac, 31000 Toulouse, France",
             formatted);
+
+  auto const b = adr::formatter::address{
+      .house_number_ = "", .road_ = "Test", .country_code_ = "US"};
+  auto const formatted1 = f.format(b);
+  EXPECT_EQ("Test", formatted1);
 }
