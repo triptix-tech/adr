@@ -149,6 +149,10 @@ std::string formatter::format(address const& x) const {
   while (!formatted.empty() && is_white_space(formatted.back())) {
     formatted.resize(formatted.size() - 1);
   }
+  while (!formatted.empty() && is_white_space(formatted.front())) {
+    formatted.erase(formatted.begin());
+  }
+  boost::replace_all(formatted, " .", "");
   boost::replace_all(formatted, "\n", ", ");
 
   return utl::cstr{formatted}.trim().to_str();

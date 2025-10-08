@@ -75,7 +75,9 @@ struct feature_handler : public osmium::handler::Handler {
 
   void node(osmium::Node const& n) {
     auto const& tags = n.tags();
-    if (!tags.has_tag("emergency", "fire_hydrant") &&
+    if (!tags.has_tag("natural", "tree") &&
+        !tags.has_tag("natural", "tree_stump") &&
+        !tags.has_tag("emergency", "fire_hydrant") &&
         !tags.has_key("public_transport") && /* stops from timetable */
         !tags.has_key("highway") && /* named motorway_junction */
         !tags.has_key("electrified") && !tags.has_key("railway") &&

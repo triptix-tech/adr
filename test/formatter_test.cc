@@ -23,4 +23,9 @@ TEST(adr, formatting) {
       .house_number_ = "", .road_ = "Test", .country_code_ = "US"};
   auto const formatted1 = f.format(b);
   EXPECT_EQ("Test", formatted1);
+
+  auto const c = adr::formatter::address{
+      .house_number_ = "", .road_ = "Test", .country_code_ = "HU"};
+  auto const formatted2 = f.format(c);
+  EXPECT_EQ("Test", formatted2);
 }
