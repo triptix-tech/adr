@@ -6,6 +6,7 @@
 
 #include "utf8proc.h"
 
+#include "utl/concat.h"
 #include "utl/enumerate.h"
 
 #include "adr/types.h"
@@ -70,25 +71,49 @@ inline std::string bit_mask_to_str(std::uint8_t const b) {
   return r;
 }
 
+inline std::optional<std::string_view> get_alt_string(std::string_view s) {
+  switch (cista::hash(s)) {
+    case cista::hash("hbf"): return "hauptbahnhof";
+    case cista::hash("hauptbahnhof"): return "hbf";
+  }
+  return std::nullopt;
+}
+
 template <typename String>
 inline std::vector<phrase> get_phrases(std::vector<String> const& in_tokens) {
   auto r = std::vector<phrase>{};
   for (auto from = 0U; from != in_tokens.size(); ++from) {
     for (auto length = 1U; from + length <= in_tokens.size() && length != 5U;
          ++length) {
-      auto p = phrase{};
+      auto phrases = std::vector<phrase>{phrase{}};
       for (auto to = from; to < from + length && to < in_tokens.size(); ++to) {
-        p.token_bits_ |= 1 << to;
-        if (to != from) {
-          p.s_ += ' ';
+        auto const alt = get_alt_string(in_tokens[to]);
+        auto alt_phrases = std::vector<phrase>{};
+        if (alt.has_value()) {
+          alt_phrases = phrases;
+          for (auto& p : alt_phrases) {
+            p.token_bits_ |= 1 << to;
+            if (to != from) {
+              p.s_ += ' ';
+            }
+            p.s_ += *alt;
+          }
         }
-        p.s_ += in_tokens[to];
+
+        for (auto& p : phrases) {
+          p.token_bits_ |= 1 << to;
+          if (to != from) {
+            p.s_ += ' ';
+          }
+          p.s_ += in_tokens[to];
+        }
+
+        utl::concat(phrases, alt_phrases);
       }
-      r.emplace_back(std::move(p));
+      utl::concat(r, phrases);
     }
   }
-  std::sort(begin(r), end(r),
-            [](auto&& a, auto&& b) { return a.s_.size() > b.s_.size(); });
+  utl::sort(r, [](auto&& a, auto&& b) { return a.s_.size() > b.s_.size(); });
   return r;
 }
 

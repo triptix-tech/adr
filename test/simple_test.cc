@@ -73,6 +73,33 @@ TEST(adr, phrase) {
   }
 }
 
+TEST(adr, alt_string) {
+  auto const phrases =
+      adr::get_phrases<std::string_view>({"hauptbahnhof", "darmstadt", "abc"});
+  auto const expected = std::vector<std::pair<std::string, std::string>>{
+      {"hauptbahnhof darmstadt abc", "11100000"},
+      {"hauptbahnhof darmstadt", "11000000"},
+      {"hbf darmstadt abc", "11100000"},
+      {"hbf darmstadt", "11000000"},
+      {"darmstadt abc", "01100000"},
+      {"hauptbahnhof", "10000000"},
+      {"darmstadt", "01000000"},
+      {"hbf", "10000000"},
+      {"abc", "00100000"}};
+  auto i = 0U;
+  for (auto const& p : phrases) {
+    std::cout << "\"" << p.s_ << "\", \"" << adr::bit_mask_to_str(p.token_bits_)
+              << "\"\n";
+  }
+
+  for (auto const& p : phrases) {
+    ASSERT_GT(expected.size(), i);
+    EXPECT_EQ((std::pair{p.s_, adr::bit_mask_to_str(p.token_bits_)}),
+              (expected[i]));
+    ++i;
+  }
+}
+
 TEST(adr, numeric_tokens) {
   EXPECT_EQ("01100000", adr::bit_mask_to_str(adr::get_numeric_tokens_mask(
                             {"abc", "98", "9a", "0aa"})));
