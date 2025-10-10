@@ -93,7 +93,9 @@ inline score_t get_token_match_score(
   auto const first_letter_mismatch_penality =
       cut_normalized_str[0] != p[0] ? 2.0F : -0.5F;
   auto const second_letter_mismatch_penality =
-      cut_normalized_str[1] != p[1] ? 1.0F : -0.25F;
+      cut_normalized_str.size() > 1 && p.size() > 1
+          ? cut_normalized_str[1] != p[1] ? 1.0F : -0.25F
+          : -0.25F;
 
   auto score = dist + first_letter_mismatch_penality +
                second_letter_mismatch_penality + overhang_penality +
