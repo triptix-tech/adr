@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -27,14 +28,16 @@ void extract(std::filesystem::path const& in,
 cista::wrapped<typeahead> read(std::filesystem::path const&);
 
 template <bool Debug>
-std::vector<token> get_suggestions(typeahead const&,
-                                   std::string input,
-                                   unsigned n_suggestions,
-                                   language_list_t const&,
-                                   guess_context&,
-                                   std::optional<geo::latlng> const& coord,
-                                   float bias,
-                                   filter_type filter = filter_type::kNone);
+std::vector<token> get_suggestions(
+    typeahead const&,
+    std::string input,
+    unsigned n_suggestions,
+    language_list_t const&,
+    guess_context&,
+    std::optional<geo::latlng> const& coord,
+    float bias,
+    filter_type filter = filter_type::kNone,
+    std::optional<uint16_t> allowed_modes = std::nullopt);
 
 void print_stats(typeahead const&);
 

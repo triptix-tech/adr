@@ -475,7 +475,8 @@ void get_scored_matches(typeahead const& t,
                         guess_context& ctx,
                         std::uint8_t const numeric_tokens_mask,
                         language_list_t const&,
-                        filter_type const filter) {
+                        filter_type const filter,
+                        std::optional<uint16_t> allowed_modes) {
   UTL_START_TIMING(t);
 
   ctx.scored_street_matches_.clear();
@@ -528,6 +529,15 @@ void get_scored_matches(typeahead const& t,
                   (t.place_type_[place_idx] == place_type::kExtra)))) {
               continue;
             }
+            if (auto const available_modes = t.place_modes_mask_[place_idx];
+                t.place_type_[place_idx] == place_type::kExtra &&
+                !allowed_modes
+                     .transform([available_modes](uint16_t allowed) {
+                       return static_cast<bool>(available_modes & allowed);
+                     })
+                     .value_or(true)) {
+              continue;
+            }
             if (ctx.scored_place_matches_.size() != kMaxScoredMatches ||
                 ctx.scored_place_matches_.back().score_ > p_match_score) {
               utl::insert_sorted(ctx.scored_place_matches_,
@@ -556,7 +566,8 @@ std::vector<token> get_suggestions(typeahead const& t,
                                    guess_context& ctx,
                                    std::optional<geo::latlng> const& coord,
                                    float const bias,
-                                   filter_type const filter) {
+                                   filter_type const filter,
+                                   std::optional<uint16_t> allowed_modes) {
   UTL_START_TIMING(t);
 
   erase_fillers(in);
@@ -593,7 +604,8 @@ std::vector<token> get_suggestions(typeahead const& t,
 
   auto const numeric_tokens_mask = get_numeric_tokens_mask(tokens);
 
-  get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, languages, filter);
+  get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, languages, filter,
+                            allowed_modes);
 
   match_streets<Debug>(all_tokens_mask, numeric_tokens_mask, t, ctx, tokens,
                        languages);
@@ -690,7 +702,8 @@ template std::vector<token> get_suggestions<true>(
     guess_context&,
     std::optional<geo::latlng> const&,
     float,
-    filter_type);
+    filter_type,
+    std::optional<uint16_t>);
 
 template std::vector<token> get_suggestions<false>(
     typeahead const&,
@@ -700,6 +713,7 @@ template std::vector<token> get_suggestions<false>(
     guess_context&,
     std::optional<geo::latlng> const&,
     float,
-    filter_type);
+    filter_type,
+    std::optional<uint16_t>);
 
 }  // namespace adr
