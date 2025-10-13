@@ -62,12 +62,6 @@ enum class location_type_t : std::uint8_t {
   kStreet,
 };
 
-enum class place_type : std::uint8_t {
-  kUnkown,  // to be extended with
-            // https://wiki.openstreetmap.org/wiki/Key:amenity
-  kExtra  // for entries that were added externally (not from adr extract)
-};
-
 enum class filter_type : std::uint8_t {
   kNone,
   kAddress,

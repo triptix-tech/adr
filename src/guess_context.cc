@@ -44,23 +44,24 @@ std::string suggestion::format(typeahead const& t,
 void suggestion::print(std::ostream& out,
                        typeahead const& t,
                        language_list_t const& languages) const {
-  std::visit(utl::overloaded{
-                 [&](place_idx_t const p) {
-                   out << "place=" << t.strings_[str_].view() << " [" << p
-                       << (t.place_type_[p] == place_type::kExtra ? " EXT" : "")
-                       << "]";
-                 },
-                 [&](address const addr) {
-                   out << "street=" << t.strings_[str_].view() << "["
-                       << addr.street_ << ", " << addr.house_number_ << "]";
-                   if (addr.house_number_ != address::kNoHouseNumber) {
-                     out << ", house_number="
-                         << t.strings_[t.house_numbers_[addr.street_]
-                                                       [addr.house_number_]]
-                                .view();
-                   }
-                 }},
-             location_);
+  std::visit(
+      utl::overloaded{
+          [&](place_idx_t const p) {
+            out << "place=" << t.strings_[str_].view() << " [" << p
+                << (t.place_type_[p] == amenity_category::kExtra ? " EXT" : "")
+                << "]";
+          },
+          [&](address const addr) {
+            out << "street=" << t.strings_[str_].view() << "[" << addr.street_
+                << ", " << addr.house_number_ << "]";
+            if (addr.house_number_ != address::kNoHouseNumber) {
+              out << ", house_number="
+                  << t.strings_[t.house_numbers_[addr.street_]
+                                                [addr.house_number_]]
+                         .view();
+            }
+          }},
+      location_);
   auto const tz = t.get_tz(area_set_);
   auto const tz_name =
       tz == timezone_idx_t::invalid() ? "" : t.timezone_names_[tz].view();

@@ -71,7 +71,7 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
       case adr::entity_type::kPlace: {
         if (filter == filter_type::kAddress ||
             (filter == filter_type::kExtra &&
-             t.place_type_[e.place_.place_] != place_type::kExtra)) {
+             t.place_type_[e.place_.place_] != amenity_category::kExtra)) {
           return true;
         }
         auto const& p = e.place_;

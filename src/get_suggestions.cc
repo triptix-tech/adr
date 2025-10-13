@@ -323,7 +323,7 @@ void match_places(std::uint8_t const all_tokens_mask,
     trace("[{}] {}: edit_dist={}, phrase={}, type={}", ii,
           t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
           place_edit_dist, ctx.phrases_[place_p_idx].s_,
-          t.place_type_[place] == place_type::kExtra ? "EXT" : "REG");
+          t.place_type_[place] == amenity_category::kExtra ? "EXT" : "REG");
 
     activate_areas(t, ctx, numeric_tokens_mask, area_set_idx, languages);
 
@@ -403,7 +403,7 @@ void match_places(std::uint8_t const all_tokens_mask,
     }
 
     auto const extra_score =
-        t.place_type_[place] == place_type::kExtra ? 0.75F : 0.F;
+        t.place_type_[place] == amenity_category::kExtra ? 0.75F : 0.F;
     auto const areas_score = std::popcount(matched_areas_mask);
     auto const no_area_score =
         !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 3 : 0;
@@ -525,7 +525,7 @@ void get_scored_matches(typeahead const& t,
             if (filter != filter_type::kNone &&
                 (filter == filter_type::kAddress ||
                  ((filter == filter_type::kExtra) !=
-                  (t.place_type_[place_idx] == place_type::kExtra)))) {
+                  (t.place_type_[place_idx] == amenity_category::kExtra)))) {
               continue;
             }
             if (ctx.scored_place_matches_.size() != kMaxScoredMatches ||
