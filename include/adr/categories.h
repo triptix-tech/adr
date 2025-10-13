@@ -1135,6 +1135,8 @@ struct amenity_tags {
     // Shop-other
     if (!shop_.empty()) return amenity_category::kShopOther;
     if (amenity_ == "driving_school"sv) return amenity_category::kShopOther;
+    // Office
+    if (!office_.empty()) return amenity_category::kOffice;
     // Social_amenity_darken
     if (amenity_ == "nursing_home"sv) return amenity_category::kSocialAmenityDarken;
     if (amenity_ == "childcare"sv) return amenity_category::kSocialAmenityDarken;
@@ -1149,6 +1151,9 @@ struct amenity_tags {
     if (power_ == "generator"sv && generator_source_ == "wind"sv && generator_method_ == "wind_turbine"sv) return amenity_category::kGeneratorWind;
     // Hunting-stand
     if (amenity_ == "hunting_stand"sv) return amenity_category::kHuntingStand;
+    // Christian
+    if (historic_ == "wayside_cross"sv) return amenity_category::kChristian;
+    if (man_made_ == "cross"sv) return amenity_category::kChristian;
     // Water-tower
     if (man_made_ == "water_tower"sv) return amenity_category::kWaterTower;
     // Mast_general

@@ -165,15 +165,15 @@ namespace adr {
 
 enum class amenity_category : std::uint16_t {
   kNone = 0,
-{% for entry in entries %}
+{% for entry in unique_entries %}
   {{ entry.enum_name }},
 {% endfor %}
   kExtra
 };
 
-constexpr std::array<char const*, {{ entries|length + 2 }}> amenity_category_names = {
+constexpr std::array<char const*, {{ unique_entries|length + 2 }}> amenity_category_names = {
   "none",
-{% for entry in entries %}
+{% for entry in unique_entries %}
   "{{ entry.string_name }}",
 {% endfor %}
   "extra"
@@ -199,7 +199,7 @@ struct amenity_tags {
 
   amenity_category get_category() const {
     using namespace std::string_view_literals;
-{% for entry in entries %}
+{% for entry in condition_entries %}
     // {{ entry.name_source }}
 {% for condition in entry.conditions %}
     {{ condition }}
@@ -235,7 +235,8 @@ private:
         tag_keys[key] = var_name
         member_vars.append(f"std::string_view {var_name}_")
 
-    processed_entries = []
+    condition_entries = []
+    unique_entries = []
     seen_enum_names = set()
     for entry in entries:
         name_source = entry['icon'] or entry['description']
@@ -244,14 +245,14 @@ private:
         entry['name_source'] = name_source
         entry['enum_name'] = sanitize_enum_name(name_source)
         entry['string_name'] = make_string_name(name_source)
+        condition_entries.append(entry)
         if entry['enum_name'] in seen_enum_names:
             continue
         seen_enum_names.add(entry['enum_name'])
-        processed_entries.append(entry)
-    entries = processed_entries
+        unique_entries.append(entry)
 
     # Build conditions for each entry
-    for entry in entries:
+    for entry in condition_entries:
         conditions: List[str] = []
         for combo in entry['tag_combos']:
             combo_conditions: List[str] = []
@@ -281,7 +282,8 @@ private:
         entry['conditions'] = conditions
 
     return template.render(
-        entries=entries,
+        unique_entries=unique_entries,
+        condition_entries=condition_entries,
         sanitize_enum_name=sanitize_enum_name,
         tag_keys=tag_keys,
         member_vars=member_vars
