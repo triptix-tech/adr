@@ -22,10 +22,10 @@ def make_string_name(name: str) -> str:
     slug = re.sub(r'_+', '_', slug).strip('_')
     return slug or name.lower()
 
-def normalize_icon_name(raw: str) -> str:
-    """Normalize wiki icon reference to a stable identifier (no prefix/extension/size)."""
+def normalize_icon_name(raw: str) -> Tuple[str, Optional[str]]:
+    """Normalize wiki icon reference and capture trailing numeric suffix if present."""
     if not raw:
-        return ''
+        return '', None
 
     name = raw.split('/')[-1]
     name = name.split('?', 1)[0]
@@ -41,14 +41,18 @@ def normalize_icon_name(raw: str) -> str:
             break
         name = stripped
 
-    # Drop trailing size suffixes like -14, _14, or -14px
+    suffix_digits: Optional[str] = None
+    pattern = re.compile(r'[-_\.\s](\d+)(px)?$', flags=re.IGNORECASE)
+    # Drop trailing size suffixes like -14, _14, or -14px, but remember first occurrence
     while True:
-        stripped = re.sub(r'[-_\.\s](\d+)(px)?$', '', name)
-        if stripped == name:
+        match = pattern.search(name)
+        if not match:
             break
-        name = stripped
+        if suffix_digits is None:
+            suffix_digits = match.group(1)
+        name = name[:match.start()]
 
-    return name
+    return name, suffix_digits
 
 def parse_tag_combinations(tag_cell) -> List[List[str]]:
     """Capture tag combinations preserving '+' as AND and '/' or <br> as OR."""
@@ -122,7 +126,7 @@ def extract_categories(html_content: str) -> List[Dict]:
                 img = icon_cell.find('img')
                 if img and 'src' in img.attrs:
                     icon_src = img['src']
-            icon_name = normalize_icon_name(icon_src)
+            icon_name, icon_suffix = normalize_icon_name(icon_src)
 
             # Extract description
             description = cells[1].get_text(strip=True)
@@ -135,9 +139,17 @@ def extract_categories(html_content: str) -> List[Dict]:
             if flat_tags:
                 entries.append({
                     'icon': icon_name,
+                    'icon_suffix': icon_suffix,
                     'description': description,
                     'tag_combos': tag_combos
                 })
+
+    for entry in entries:
+        icon = entry.get('icon')
+        suffix = entry.pop('icon_suffix', None)
+        if icon and suffix:
+            entry['icon'] = f"{icon}-{suffix}"
+
     return entries
 
 def parse_tag(tag_str: str) -> Tuple[str, str]:

@@ -131,13 +131,8 @@ def cleanup_basename(name: str) -> str:
     cleaned = name
     cleaned = re.sub(r'(_svg)+$', '', cleaned)
     cleaned = cleaned.replace('_svg_', '_')
-
-    while True:
-        new = re.sub(r'_(\d+|[0-9]+px)$', '', cleaned)
-        if new == cleaned:
-            break
-        cleaned = new
-
+    cleaned = re.sub(r'_svg$', '', cleaned)
+    cleaned = re.sub(r'_(\d+)px$', r'_\1', cleaned)
     cleaned = cleaned.rstrip('_')
     return cleaned or name
 
@@ -148,9 +143,16 @@ def collect_icons(html: str, base_url: str) -> Dict[str, str]:
     icons: Dict[str, str] = {}
     name_map: Dict[str, str] = {}
     for entry in extract_categories(html):
-        key = (entry["icon"] or entry["description"]).strip()
-        if key not in name_map:
-            name_map[key] = make_string_name(entry["icon"] or entry["description"])
+        base = (entry["icon"] or entry["description"]).strip()
+        slug = make_string_name(entry["icon"] or entry["description"])
+        if base not in name_map:
+            name_map[base] = slug
+        if entry.get("icon"):
+            icon = entry["icon"].strip()
+            for ext in ("", ".svg", ".png", ".SVG", ".PNG"):
+                variant = f"{icon}{ext}"
+                if variant and variant not in name_map:
+                    name_map[variant] = slug
 
     for row in soup.find_all("tr"):
         cells = row.find_all("td")

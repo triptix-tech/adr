@@ -13,276 +13,278 @@ namespace adr {
 
 enum class amenity_category : std::uint16_t {
   kNone = 0,
-  kRestaurant,
-  kCafe,
-  kFastFood,
-  kBar,
-  kPub,
-  kIceCream,
-  kBiergarten,
-  kOutdoorSeating,
-  kArtwork,
-  kCommunityCentre,
-  kLibrary,
-  kMuseum,
-  kTheatre,
-  kCinema,
-  kNightclub,
+  kRestaurant14,
+  kCafe16,
+  kFastFood16,
+  kBar16,
+  kPub16,
+  kIceCream14,
+  kBiergarten16,
+  kOutdoorSeating14,
+  kArtwork14,
+  kCommunityCentre14,
+  kLibrary16,
+  kMuseum16,
+  kTheatre16,
+  kCinema16,
+  kNightclub16,
   kArtsCentre,
-  kGallery,
-  kInternetCafe,
-  kCasino,
-  kPublicBookcase,
-  kAmusementArcade,
-  kMemorial,
-  kArchaeologicalSite,
+  kGallery14,
+  kInternetCafe14,
+  kCasino14,
+  kPublicBookcase14,
+  kAmusementArcade14,
+  kMemorial16,
+  kArchaeologicalSite16,
   kCartoShrine,
-  kMonument,
-  kCastle,
+  kMonument16,
+  kCastle14,
   kPlaque,
-  kStatue,
-  kStone,
-  kPalace,
-  kFortress,
+  kStatue14,
+  kStone14,
+  kPalace14,
+  kFortress14,
   kHistoricFort,
-  kBust,
-  kCityGate,
-  kManor,
-  kObelisk,
-  kPlayground,
+  kBust14,
+  kCityGate14,
+  kManor14,
+  kObelisk14,
+  kPlayground16,
   kFitness,
   kGolfIcon,
-  kSwimming,
-  kMassage,
-  kSauna,
+  kSwimming16,
+  kMassage14,
+  kSauna14,
   kPublicBath,
   kMiniatureGolf,
-  kBeachResort,
-  kFishing,
-  kBowlingAlley,
+  kBeachResort14,
+  kFishing14,
+  kBowlingAlley14,
   kDogPark,
   kLeisureDance,
   kLeisureGolfPin,
-  kToilets,
-  kRecycling,
-  kWasteBasket,
-  kWasteDisposal,
-  kExcrementBags,
-  kBench,
-  kShelter,
-  kDrinkingWater,
+  kToilets16,
+  kRecycling16,
+  kWasteBasket12,
+  kWasteDisposal14,
+  kExcrementBags14,
+  kBench16,
+  kShelter14,
+  kDrinkingWater16,
   kPicnicSite,
-  kFountain,
-  kCamping,
-  kTable,
-  kCaravan,
-  kBbq,
-  kShower,
+  kFountain14,
+  kCamping16,
+  kTable16,
+  kCaravan16,
+  kBbq14,
+  kShower14,
   kFirepit,
-  kBirdHide,
-  kGuidepost,
-  kBoard,
-  kMap,
-  kOffice,
-  kTerminal,
-  kAudioguide,
-  kViewpoint,
-  kHotel,
+  kBirdHide14,
+  kGuidepost14,
+  kBoard14,
+  kMap14,
+  kOffice14,
+  kTerminal14,
+  kAudioguide14,
+  kViewpoint16,
+  kHotel16,
   kTourismGuestHouse,
-  kHostel,
+  kHostel16,
   kChalet,
-  kMotel,
+  kMotel16,
   kApartment,
   kAlpinehut,
   kWildernessHut,
-  kBank,
-  kAtm,
-  kBureauDeChange,
-  kPharmacy,
-  kHospital,
-  kDoctors,
-  kDentist,
-  kVeterinary,
-  kPostBox,
-  kPostOffice,
+  kBank16,
+  kAtm14,
+  kBureauDeChange14,
+  kPharmacy14,
+  kHospital14,
+  kDoctors14,
+  kDentist14,
+  kVeterinary14,
+  kPostBox12,
+  kPostOffice14,
   kParcelLocker,
-  kTelephone,
-  kEmergencyPhone,
-  kParking,
+  kTelephone16,
+  kEmergencyPhone16,
+  kParking16,
   kParkingSubtle,
-  kBusStop,
-  kFuel,
-  kParkingBicycle,
+  kBusStop12,
+  kFuel16,
+  kParkingBicycle16,
   kRenderingRailwayTramStopMapnik,
   kAmenityBusStation,
-  kHelipad,
+  kHelipad16,
   kAerodrome,
-  kRentalBicycle,
+  kRentalBicycle16,
   kTransportSlipway,
-  kTaxi,
-  kParkingTickets,
-  kSubwayEntrance,
-  kChargingStation,
-  kElevator,
-  kRentalCar,
-  kParkingEntrance,
-  kPublicTransportTickets,
+  kTaxi16,
+  kParkingTickets14,
+  kSubwayEntrance12,
+  kChargingStation16,
+  kElevator12,
+  kRentalCar16,
+  kParkingEntrance14,
+  kPublicTransportTickets14,
   kFerryIcon,
-  kParkingMotorcycle,
-  kBicycleRepairStation,
-  kBoatRental,
-  kParkingEntranceMultiStorey,
+  kParkingMotorcycle16,
+  kBicycleRepairStation14,
+  kBoatRental14,
+  kParkingEntranceMultiStorey14,
   kOneway,
   kBarrierGate,
-  kTrafficLight,
+  kTrafficLight16,
   kLevelCrossing2,
   kLevelCrossing,
   kBarrier,
-  kLiftgate,
-  kCycleBarrier,
-  kBarrierStile,
+  kLiftgate7,
+  kCycleBarrier14,
+  kBarrierStile14,
   kHighwayMiniRoundabout,
   kTollBooth,
-  kBarrierCattleGrid,
-  kKissingGate,
-  kFullHeightTurnstile,
-  kMotorcycleBarrier,
-  kFord,
-  kMountainPass,
+  kBarrierCattleGrid14,
+  kKissingGate14,
+  kFullHeightTurnstile14,
+  kMotorcycleBarrier14,
+  kFord16,
+  kMountainPass8,
   kDamNode,
   kWeirNode,
   kLockGateNode,
-  kTurningCircleOnHighwayTrack,
-  kTree,
-  kPeak,
-  kSpring,
-  kCave,
-  kWaterfall,
-  kSaddle,
-  kVolcano,
-  kPolice,
-  kTownHall,
-  kFireStation,
-  kSocialFacility,
-  kCourthouse,
+  kTurningCircleOnHighwayTrack16,
+  kTree16,
+  kPeak8,
+  kSpring14,
+  kCave14,
+  kWaterfall14,
+  kSaddle8,
+  kVolcano8,
+  kPolice16,
+  kTownHall16,
+  kFireStation16,
+  kSocialFacility14,
+  kCourthouse16,
   kDiplomatic,
   kOfficeDiplomaticConsulate,
-  kPrison,
-  kChristian,
-  kJewish,
-  kMuslim,
-  kTaoist,
-  kHinduist,
-  kBuddhist,
-  kShintoist,
-  kSikhist,
-  kPlaceOfWorship,
-  kMarketplace,
-  kConvenience,
-  kSupermarket,
-  kClothes,
-  kHairdresser,
-  kBakery,
-  kCarRepair,
-  kDoityourself,
+  kPrison16,
+  kChristian16,
+  kJewish16,
+  kMuslim16,
+  kTaoist16,
+  kHinduist16,
+  kBuddhist16,
+  kShintoist16,
+  kSikhist16,
+  kPlaceOfWorship16,
+  kMarketplace14,
+  kConvenience14,
+  kSupermarket14,
+  kClothes16,
+  kHairdresser16,
+  kBakery16,
+  kCarRepair14,
+  kDoityourself16,
   kPurpleCar,
-  kNewsagent,
-  kBeauty,
-  kCarWash,
+  kNewsagent14,
+  kBeauty14,
+  kCarWash14,
   kButcher,
-  kAlcohol,
-  kFurniture,
-  kFlorist,
-  kMobilePhone,
-  kElectronics,
-  kShoes,
-  kCarParts,
-  kGreengrocer,
-  kLaundry,
-  kOptician,
-  kJewellery,
-  kBooks,
-  kGift,
-  kDepartmentStore,
-  kBicycle,
-  kConfectionery,
-  kVarietyStore,
-  kTravelAgency,
-  kSports,
-  kChemist,
-  kComputer,
-  kStationery,
-  kPet,
-  kBeverages,
-  kPerfumery,
+  kAlcohol16,
+  kFurniture16,
+  kFlorist16,
+  kMobilePhone16,
+  kElectronics16,
+  kShoes16,
+  kCarParts14,
+  kGreengrocer14,
+  kLaundry14,
+  kOptician16,
+  kJewellery16,
+  kBooks16,
+  kGift16,
+  kDepartmentStore16,
+  kBicycle16,
+  kConfectionery14,
+  kVarietyStore14,
+  kTravelAgency14,
+  kSports14,
+  kChemist14,
+  kComputer14,
+  kStationery14,
+  kPet16,
+  kBeverages14,
+  kPerfumery14,
   kTyres,
   kShopMotorcycle,
-  kGardenCentre,
-  kCopyshop,
-  kToys,
-  kDeli,
-  kTobacco,
-  kSeafood,
-  kInteriorDecoration,
-  kTicket,
-  kPhoto,
-  kTrade,
-  kOutdoor,
-  kHouseware,
-  kArt,
-  kPaint,
-  kFabric,
-  kBookmaker,
-  kSecondHand,
-  kCharity,
-  kBed,
+  kGardenCentre14,
+  kCopyshop14,
+  kToys14,
+  kDeli14,
+  kTobacco14,
+  kSeafood14,
+  kInteriorDecoration14,
+  kTicket14,
+  kPhoto14,
+  kTrade14,
+  kOutdoor14,
+  kHouseware14,
+  kArt14,
+  kPaint14,
+  kFabric14,
+  kBookmaker14,
+  kSecondHand14,
+  kCharity14,
+  kBed14,
   kMedicalSupply,
-  kHifi,
+  kHifi14,
   kShopMusic,
-  kCoffee,
+  kCoffee14,
   kHearingAids,
-  kMusicalInstrument,
-  kTea,
-  kVideo,
-  kBag,
-  kCarpet,
-  kVideoGames,
-  kVehicleInspection,
+  kMusicalInstrument14,
+  kTea14,
+  kVideo14,
+  kBag14,
+  kCarpet14,
+  kVideoGames14,
+  kVehicleInspection14,
   kDairy,
-  kShopOther,
-  kSocialAmenityDarken,
-  kStorageTank,
+  kShopOther16,
+  kOffice16,
+  kSocialAmenityDarken16,
+  kStorageTank14,
   kTowerFreestanding,
   kTowerCantileverCommunication,
-  kGeneratorWind,
-  kHuntingStand,
-  kWaterTower,
+  kGeneratorWind14,
+  kHuntingStand16,
+  kChristian9,
+  kWaterTower16,
   kMastGeneral,
   kBunkerOsmcarto,
-  kChimney,
+  kChimney14,
   kTowerObservation,
   kTowerBellTower,
   kTowerLighting,
-  kLighthouse,
-  kColumn,
-  kCrane,
-  kWindmill,
+  kLighthouse16,
+  kColumn14,
+  kCrane14,
+  kWindmill16,
   kTowerLatticeCommunication,
   kMastLighting,
   kMastCommunications,
-  kCommunicationTower,
+  kCommunicationTower14,
   kTowerDefensive,
   kTowerCooling,
   kTowerLattice,
   kTowerLatticeLighting,
   kTowerDish,
   kTowerDome,
-  kTelescopeDish,
-  kTelescopeDome,
+  kTelescopeDish14,
+  kTelescopeDome14,
   kPowerTower,
   kPowerPole,
-  kPlace,
-  kPlaceCapital,
+  kPlace6,
+  kPlaceCapital8,
   kRect,
   kEntranceMain,
   kEntrance,
@@ -290,278 +292,280 @@ enum class amenity_category : std::uint16_t {
   kExtra
 };
 
-constexpr std::array<char const*, 276> amenity_category_names = {
+constexpr std::array<char const*, 278> amenity_category_names = {
   "none",
-  "restaurant",
-  "cafe",
-  "fast_food",
-  "bar",
-  "pub",
-  "ice_cream",
-  "biergarten",
-  "outdoor_seating",
-  "artwork",
-  "community_centre",
-  "library",
-  "museum",
-  "theatre",
-  "cinema",
-  "nightclub",
+  "restaurant_14",
+  "cafe_16",
+  "fast_food_16",
+  "bar_16",
+  "pub_16",
+  "ice_cream_14",
+  "biergarten_16",
+  "outdoor_seating_14",
+  "artwork_14",
+  "community_centre_14",
+  "library_16",
+  "museum_16",
+  "theatre_16",
+  "cinema_16",
+  "nightclub_16",
   "arts_centre",
-  "gallery",
-  "internet_cafe",
-  "casino",
-  "public_bookcase",
-  "amusement_arcade",
-  "memorial",
-  "archaeological_site",
+  "gallery_14",
+  "internet_cafe_14",
+  "casino_14",
+  "public_bookcase_14",
+  "amusement_arcade_14",
+  "memorial_16",
+  "archaeological_site_16",
   "carto_shrine",
-  "monument",
-  "castle",
+  "monument_16",
+  "castle_14",
   "plaque",
-  "statue",
-  "stone",
-  "palace",
-  "fortress",
+  "statue_14",
+  "stone_14",
+  "palace_14",
+  "fortress_14",
   "historic_fort",
-  "bust",
-  "city_gate",
-  "manor",
-  "obelisk",
-  "playground",
+  "bust_14",
+  "city_gate_14",
+  "manor_14",
+  "obelisk_14",
+  "playground_16",
   "fitness",
   "golf_icon",
-  "swimming",
-  "massage",
-  "sauna",
+  "swimming_16",
+  "massage_14",
+  "sauna_14",
   "public_bath",
   "miniature_golf",
-  "beach_resort",
-  "fishing",
-  "bowling_alley",
+  "beach_resort_14",
+  "fishing_14",
+  "bowling_alley_14",
   "dog_park",
   "leisure_dance",
   "leisure_golf_pin",
-  "toilets",
-  "recycling",
-  "waste_basket",
-  "waste_disposal",
-  "excrement_bags",
-  "bench",
-  "shelter",
-  "drinking_water",
+  "toilets_16",
+  "recycling_16",
+  "waste_basket_12",
+  "waste_disposal_14",
+  "excrement_bags_14",
+  "bench_16",
+  "shelter_14",
+  "drinking_water_16",
   "picnic_site",
-  "fountain",
-  "camping",
-  "table",
-  "caravan",
-  "bbq",
-  "shower",
+  "fountain_14",
+  "camping_16",
+  "table_16",
+  "caravan_16",
+  "bbq_14",
+  "shower_14",
   "firepit",
-  "bird_hide",
-  "guidepost",
-  "board",
-  "map",
-  "office",
-  "terminal",
-  "audioguide",
-  "viewpoint",
-  "hotel",
+  "bird_hide_14",
+  "guidepost_14",
+  "board_14",
+  "map_14",
+  "office_14",
+  "terminal_14",
+  "audioguide_14",
+  "viewpoint_16",
+  "hotel_16",
   "tourism_guest_house",
-  "hostel",
+  "hostel_16",
   "chalet",
-  "motel",
+  "motel_16",
   "apartment",
   "alpinehut",
   "wilderness_hut",
-  "bank",
-  "atm",
-  "bureau_de_change",
-  "pharmacy",
-  "hospital",
-  "doctors",
-  "dentist",
-  "veterinary",
-  "post_box",
-  "post_office",
+  "bank_16",
+  "atm_14",
+  "bureau_de_change_14",
+  "pharmacy_14",
+  "hospital_14",
+  "doctors_14",
+  "dentist_14",
+  "veterinary_14",
+  "post_box_12",
+  "post_office_14",
   "parcel_locker",
-  "telephone",
-  "emergency_phone",
-  "parking",
+  "telephone_16",
+  "emergency_phone_16",
+  "parking_16",
   "parking_subtle",
-  "bus_stop",
-  "fuel",
-  "parking_bicycle",
+  "bus_stop_12",
+  "fuel_16",
+  "parking_bicycle_16",
   "rendering_railway_tram_stop_mapnik",
   "amenity_bus_station",
-  "helipad",
+  "helipad_16",
   "aerodrome",
-  "rental_bicycle",
+  "rental_bicycle_16",
   "transport_slipway",
-  "taxi",
-  "parking_tickets",
-  "subway_entrance",
-  "charging_station",
-  "elevator",
-  "rental_car",
-  "parking_entrance",
-  "public_transport_tickets",
+  "taxi_16",
+  "parking_tickets_14",
+  "subway_entrance_12",
+  "charging_station_16",
+  "elevator_12",
+  "rental_car_16",
+  "parking_entrance_14",
+  "public_transport_tickets_14",
   "ferry_icon",
-  "parking_motorcycle",
-  "bicycle_repair_station",
-  "boat_rental",
-  "parking_entrance_multi_storey",
+  "parking_motorcycle_16",
+  "bicycle_repair_station_14",
+  "boat_rental_14",
+  "parking_entrance_multi_storey_14",
   "oneway",
   "barrier_gate",
-  "traffic_light",
+  "traffic_light_16",
   "level_crossing2",
   "level_crossing",
   "barrier",
-  "liftgate",
-  "cycle_barrier",
-  "barrier_stile",
+  "liftgate_7",
+  "cycle_barrier_14",
+  "barrier_stile_14",
   "highway_mini_roundabout",
   "toll_booth",
-  "barrier_cattle_grid",
-  "kissing_gate",
-  "full_height_turnstile",
-  "motorcycle_barrier",
-  "ford",
-  "mountain_pass",
+  "barrier_cattle_grid_14",
+  "kissing_gate_14",
+  "full_height_turnstile_14",
+  "motorcycle_barrier_14",
+  "ford_16",
+  "mountain_pass_8",
   "dam_node",
   "weir_node",
   "lock_gate_node",
-  "turning_circle_on_highway_track",
-  "tree",
-  "peak",
-  "spring",
-  "cave",
-  "waterfall",
-  "saddle",
-  "volcano",
-  "police",
-  "town_hall",
-  "fire_station",
-  "social_facility",
-  "courthouse",
+  "turning_circle_on_highway_track_16",
+  "tree_16",
+  "peak_8",
+  "spring_14",
+  "cave_14",
+  "waterfall_14",
+  "saddle_8",
+  "volcano_8",
+  "police_16",
+  "town_hall_16",
+  "fire_station_16",
+  "social_facility_14",
+  "courthouse_16",
   "diplomatic",
   "office_diplomatic_consulate",
-  "prison",
-  "christian",
-  "jewish",
-  "muslim",
-  "taoist",
-  "hinduist",
-  "buddhist",
-  "shintoist",
-  "sikhist",
-  "place_of_worship",
-  "marketplace",
-  "convenience",
-  "supermarket",
-  "clothes",
-  "hairdresser",
-  "bakery",
-  "car_repair",
-  "doityourself",
+  "prison_16",
+  "christian_16",
+  "jewish_16",
+  "muslim_16",
+  "taoist_16",
+  "hinduist_16",
+  "buddhist_16",
+  "shintoist_16",
+  "sikhist_16",
+  "place_of_worship_16",
+  "marketplace_14",
+  "convenience_14",
+  "supermarket_14",
+  "clothes_16",
+  "hairdresser_16",
+  "bakery_16",
+  "car_repair_14",
+  "doityourself_16",
   "purple_car",
-  "newsagent",
-  "beauty",
-  "car_wash",
+  "newsagent_14",
+  "beauty_14",
+  "car_wash_14",
   "butcher",
-  "alcohol",
-  "furniture",
-  "florist",
-  "mobile_phone",
-  "electronics",
-  "shoes",
-  "car_parts",
-  "greengrocer",
-  "laundry",
-  "optician",
-  "jewellery",
-  "books",
-  "gift",
-  "department_store",
-  "bicycle",
-  "confectionery",
-  "variety_store",
-  "travel_agency",
-  "sports",
-  "chemist",
-  "computer",
-  "stationery",
-  "pet",
-  "beverages",
-  "perfumery",
+  "alcohol_16",
+  "furniture_16",
+  "florist_16",
+  "mobile_phone_16",
+  "electronics_16",
+  "shoes_16",
+  "car_parts_14",
+  "greengrocer_14",
+  "laundry_14",
+  "optician_16",
+  "jewellery_16",
+  "books_16",
+  "gift_16",
+  "department_store_16",
+  "bicycle_16",
+  "confectionery_14",
+  "variety_store_14",
+  "travel_agency_14",
+  "sports_14",
+  "chemist_14",
+  "computer_14",
+  "stationery_14",
+  "pet_16",
+  "beverages_14",
+  "perfumery_14",
   "tyres",
   "shop_motorcycle",
-  "garden_centre",
-  "copyshop",
-  "toys",
-  "deli",
-  "tobacco",
-  "seafood",
-  "interior_decoration",
-  "ticket",
-  "photo",
-  "trade",
-  "outdoor",
-  "houseware",
-  "art",
-  "paint",
-  "fabric",
-  "bookmaker",
-  "second_hand",
-  "charity",
-  "bed",
+  "garden_centre_14",
+  "copyshop_14",
+  "toys_14",
+  "deli_14",
+  "tobacco_14",
+  "seafood_14",
+  "interior_decoration_14",
+  "ticket_14",
+  "photo_14",
+  "trade_14",
+  "outdoor_14",
+  "houseware_14",
+  "art_14",
+  "paint_14",
+  "fabric_14",
+  "bookmaker_14",
+  "second_hand_14",
+  "charity_14",
+  "bed_14",
   "medical_supply",
-  "hifi",
+  "hifi_14",
   "shop_music",
-  "coffee",
+  "coffee_14",
   "hearing_aids",
-  "musical_instrument",
-  "tea",
-  "video",
-  "bag",
-  "carpet",
-  "video_games",
-  "vehicle_inspection",
+  "musical_instrument_14",
+  "tea_14",
+  "video_14",
+  "bag_14",
+  "carpet_14",
+  "video_games_14",
+  "vehicle_inspection_14",
   "dairy",
-  "shop_other",
-  "social_amenity_darken",
-  "storage_tank",
+  "shop_other_16",
+  "office_16",
+  "social_amenity_darken_16",
+  "storage_tank_14",
   "tower_freestanding",
   "tower_cantilever_communication",
-  "generator_wind",
-  "hunting_stand",
-  "water_tower",
+  "generator_wind_14",
+  "hunting_stand_16",
+  "christian_9",
+  "water_tower_16",
   "mast_general",
   "bunker_osmcarto",
-  "chimney",
+  "chimney_14",
   "tower_observation",
   "tower_bell_tower",
   "tower_lighting",
-  "lighthouse",
-  "column",
-  "crane",
-  "windmill",
+  "lighthouse_16",
+  "column_14",
+  "crane_14",
+  "windmill_16",
   "tower_lattice_communication",
   "mast_lighting",
   "mast_communications",
-  "communication_tower",
+  "communication_tower_14",
   "tower_defensive",
   "tower_cooling",
   "tower_lattice",
   "tower_lattice_lighting",
   "tower_dish",
   "tower_dome",
-  "telescope_dish",
-  "telescope_dome",
+  "telescope_dish_14",
+  "telescope_dome_14",
   "power_tower",
   "power_pole",
-  "place",
-  "place_capital",
+  "place_6",
+  "place_capital_8",
   "rect",
   "entrance_main",
   "entrance",
@@ -626,218 +630,218 @@ struct amenity_tags {
 
   amenity_category get_category() const {
     using namespace std::string_view_literals;
-    // Restaurant
-    if (amenity_ == "restaurant"sv) return amenity_category::kRestaurant;
-    if (amenity_ == "food_court"sv) return amenity_category::kRestaurant;
-    // Cafe
-    if (amenity_ == "cafe"sv) return amenity_category::kCafe;
-    // Fast-food
-    if (amenity_ == "fast_food"sv) return amenity_category::kFastFood;
-    // Bar
-    if (amenity_ == "bar"sv) return amenity_category::kBar;
-    // Pub
-    if (amenity_ == "pub"sv) return amenity_category::kPub;
-    // Ice-cream
-    if (amenity_ == "ice_cream"sv) return amenity_category::kIceCream;
-    // Biergarten
-    if (amenity_ == "biergarten"sv) return amenity_category::kBiergarten;
-    // Outdoor_seating
-    if (leisure_ == "outdoor_seating"sv) return amenity_category::kOutdoorSeating;
-    // Artwork
-    if (tourism_ == "artwork"sv) return amenity_category::kArtwork;
-    // Community_centre
-    if (amenity_ == "community_centre"sv) return amenity_category::kCommunityCentre;
-    // Library
-    if (amenity_ == "library"sv) return amenity_category::kLibrary;
-    // Museum
-    if (tourism_ == "museum"sv) return amenity_category::kMuseum;
-    // Theatre
-    if (amenity_ == "theatre"sv) return amenity_category::kTheatre;
-    // Cinema
-    if (amenity_ == "cinema"sv) return amenity_category::kCinema;
-    // Nightclub
-    if (amenity_ == "nightclub"sv) return amenity_category::kNightclub;
+    // Restaurant-14
+    if (amenity_ == "restaurant"sv) return amenity_category::kRestaurant14;
+    if (amenity_ == "food_court"sv) return amenity_category::kRestaurant14;
+    // Cafe-16
+    if (amenity_ == "cafe"sv) return amenity_category::kCafe16;
+    // Fast-food-16
+    if (amenity_ == "fast_food"sv) return amenity_category::kFastFood16;
+    // Bar-16
+    if (amenity_ == "bar"sv) return amenity_category::kBar16;
+    // Pub-16
+    if (amenity_ == "pub"sv) return amenity_category::kPub16;
+    // Ice-cream-14
+    if (amenity_ == "ice_cream"sv) return amenity_category::kIceCream14;
+    // Biergarten-16
+    if (amenity_ == "biergarten"sv) return amenity_category::kBiergarten16;
+    // Outdoor_seating-14
+    if (leisure_ == "outdoor_seating"sv) return amenity_category::kOutdoorSeating14;
+    // Artwork-14
+    if (tourism_ == "artwork"sv) return amenity_category::kArtwork14;
+    // Community_centre-14
+    if (amenity_ == "community_centre"sv) return amenity_category::kCommunityCentre14;
+    // Library-16
+    if (amenity_ == "library"sv) return amenity_category::kLibrary16;
+    // Museum-16
+    if (tourism_ == "museum"sv) return amenity_category::kMuseum16;
+    // Theatre-16
+    if (amenity_ == "theatre"sv) return amenity_category::kTheatre16;
+    // Cinema-16
+    if (amenity_ == "cinema"sv) return amenity_category::kCinema16;
+    // Nightclub-16
+    if (amenity_ == "nightclub"sv) return amenity_category::kNightclub16;
     // Arts_centre
     if (amenity_ == "arts_centre"sv) return amenity_category::kArtsCentre;
-    // Gallery
-    if (tourism_ == "gallery"sv) return amenity_category::kGallery;
-    // Internet_cafe
-    if (amenity_ == "internet_cafe"sv) return amenity_category::kInternetCafe;
-    // Casino
-    if (amenity_ == "casino"sv) return amenity_category::kCasino;
-    // Public_bookcase
-    if (amenity_ == "public_bookcase"sv) return amenity_category::kPublicBookcase;
-    // Amusement_arcade
-    if (leisure_ == "amusement_arcade"sv) return amenity_category::kAmusementArcade;
-    // Memorial
-    if (historic_ == "memorial"sv) return amenity_category::kMemorial;
-    // Archaeological-site
-    if (historic_ == "archaeological_site"sv) return amenity_category::kArchaeologicalSite;
+    // Gallery-14
+    if (tourism_ == "gallery"sv) return amenity_category::kGallery14;
+    // Internet_cafe-14
+    if (amenity_ == "internet_cafe"sv) return amenity_category::kInternetCafe14;
+    // Casino-14
+    if (amenity_ == "casino"sv) return amenity_category::kCasino14;
+    // Public_bookcase-14
+    if (amenity_ == "public_bookcase"sv) return amenity_category::kPublicBookcase14;
+    // Amusement_arcade-14
+    if (leisure_ == "amusement_arcade"sv) return amenity_category::kAmusementArcade14;
+    // Memorial-16
+    if (historic_ == "memorial"sv) return amenity_category::kMemorial16;
+    // Archaeological-site-16
+    if (historic_ == "archaeological_site"sv) return amenity_category::kArchaeologicalSite16;
     // Carto_shrine
     if (historic_ == "wayside_shrine"sv) return amenity_category::kCartoShrine;
-    // Monument
-    if (historic_ == "monument"sv) return amenity_category::kMonument;
-    // Castle
-    if (historic_ == "castle"sv) return amenity_category::kCastle;
+    // Monument-16
+    if (historic_ == "monument"sv) return amenity_category::kMonument16;
+    // Castle-14
+    if (historic_ == "castle"sv) return amenity_category::kCastle14;
     // Plaque
     if (historic_ == "memorial"sv && memorial_ == "plaque"sv) return amenity_category::kPlaque;
     if (historic_ == "memorial"sv && memorial_ == "blue_plaque"sv) return amenity_category::kPlaque;
-    // Statue
-    if (historic_ == "memorial"sv && memorial_ == "statue"sv) return amenity_category::kStatue;
-    if (tourism_ == "artwork"sv && artwork_type_ == "statue"sv) return amenity_category::kStatue;
-    // Stone
-    if (historic_ == "memorial"sv && memorial_ == "stone"sv) return amenity_category::kStone;
-    // Palace
-    if (historic_ == "castle"sv && castle_type_ == "palace"sv) return amenity_category::kPalace;
-    if (historic_ == "castle"sv && castle_type_ == "stately"sv) return amenity_category::kPalace;
-    // Fortress
-    if (historic_ == "castle"sv && !castle_type_.empty()) return amenity_category::kFortress;
+    // Statue-14
+    if (historic_ == "memorial"sv && memorial_ == "statue"sv) return amenity_category::kStatue14;
+    if (tourism_ == "artwork"sv && artwork_type_ == "statue"sv) return amenity_category::kStatue14;
+    // Stone-14
+    if (historic_ == "memorial"sv && memorial_ == "stone"sv) return amenity_category::kStone14;
+    // Palace-14
+    if (historic_ == "castle"sv && castle_type_ == "palace"sv) return amenity_category::kPalace14;
+    if (historic_ == "castle"sv && castle_type_ == "stately"sv) return amenity_category::kPalace14;
+    // Fortress-14
+    if (historic_ == "castle"sv && !castle_type_.empty()) return amenity_category::kFortress14;
     // Historic-fort
     if (historic_ == "fort"sv) return amenity_category::kHistoricFort;
-    // Bust
-    if (historic_ == "memorial"sv && memorial_ == "bust"sv) return amenity_category::kBust;
-    if (tourism_ == "artwork"sv && artwork_type_ == "bust"sv) return amenity_category::kBust;
-    // City-gate
-    if (historic_ == "city_gate"sv) return amenity_category::kCityGate;
-    // Manor
-    if (historic_ == "manor"sv) return amenity_category::kManor;
-    if (historic_ == "castle"sv && castle_type_ == "manor"sv) return amenity_category::kManor;
-    // Obelisk
-    if (man_made_ == "obelisk"sv) return amenity_category::kObelisk;
-    // Playground
-    if (leisure_ == "playground"sv) return amenity_category::kPlayground;
+    // Bust-14
+    if (historic_ == "memorial"sv && memorial_ == "bust"sv) return amenity_category::kBust14;
+    if (tourism_ == "artwork"sv && artwork_type_ == "bust"sv) return amenity_category::kBust14;
+    // City-gate-14
+    if (historic_ == "city_gate"sv) return amenity_category::kCityGate14;
+    // Manor-14
+    if (historic_ == "manor"sv) return amenity_category::kManor14;
+    if (historic_ == "castle"sv && castle_type_ == "manor"sv) return amenity_category::kManor14;
+    // Obelisk-14
+    if (man_made_ == "obelisk"sv) return amenity_category::kObelisk14;
+    // Playground-16
+    if (leisure_ == "playground"sv) return amenity_category::kPlayground16;
     // Fitness
     if (leisure_ == "fitness_centre"sv) return amenity_category::kFitness;
     if (leisure_ == "fitness_station"sv) return amenity_category::kFitness;
     // Golf-icon
     if (leisure_ == "golf_course"sv) return amenity_category::kGolfIcon;
-    // Swimming
-    if (leisure_ == "water_park"sv) return amenity_category::kSwimming;
-    if (leisure_ == "swimming_area"sv) return amenity_category::kSwimming;
-    if (leisure_ == "sports_centre"sv && sport_ == "swimming"sv) return amenity_category::kSwimming;
-    // Massage
-    if (shop_ == "massage"sv) return amenity_category::kMassage;
-    // Sauna
-    if (leisure_ == "sauna"sv) return amenity_category::kSauna;
+    // Swimming-16
+    if (leisure_ == "water_park"sv) return amenity_category::kSwimming16;
+    if (leisure_ == "swimming_area"sv) return amenity_category::kSwimming16;
+    if (leisure_ == "sports_centre"sv && sport_ == "swimming"sv) return amenity_category::kSwimming16;
+    // Massage-14
+    if (shop_ == "massage"sv) return amenity_category::kMassage14;
+    // Sauna-14
+    if (leisure_ == "sauna"sv) return amenity_category::kSauna14;
     // Public_bath
     if (amenity_ == "public_bath"sv) return amenity_category::kPublicBath;
     // Miniature_golf
     if (leisure_ == "miniature_golf"sv) return amenity_category::kMiniatureGolf;
-    // Beach_resort
-    if (leisure_ == "beach_resort"sv) return amenity_category::kBeachResort;
-    // Fishing
-    if (leisure_ == "fishing"sv) return amenity_category::kFishing;
-    // Bowling_alley
-    if (leisure_ == "bowling_alley"sv) return amenity_category::kBowlingAlley;
+    // Beach_resort-14
+    if (leisure_ == "beach_resort"sv) return amenity_category::kBeachResort14;
+    // Fishing-14
+    if (leisure_ == "fishing"sv) return amenity_category::kFishing14;
+    // Bowling_alley-14
+    if (leisure_ == "bowling_alley"sv) return amenity_category::kBowlingAlley14;
     // Dog_park
     if (leisure_ == "dog_park"sv) return amenity_category::kDogPark;
     // Leisure-dance
     if (leisure_ == "dance"sv) return amenity_category::kLeisureDance;
     // Leisure-golf-pin
     if (golf_ == "pin"sv) return amenity_category::kLeisureGolfPin;
-    // Toilets
-    if (amenity_ == "toilets"sv) return amenity_category::kToilets;
-    // Recycling
-    if (amenity_ == "recycling"sv) return amenity_category::kRecycling;
-    // Waste-basket
-    if (amenity_ == "waste_basket"sv) return amenity_category::kWasteBasket;
-    // Waste_disposal
-    if (amenity_ == "waste_disposal"sv) return amenity_category::kWasteDisposal;
-    // Excrement_bags
-    if (amenity_ == "vending_machine"sv && vending_ == "excrement_bags"sv) return amenity_category::kExcrementBags;
-    // Bench
-    if (amenity_ == "bench"sv) return amenity_category::kBench;
-    // Shelter
-    if (amenity_ == "shelter"sv) return amenity_category::kShelter;
-    // Drinking-water
-    if (amenity_ == "drinking_water"sv) return amenity_category::kDrinkingWater;
+    // Toilets-16
+    if (amenity_ == "toilets"sv) return amenity_category::kToilets16;
+    // Recycling-16
+    if (amenity_ == "recycling"sv) return amenity_category::kRecycling16;
+    // Waste-basket-12
+    if (amenity_ == "waste_basket"sv) return amenity_category::kWasteBasket12;
+    // Waste_disposal-14
+    if (amenity_ == "waste_disposal"sv) return amenity_category::kWasteDisposal14;
+    // Excrement_bags-14
+    if (amenity_ == "vending_machine"sv && vending_ == "excrement_bags"sv) return amenity_category::kExcrementBags14;
+    // Bench-16
+    if (amenity_ == "bench"sv) return amenity_category::kBench16;
+    // Shelter-14
+    if (amenity_ == "shelter"sv) return amenity_category::kShelter14;
+    // Drinking-water-16
+    if (amenity_ == "drinking_water"sv) return amenity_category::kDrinkingWater16;
     // Picnic_site
     if (tourism_ == "picnic_site"sv) return amenity_category::kPicnicSite;
-    // Fountain
-    if (amenity_ == "fountain"sv) return amenity_category::kFountain;
-    // Camping
-    if (tourism_ == "camp_site"sv) return amenity_category::kCamping;
-    // Table
-    if (leisure_ == "picnic_table"sv) return amenity_category::kTable;
-    // Caravan
-    if (tourism_ == "caravan_site"sv) return amenity_category::kCaravan;
-    // Bbq
-    if (amenity_ == "bbq"sv) return amenity_category::kBbq;
-    // Shower
-    if (amenity_ == "shower"sv) return amenity_category::kShower;
+    // Fountain-14
+    if (amenity_ == "fountain"sv) return amenity_category::kFountain14;
+    // Camping-16
+    if (tourism_ == "camp_site"sv) return amenity_category::kCamping16;
+    // Table-16
+    if (leisure_ == "picnic_table"sv) return amenity_category::kTable16;
+    // Caravan-16
+    if (tourism_ == "caravan_site"sv) return amenity_category::kCaravan16;
+    // Bbq-14
+    if (amenity_ == "bbq"sv) return amenity_category::kBbq14;
+    // Shower-14
+    if (amenity_ == "shower"sv) return amenity_category::kShower14;
     // Firepit
     if (leisure_ == "firepit"sv) return amenity_category::kFirepit;
-    // Bird_hide
-    if (leisure_ == "bird_hide"sv) return amenity_category::kBirdHide;
-    // Guidepost
-    if (tourism_ == "information"sv && information_ == "guidepost"sv) return amenity_category::kGuidepost;
-    // Board
-    if (tourism_ == "information"sv && information_ == "board"sv) return amenity_category::kBoard;
-    // Map
-    if (tourism_ == "information"sv && information_ == "map"sv) return amenity_category::kMap;
-    if (tourism_ == "information"sv && information_ == "tactile_map"sv) return amenity_category::kMap;
-    // Office
-    if (tourism_ == "information"sv && information_ == "office"sv) return amenity_category::kOffice;
-    // Terminal
-    if (tourism_ == "information"sv && information_ == "terminal"sv) return amenity_category::kTerminal;
-    // Audioguide
-    if (tourism_ == "information"sv && information_ == "audioguide"sv) return amenity_category::kAudioguide;
-    // Viewpoint
-    if (tourism_ == "viewpoint"sv) return amenity_category::kViewpoint;
-    // Hotel
-    if (tourism_ == "hotel"sv) return amenity_category::kHotel;
+    // Bird_hide-14
+    if (leisure_ == "bird_hide"sv) return amenity_category::kBirdHide14;
+    // Guidepost-14
+    if (tourism_ == "information"sv && information_ == "guidepost"sv) return amenity_category::kGuidepost14;
+    // Board-14
+    if (tourism_ == "information"sv && information_ == "board"sv) return amenity_category::kBoard14;
+    // Map-14
+    if (tourism_ == "information"sv && information_ == "map"sv) return amenity_category::kMap14;
+    if (tourism_ == "information"sv && information_ == "tactile_map"sv) return amenity_category::kMap14;
+    // Office-14
+    if (tourism_ == "information"sv && information_ == "office"sv) return amenity_category::kOffice14;
+    // Terminal-14
+    if (tourism_ == "information"sv && information_ == "terminal"sv) return amenity_category::kTerminal14;
+    // Audioguide-14
+    if (tourism_ == "information"sv && information_ == "audioguide"sv) return amenity_category::kAudioguide14;
+    // Viewpoint-16
+    if (tourism_ == "viewpoint"sv) return amenity_category::kViewpoint16;
+    // Hotel-16
+    if (tourism_ == "hotel"sv) return amenity_category::kHotel16;
     // Tourism_guest_house
     if (tourism_ == "guest_house"sv) return amenity_category::kTourismGuestHouse;
-    // Hostel
-    if (tourism_ == "hostel"sv) return amenity_category::kHostel;
+    // Hostel-16
+    if (tourism_ == "hostel"sv) return amenity_category::kHostel16;
     // Chalet
     if (tourism_ == "chalet"sv) return amenity_category::kChalet;
-    // Motel
-    if (tourism_ == "motel"sv) return amenity_category::kMotel;
+    // Motel-16
+    if (tourism_ == "motel"sv) return amenity_category::kMotel16;
     // Apartment
     if (tourism_ == "apartment"sv) return amenity_category::kApartment;
     // Alpinehut
     if (tourism_ == "alpine_hut"sv) return amenity_category::kAlpinehut;
     // Wilderness_hut
     if (tourism_ == "wilderness_hut"sv) return amenity_category::kWildernessHut;
-    // Bank
-    if (amenity_ == "bank"sv) return amenity_category::kBank;
-    // Atm
-    if (amenity_ == "atm"sv) return amenity_category::kAtm;
-    // Bureau_de_change
-    if (amenity_ == "bureau_de_change"sv) return amenity_category::kBureauDeChange;
-    // Pharmacy
-    if (amenity_ == "pharmacy"sv) return amenity_category::kPharmacy;
-    // Hospital
-    if (amenity_ == "hospital"sv) return amenity_category::kHospital;
-    // Doctors
-    if (amenity_ == "clinic"sv) return amenity_category::kDoctors;
-    if (amenity_ == "doctors"sv) return amenity_category::kDoctors;
-    // Dentist
-    if (amenity_ == "dentist"sv) return amenity_category::kDentist;
-    // Veterinary
-    if (amenity_ == "veterinary"sv) return amenity_category::kVeterinary;
-    // Post_box
-    if (amenity_ == "post_box"sv) return amenity_category::kPostBox;
-    // Post_office
-    if (amenity_ == "post_office"sv) return amenity_category::kPostOffice;
+    // Bank-16
+    if (amenity_ == "bank"sv) return amenity_category::kBank16;
+    // Atm-14
+    if (amenity_ == "atm"sv) return amenity_category::kAtm14;
+    // Bureau_de_change-14
+    if (amenity_ == "bureau_de_change"sv) return amenity_category::kBureauDeChange14;
+    // Pharmacy-14
+    if (amenity_ == "pharmacy"sv) return amenity_category::kPharmacy14;
+    // Hospital-14
+    if (amenity_ == "hospital"sv) return amenity_category::kHospital14;
+    // Doctors-14
+    if (amenity_ == "clinic"sv) return amenity_category::kDoctors14;
+    if (amenity_ == "doctors"sv) return amenity_category::kDoctors14;
+    // Dentist-14
+    if (amenity_ == "dentist"sv) return amenity_category::kDentist14;
+    // Veterinary-14
+    if (amenity_ == "veterinary"sv) return amenity_category::kVeterinary14;
+    // Post_box-12
+    if (amenity_ == "post_box"sv) return amenity_category::kPostBox12;
+    // Post_office-14
+    if (amenity_ == "post_office"sv) return amenity_category::kPostOffice14;
     // Parcel_locker
     if (amenity_ == "parcel_locker"sv) return amenity_category::kParcelLocker;
-    // Telephone
-    if (amenity_ == "telephone"sv) return amenity_category::kTelephone;
-    // Emergency-phone
-    if (emergency_ == "phone"sv) return amenity_category::kEmergencyPhone;
-    // Parking
-    if (amenity_ == "parking"sv) return amenity_category::kParking;
+    // Telephone-16
+    if (amenity_ == "telephone"sv) return amenity_category::kTelephone16;
+    // Emergency-phone-16
+    if (emergency_ == "phone"sv) return amenity_category::kEmergencyPhone16;
+    // Parking-16
+    if (amenity_ == "parking"sv) return amenity_category::kParking16;
     // Parking-subtle
     if (amenity_ == "parking"sv && parking_ == "lane"sv) return amenity_category::kParkingSubtle;
     if (amenity_ == "parking"sv && parking_ == "street_side"sv) return amenity_category::kParkingSubtle;
-    // Bus-stop
-    if (highway_ == "bus_stop"sv) return amenity_category::kBusStop;
-    // Fuel
-    if (amenity_ == "fuel"sv) return amenity_category::kFuel;
-    // Parking-bicycle
-    if (amenity_ == "bicycle_parking"sv) return amenity_category::kParkingBicycle;
+    // Bus-stop-12
+    if (highway_ == "bus_stop"sv) return amenity_category::kBusStop12;
+    // Fuel-16
+    if (amenity_ == "fuel"sv) return amenity_category::kFuel16;
+    // Parking-bicycle-16
+    if (amenity_ == "bicycle_parking"sv) return amenity_category::kParkingBicycle16;
     // Rendering-railway-tram_stop-mapnik
     if (railway_ == "station"sv) return amenity_category::kRenderingRailwayTramStopMapnik;
     if (railway_ == "halt"sv) return amenity_category::kRenderingRailwayTramStopMapnik;
@@ -845,46 +849,46 @@ struct amenity_tags {
     if (aerialway_ == "station"sv) return amenity_category::kRenderingRailwayTramStopMapnik;
     // Amenity_bus_station
     if (amenity_ == "bus_station"sv) return amenity_category::kAmenityBusStation;
-    // Helipad
-    if (aeroway_ == "helipad"sv) return amenity_category::kHelipad;
+    // Helipad-16
+    if (aeroway_ == "helipad"sv) return amenity_category::kHelipad16;
     // Aerodrome
     if (aeroway_ == "aerodrome"sv) return amenity_category::kAerodrome;
-    // Rental-bicycle
-    if (amenity_ == "bicycle_rental"sv) return amenity_category::kRentalBicycle;
+    // Rental-bicycle-16
+    if (amenity_ == "bicycle_rental"sv) return amenity_category::kRentalBicycle16;
     // Transport_slipway
     if (leisure_ == "slipway"sv) return amenity_category::kTransportSlipway;
-    // Taxi
-    if (amenity_ == "taxi"sv) return amenity_category::kTaxi;
-    // Parking_tickets
-    if (amenity_ == "vending_machine"sv && vending_ == "parking_tickets"sv) return amenity_category::kParkingTickets;
-    // Subway-entrance
-    if (railway_ == "subway_entrance"sv) return amenity_category::kSubwayEntrance;
-    // Charging_station
-    if (amenity_ == "charging_station"sv) return amenity_category::kChargingStation;
-    // Elevator
-    if (highway_ == "elevator"sv) return amenity_category::kElevator;
-    // Rental-car
-    if (amenity_ == "car_rental"sv) return amenity_category::kRentalCar;
-    // Parking_entrance
-    if (amenity_ == "parking_entrance"sv && parking_ == "underground"sv) return amenity_category::kParkingEntrance;
-    // Public_transport_tickets
-    if (amenity_ == "vending_machine"sv && vending_ == "public_transport_tickets"sv) return amenity_category::kPublicTransportTickets;
+    // Taxi-16
+    if (amenity_ == "taxi"sv) return amenity_category::kTaxi16;
+    // Parking_tickets-14
+    if (amenity_ == "vending_machine"sv && vending_ == "parking_tickets"sv) return amenity_category::kParkingTickets14;
+    // Subway-entrance-12
+    if (railway_ == "subway_entrance"sv) return amenity_category::kSubwayEntrance12;
+    // Charging_station-16
+    if (amenity_ == "charging_station"sv) return amenity_category::kChargingStation16;
+    // Elevator-12
+    if (highway_ == "elevator"sv) return amenity_category::kElevator12;
+    // Rental-car-16
+    if (amenity_ == "car_rental"sv) return amenity_category::kRentalCar16;
+    // Parking_entrance-14
+    if (amenity_ == "parking_entrance"sv && parking_ == "underground"sv) return amenity_category::kParkingEntrance14;
+    // Public_transport_tickets-14
+    if (amenity_ == "vending_machine"sv && vending_ == "public_transport_tickets"sv) return amenity_category::kPublicTransportTickets14;
     // Ferry-icon
     if (amenity_ == "ferry_terminal"sv) return amenity_category::kFerryIcon;
-    // Parking-motorcycle
-    if (amenity_ == "motorcycle_parking"sv) return amenity_category::kParkingMotorcycle;
-    // Bicycle_repair_station
-    if (amenity_ == "bicycle_repair_station"sv) return amenity_category::kBicycleRepairStation;
-    // Boat_rental
-    if (amenity_ == "boat_rental"sv) return amenity_category::kBoatRental;
-    // Parking_entrance_multi-storey
-    if (amenity_ == "parking_entrance"sv && parking_ == "multi-storey"sv) return amenity_category::kParkingEntranceMultiStorey;
+    // Parking-motorcycle-16
+    if (amenity_ == "motorcycle_parking"sv) return amenity_category::kParkingMotorcycle16;
+    // Bicycle_repair_station-14
+    if (amenity_ == "bicycle_repair_station"sv) return amenity_category::kBicycleRepairStation14;
+    // Boat_rental-14
+    if (amenity_ == "boat_rental"sv) return amenity_category::kBoatRental14;
+    // Parking_entrance_multi-storey-14
+    if (amenity_ == "parking_entrance"sv && parking_ == "multi-storey"sv) return amenity_category::kParkingEntranceMultiStorey14;
     // Oneway
     if (oneway_ == "yes"sv) return amenity_category::kOneway;
     // Barrier_gate
     if (barrier_ == "gate"sv) return amenity_category::kBarrierGate;
-    // Traffic_light
-    if (highway_ == "traffic_signals"sv) return amenity_category::kTrafficLight;
+    // Traffic_light-16
+    if (highway_ == "traffic_signals"sv) return amenity_category::kTrafficLight16;
     // Level_crossing2
     if (railway_ == "level_crossing"sv) return amenity_category::kLevelCrossing2;
     if (railway_ == "crossing"sv) return amenity_category::kLevelCrossing2;
@@ -896,272 +900,272 @@ struct amenity_tags {
     if (barrier_ == "block"sv) return amenity_category::kBarrier;
     if (barrier_ == "turnstile"sv) return amenity_category::kBarrier;
     if (barrier_ == "log"sv) return amenity_category::kBarrier;
-    // Liftgate
-    if (barrier_ == "lift_gate"sv) return amenity_category::kLiftgate;
-    if (barrier_ == "swing_gate"sv) return amenity_category::kLiftgate;
-    // Cycle_barrier
-    if (barrier_ == "cycle_barrier"sv) return amenity_category::kCycleBarrier;
-    // Barrier_stile
-    if (barrier_ == "stile"sv) return amenity_category::kBarrierStile;
+    // Liftgate-7
+    if (barrier_ == "lift_gate"sv) return amenity_category::kLiftgate7;
+    if (barrier_ == "swing_gate"sv) return amenity_category::kLiftgate7;
+    // Cycle_barrier-14
+    if (barrier_ == "cycle_barrier"sv) return amenity_category::kCycleBarrier14;
+    // Barrier_stile-14
+    if (barrier_ == "stile"sv) return amenity_category::kBarrierStile14;
     // Highway_mini_roundabout
     if (highway_ == "mini_roundabout"sv) return amenity_category::kHighwayMiniRoundabout;
     // Toll_booth
     if (barrier_ == "toll_booth"sv) return amenity_category::kTollBooth;
-    // Barrier_cattle_grid
-    if (barrier_ == "cattle_grid"sv) return amenity_category::kBarrierCattleGrid;
-    // Kissing_gate
-    if (barrier_ == "kissing_gate"sv) return amenity_category::kKissingGate;
-    // Full-height_turnstile
-    if (barrier_ == "full-height_turnstile"sv) return amenity_category::kFullHeightTurnstile;
-    // Motorcycle_barrier
-    if (barrier_ == "motorcycle_barrier"sv) return amenity_category::kMotorcycleBarrier;
-    // Ford
-    if (ford_ == "yes"sv) return amenity_category::kFord;
-    if (ford_ == "stepping_stones"sv) return amenity_category::kFord;
-    // Mountain_pass
-    if (mountain_pass_ == "yes"sv) return amenity_category::kMountainPass;
+    // Barrier_cattle_grid-14
+    if (barrier_ == "cattle_grid"sv) return amenity_category::kBarrierCattleGrid14;
+    // Kissing_gate-14
+    if (barrier_ == "kissing_gate"sv) return amenity_category::kKissingGate14;
+    // Full-height_turnstile-14
+    if (barrier_ == "full-height_turnstile"sv) return amenity_category::kFullHeightTurnstile14;
+    // Motorcycle_barrier-14
+    if (barrier_ == "motorcycle_barrier"sv) return amenity_category::kMotorcycleBarrier14;
+    // Ford-16
+    if (ford_ == "yes"sv) return amenity_category::kFord16;
+    if (ford_ == "stepping_stones"sv) return amenity_category::kFord16;
+    // Mountain_pass-8
+    if (mountain_pass_ == "yes"sv) return amenity_category::kMountainPass8;
     // Dam_node
     if (waterway_ == "dam"sv) return amenity_category::kDamNode;
     // Weir_node
     if (waterway_ == "weir"sv) return amenity_category::kWeirNode;
     // Lock_gate_node
     if (waterway_ == "lock_gate"sv) return amenity_category::kLockGateNode;
-    // Turning_circle_on_highway_track
-    if (highway_ == "turning_circle"sv && highway_ == "track"sv) return amenity_category::kTurningCircleOnHighwayTrack;
-    // Tree
-    if (natural_ == "tree"sv) return amenity_category::kTree;
-    // Peak
-    if (natural_ == "peak"sv) return amenity_category::kPeak;
-    // Spring
-    if (natural_ == "spring"sv) return amenity_category::kSpring;
-    // Cave
-    if (natural_ == "cave_entrance"sv) return amenity_category::kCave;
-    // Waterfall
-    if (waterway_ == "waterfall"sv) return amenity_category::kWaterfall;
-    // Saddle
-    if (natural_ == "saddle"sv) return amenity_category::kSaddle;
-    // Volcano
-    if (natural_ == "volcano"sv) return amenity_category::kVolcano;
-    // Police
-    if (amenity_ == "police"sv) return amenity_category::kPolice;
-    // Town-hall
-    if (amenity_ == "townhall"sv) return amenity_category::kTownHall;
-    // Fire-station
-    if (amenity_ == "fire_station"sv) return amenity_category::kFireStation;
-    // Social_facility
-    if (amenity_ == "social_facility"sv) return amenity_category::kSocialFacility;
-    // Courthouse
-    if (amenity_ == "courthouse"sv) return amenity_category::kCourthouse;
+    // Turning_circle_on_highway_track-16
+    if (highway_ == "turning_circle"sv && highway_ == "track"sv) return amenity_category::kTurningCircleOnHighwayTrack16;
+    // Tree-16
+    if (natural_ == "tree"sv) return amenity_category::kTree16;
+    // Peak-8
+    if (natural_ == "peak"sv) return amenity_category::kPeak8;
+    // Spring-14
+    if (natural_ == "spring"sv) return amenity_category::kSpring14;
+    // Cave-14
+    if (natural_ == "cave_entrance"sv) return amenity_category::kCave14;
+    // Waterfall-14
+    if (waterway_ == "waterfall"sv) return amenity_category::kWaterfall14;
+    // Saddle-8
+    if (natural_ == "saddle"sv) return amenity_category::kSaddle8;
+    // Volcano-8
+    if (natural_ == "volcano"sv) return amenity_category::kVolcano8;
+    // Police-16
+    if (amenity_ == "police"sv) return amenity_category::kPolice16;
+    // Town-hall-16
+    if (amenity_ == "townhall"sv) return amenity_category::kTownHall16;
+    // Fire-station-16
+    if (amenity_ == "fire_station"sv) return amenity_category::kFireStation16;
+    // Social_facility-14
+    if (amenity_ == "social_facility"sv) return amenity_category::kSocialFacility14;
+    // Courthouse-16
+    if (amenity_ == "courthouse"sv) return amenity_category::kCourthouse16;
     // Diplomatic
     if (office_ == "diplomatic"sv && diplomatic_ == "embassy"sv) return amenity_category::kDiplomatic;
     // Office-diplomatic-consulate
     if (office_ == "diplomatic"sv && diplomatic_ == "consulate"sv) return amenity_category::kOfficeDiplomaticConsulate;
-    // Prison
-    if (amenity_ == "prison"sv) return amenity_category::kPrison;
-    // Christian
-    if (amenity_ == "place_of_worship"sv && religion_ == "christian"sv) return amenity_category::kChristian;
-    // Jewish
-    if (amenity_ == "place_of_worship"sv && religion_ == "jewish"sv) return amenity_category::kJewish;
-    // Muslim
-    if (amenity_ == "place_of_worship"sv && religion_ == "muslim"sv) return amenity_category::kMuslim;
-    // Taoist
-    if (amenity_ == "place_of_worship"sv && religion_ == "taoist"sv) return amenity_category::kTaoist;
-    // Hinduist
-    if (amenity_ == "place_of_worship"sv && religion_ == "hindu"sv) return amenity_category::kHinduist;
-    // Buddhist
-    if (amenity_ == "place_of_worship"sv && religion_ == "buddhist"sv) return amenity_category::kBuddhist;
-    // Shintoist
-    if (amenity_ == "place_of_worship"sv && religion_ == "shinto"sv) return amenity_category::kShintoist;
-    // Sikhist
-    if (amenity_ == "place_of_worship"sv && religion_ == "sikh"sv) return amenity_category::kSikhist;
-    // Place-of-worship
-    if (amenity_ == "place_of_worship"sv && !religion_.empty()) return amenity_category::kPlaceOfWorship;
-    // Marketplace
-    if (amenity_ == "marketplace"sv) return amenity_category::kMarketplace;
-    // Convenience
-    if (shop_ == "convenience"sv) return amenity_category::kConvenience;
-    // Supermarket
-    if (shop_ == "supermarket"sv) return amenity_category::kSupermarket;
-    // Clothes
-    if (shop_ == "clothes"sv) return amenity_category::kClothes;
-    if (shop_ == "fashion"sv) return amenity_category::kClothes;
-    // Hairdresser
-    if (shop_ == "hairdresser"sv) return amenity_category::kHairdresser;
-    // Bakery
-    if (shop_ == "bakery"sv) return amenity_category::kBakery;
-    // Car_repair
-    if (shop_ == "car_repair"sv) return amenity_category::kCarRepair;
-    // Doityourself
-    if (shop_ == "doityourself"sv) return amenity_category::kDoityourself;
-    if (shop_ == "hardware"sv) return amenity_category::kDoityourself;
+    // Prison-16
+    if (amenity_ == "prison"sv) return amenity_category::kPrison16;
+    // Christian-16
+    if (amenity_ == "place_of_worship"sv && religion_ == "christian"sv) return amenity_category::kChristian16;
+    // Jewish-16
+    if (amenity_ == "place_of_worship"sv && religion_ == "jewish"sv) return amenity_category::kJewish16;
+    // Muslim-16
+    if (amenity_ == "place_of_worship"sv && religion_ == "muslim"sv) return amenity_category::kMuslim16;
+    // Taoist-16
+    if (amenity_ == "place_of_worship"sv && religion_ == "taoist"sv) return amenity_category::kTaoist16;
+    // Hinduist-16
+    if (amenity_ == "place_of_worship"sv && religion_ == "hindu"sv) return amenity_category::kHinduist16;
+    // Buddhist-16
+    if (amenity_ == "place_of_worship"sv && religion_ == "buddhist"sv) return amenity_category::kBuddhist16;
+    // Shintoist-16
+    if (amenity_ == "place_of_worship"sv && religion_ == "shinto"sv) return amenity_category::kShintoist16;
+    // Sikhist-16
+    if (amenity_ == "place_of_worship"sv && religion_ == "sikh"sv) return amenity_category::kSikhist16;
+    // Place-of-worship-16
+    if (amenity_ == "place_of_worship"sv && !religion_.empty()) return amenity_category::kPlaceOfWorship16;
+    // Marketplace-14
+    if (amenity_ == "marketplace"sv) return amenity_category::kMarketplace14;
+    // Convenience-14
+    if (shop_ == "convenience"sv) return amenity_category::kConvenience14;
+    // Supermarket-14
+    if (shop_ == "supermarket"sv) return amenity_category::kSupermarket14;
+    // Clothes-16
+    if (shop_ == "clothes"sv) return amenity_category::kClothes16;
+    if (shop_ == "fashion"sv) return amenity_category::kClothes16;
+    // Hairdresser-16
+    if (shop_ == "hairdresser"sv) return amenity_category::kHairdresser16;
+    // Bakery-16
+    if (shop_ == "bakery"sv) return amenity_category::kBakery16;
+    // Car_repair-14
+    if (shop_ == "car_repair"sv) return amenity_category::kCarRepair14;
+    // Doityourself-16
+    if (shop_ == "doityourself"sv) return amenity_category::kDoityourself16;
+    if (shop_ == "hardware"sv) return amenity_category::kDoityourself16;
     // Purple-car
     if (shop_ == "car"sv) return amenity_category::kPurpleCar;
-    // Newsagent
-    if (shop_ == "kiosk"sv) return amenity_category::kNewsagent;
-    if (shop_ == "newsagent"sv) return amenity_category::kNewsagent;
-    // Beauty
-    if (shop_ == "beauty"sv) return amenity_category::kBeauty;
-    // Car_wash
-    if (amenity_ == "car_wash"sv) return amenity_category::kCarWash;
+    // Newsagent-14
+    if (shop_ == "kiosk"sv) return amenity_category::kNewsagent14;
+    if (shop_ == "newsagent"sv) return amenity_category::kNewsagent14;
+    // Beauty-14
+    if (shop_ == "beauty"sv) return amenity_category::kBeauty14;
+    // Car_wash-14
+    if (amenity_ == "car_wash"sv) return amenity_category::kCarWash14;
     // Butcher
     if (shop_ == "butcher"sv) return amenity_category::kButcher;
-    // Alcohol
-    if (shop_ == "alcohol"sv) return amenity_category::kAlcohol;
-    if (shop_ == "wine"sv) return amenity_category::kAlcohol;
-    // Furniture
-    if (shop_ == "furniture"sv) return amenity_category::kFurniture;
-    // Florist
-    if (shop_ == "florist"sv) return amenity_category::kFlorist;
-    // Mobile-phone
-    if (shop_ == "mobile_phone"sv) return amenity_category::kMobilePhone;
-    // Electronics
-    if (shop_ == "electronics"sv) return amenity_category::kElectronics;
-    // Shoes
-    if (shop_ == "shoes"sv) return amenity_category::kShoes;
-    // Car_parts
-    if (shop_ == "car_parts"sv) return amenity_category::kCarParts;
-    // Greengrocer
-    if (shop_ == "greengrocer"sv) return amenity_category::kGreengrocer;
-    if (shop_ == "farm"sv) return amenity_category::kGreengrocer;
-    // Laundry
-    if (shop_ == "laundry"sv) return amenity_category::kLaundry;
-    if (shop_ == "dry_cleaning"sv) return amenity_category::kLaundry;
-    // Optician
-    if (shop_ == "optician"sv) return amenity_category::kOptician;
-    // Jewellery
-    if (shop_ == "jewelry"sv) return amenity_category::kJewellery;
-    // Books
-    if (shop_ == "books"sv) return amenity_category::kBooks;
-    // Gift
-    if (shop_ == "gift"sv) return amenity_category::kGift;
-    // Department_store
-    if (shop_ == "department_store"sv) return amenity_category::kDepartmentStore;
-    // Bicycle
-    if (shop_ == "bicycle"sv) return amenity_category::kBicycle;
-    // Confectionery
-    if (shop_ == "confectionery"sv) return amenity_category::kConfectionery;
-    if (shop_ == "chocolate"sv) return amenity_category::kConfectionery;
-    if (shop_ == "pastry"sv) return amenity_category::kConfectionery;
-    // Variety_store
-    if (shop_ == "variety_store"sv) return amenity_category::kVarietyStore;
-    // Travel_agency
-    if (shop_ == "travel_agency"sv) return amenity_category::kTravelAgency;
-    // Sports
-    if (shop_ == "sports"sv) return amenity_category::kSports;
-    // Chemist
-    if (shop_ == "chemist"sv) return amenity_category::kChemist;
-    // Computer
-    if (shop_ == "computer"sv) return amenity_category::kComputer;
-    // Stationery
-    if (shop_ == "stationery"sv) return amenity_category::kStationery;
-    // Pet
-    if (shop_ == "pet"sv) return amenity_category::kPet;
-    // Beverages
-    if (shop_ == "beverages"sv) return amenity_category::kBeverages;
-    // Perfumery
-    if (shop_ == "cosmetics"sv) return amenity_category::kPerfumery;
-    if (shop_ == "perfumery"sv) return amenity_category::kPerfumery;
+    // Alcohol-16
+    if (shop_ == "alcohol"sv) return amenity_category::kAlcohol16;
+    if (shop_ == "wine"sv) return amenity_category::kAlcohol16;
+    // Furniture-16
+    if (shop_ == "furniture"sv) return amenity_category::kFurniture16;
+    // Florist-16
+    if (shop_ == "florist"sv) return amenity_category::kFlorist16;
+    // Mobile-phone-16
+    if (shop_ == "mobile_phone"sv) return amenity_category::kMobilePhone16;
+    // Electronics-16
+    if (shop_ == "electronics"sv) return amenity_category::kElectronics16;
+    // Shoes-16
+    if (shop_ == "shoes"sv) return amenity_category::kShoes16;
+    // Car_parts-14
+    if (shop_ == "car_parts"sv) return amenity_category::kCarParts14;
+    // Greengrocer-14
+    if (shop_ == "greengrocer"sv) return amenity_category::kGreengrocer14;
+    if (shop_ == "farm"sv) return amenity_category::kGreengrocer14;
+    // Laundry-14
+    if (shop_ == "laundry"sv) return amenity_category::kLaundry14;
+    if (shop_ == "dry_cleaning"sv) return amenity_category::kLaundry14;
+    // Optician-16
+    if (shop_ == "optician"sv) return amenity_category::kOptician16;
+    // Jewellery-16
+    if (shop_ == "jewelry"sv) return amenity_category::kJewellery16;
+    // Books-16
+    if (shop_ == "books"sv) return amenity_category::kBooks16;
+    // Gift-16
+    if (shop_ == "gift"sv) return amenity_category::kGift16;
+    // Department_store-16
+    if (shop_ == "department_store"sv) return amenity_category::kDepartmentStore16;
+    // Bicycle-16
+    if (shop_ == "bicycle"sv) return amenity_category::kBicycle16;
+    // Confectionery-14
+    if (shop_ == "confectionery"sv) return amenity_category::kConfectionery14;
+    if (shop_ == "chocolate"sv) return amenity_category::kConfectionery14;
+    if (shop_ == "pastry"sv) return amenity_category::kConfectionery14;
+    // Variety_store-14
+    if (shop_ == "variety_store"sv) return amenity_category::kVarietyStore14;
+    // Travel_agency-14
+    if (shop_ == "travel_agency"sv) return amenity_category::kTravelAgency14;
+    // Sports-14
+    if (shop_ == "sports"sv) return amenity_category::kSports14;
+    // Chemist-14
+    if (shop_ == "chemist"sv) return amenity_category::kChemist14;
+    // Computer-14
+    if (shop_ == "computer"sv) return amenity_category::kComputer14;
+    // Stationery-14
+    if (shop_ == "stationery"sv) return amenity_category::kStationery14;
+    // Pet-16
+    if (shop_ == "pet"sv) return amenity_category::kPet16;
+    // Beverages-14
+    if (shop_ == "beverages"sv) return amenity_category::kBeverages14;
+    // Perfumery-14
+    if (shop_ == "cosmetics"sv) return amenity_category::kPerfumery14;
+    if (shop_ == "perfumery"sv) return amenity_category::kPerfumery14;
     // Tyres
     if (shop_ == "tyres"sv) return amenity_category::kTyres;
     // Shop_motorcycle
     if (shop_ == "motorcycle"sv) return amenity_category::kShopMotorcycle;
-    // Garden_centre
-    if (shop_ == "garden_centre"sv) return amenity_category::kGardenCentre;
-    // Copyshop
-    if (shop_ == "copyshop"sv) return amenity_category::kCopyshop;
-    // Toys
-    if (shop_ == "toys"sv) return amenity_category::kToys;
-    // Deli
-    if (shop_ == "deli"sv) return amenity_category::kDeli;
-    // Tobacco
-    if (shop_ == "tobacco"sv) return amenity_category::kTobacco;
-    // Seafood
-    if (shop_ == "seafood"sv && shop_ == "fishmonger"sv) return amenity_category::kSeafood;
-    // Interior_decoration
-    if (shop_ == "interior_decoration"sv) return amenity_category::kInteriorDecoration;
-    // Ticket
-    if (shop_ == "ticket"sv) return amenity_category::kTicket;
-    // Photo
-    if (shop_ == "photo"sv) return amenity_category::kPhoto;
-    if (shop_ == "photo_studio"sv) return amenity_category::kPhoto;
-    if (shop_ == "photography"sv) return amenity_category::kPhoto;
-    // Trade
-    if (shop_ == "trade"sv) return amenity_category::kTrade;
-    if (shop_ == "wholesale"sv) return amenity_category::kTrade;
-    // Outdoor
-    if (shop_ == "outdoor"sv) return amenity_category::kOutdoor;
-    // Houseware
-    if (shop_ == "houseware"sv) return amenity_category::kHouseware;
-    // Art
-    if (shop_ == "art"sv) return amenity_category::kArt;
-    // Paint
-    if (shop_ == "paint"sv) return amenity_category::kPaint;
-    // Fabric
-    if (shop_ == "fabric"sv) return amenity_category::kFabric;
-    // Bookmaker
-    if (shop_ == "bookmaker"sv) return amenity_category::kBookmaker;
-    // Second_hand
-    if (shop_ == "second_hand"sv) return amenity_category::kSecondHand;
-    // Charity
-    if (shop_ == "charity"sv) return amenity_category::kCharity;
-    // Bed
-    if (shop_ == "bed"sv) return amenity_category::kBed;
+    // Garden_centre-14
+    if (shop_ == "garden_centre"sv) return amenity_category::kGardenCentre14;
+    // Copyshop-14
+    if (shop_ == "copyshop"sv) return amenity_category::kCopyshop14;
+    // Toys-14
+    if (shop_ == "toys"sv) return amenity_category::kToys14;
+    // Deli-14
+    if (shop_ == "deli"sv) return amenity_category::kDeli14;
+    // Tobacco-14
+    if (shop_ == "tobacco"sv) return amenity_category::kTobacco14;
+    // Seafood-14
+    if (shop_ == "seafood"sv && shop_ == "fishmonger"sv) return amenity_category::kSeafood14;
+    // Interior_decoration-14
+    if (shop_ == "interior_decoration"sv) return amenity_category::kInteriorDecoration14;
+    // Ticket-14
+    if (shop_ == "ticket"sv) return amenity_category::kTicket14;
+    // Photo-14
+    if (shop_ == "photo"sv) return amenity_category::kPhoto14;
+    if (shop_ == "photo_studio"sv) return amenity_category::kPhoto14;
+    if (shop_ == "photography"sv) return amenity_category::kPhoto14;
+    // Trade-14
+    if (shop_ == "trade"sv) return amenity_category::kTrade14;
+    if (shop_ == "wholesale"sv) return amenity_category::kTrade14;
+    // Outdoor-14
+    if (shop_ == "outdoor"sv) return amenity_category::kOutdoor14;
+    // Houseware-14
+    if (shop_ == "houseware"sv) return amenity_category::kHouseware14;
+    // Art-14
+    if (shop_ == "art"sv) return amenity_category::kArt14;
+    // Paint-14
+    if (shop_ == "paint"sv) return amenity_category::kPaint14;
+    // Fabric-14
+    if (shop_ == "fabric"sv) return amenity_category::kFabric14;
+    // Bookmaker-14
+    if (shop_ == "bookmaker"sv) return amenity_category::kBookmaker14;
+    // Second_hand-14
+    if (shop_ == "second_hand"sv) return amenity_category::kSecondHand14;
+    // Charity-14
+    if (shop_ == "charity"sv) return amenity_category::kCharity14;
+    // Bed-14
+    if (shop_ == "bed"sv) return amenity_category::kBed14;
     // Medical_supply
     if (shop_ == "medical_supply"sv) return amenity_category::kMedicalSupply;
-    // Hifi
-    if (shop_ == "hifi"sv) return amenity_category::kHifi;
+    // Hifi-14
+    if (shop_ == "hifi"sv) return amenity_category::kHifi14;
     // Shop_music
     if (shop_ == "music"sv) return amenity_category::kShopMusic;
-    // Coffee
-    if (shop_ == "coffee"sv) return amenity_category::kCoffee;
+    // Coffee-14
+    if (shop_ == "coffee"sv) return amenity_category::kCoffee14;
     // Hearing-aids
     if (shop_ == "hearing_aids"sv) return amenity_category::kHearingAids;
-    // Musical_instrument
-    if (shop_ == "musical_instrument"sv) return amenity_category::kMusicalInstrument;
-    // Tea
-    if (shop_ == "tea"sv) return amenity_category::kTea;
-    // Video
-    if (shop_ == "video"sv) return amenity_category::kVideo;
-    // Bag
-    if (shop_ == "bag"sv) return amenity_category::kBag;
-    // Carpet
-    if (shop_ == "carpet"sv) return amenity_category::kCarpet;
-    // Video_games
-    if (shop_ == "video_games"sv) return amenity_category::kVideoGames;
-    // Vehicle_inspection
-    if (amenity_ == "vehicle_inspection"sv) return amenity_category::kVehicleInspection;
+    // Musical_instrument-14
+    if (shop_ == "musical_instrument"sv) return amenity_category::kMusicalInstrument14;
+    // Tea-14
+    if (shop_ == "tea"sv) return amenity_category::kTea14;
+    // Video-14
+    if (shop_ == "video"sv) return amenity_category::kVideo14;
+    // Bag-14
+    if (shop_ == "bag"sv) return amenity_category::kBag14;
+    // Carpet-14
+    if (shop_ == "carpet"sv) return amenity_category::kCarpet14;
+    // Video_games-14
+    if (shop_ == "video_games"sv) return amenity_category::kVideoGames14;
+    // Vehicle_inspection-14
+    if (amenity_ == "vehicle_inspection"sv) return amenity_category::kVehicleInspection14;
     // Dairy
     if (shop_ == "dairy"sv) return amenity_category::kDairy;
-    // Shop-other
-    if (!shop_.empty()) return amenity_category::kShopOther;
-    if (amenity_ == "driving_school"sv) return amenity_category::kShopOther;
-    // Office
-    if (!office_.empty()) return amenity_category::kOffice;
-    // Social_amenity_darken
-    if (amenity_ == "nursing_home"sv) return amenity_category::kSocialAmenityDarken;
-    if (amenity_ == "childcare"sv) return amenity_category::kSocialAmenityDarken;
-    // Storage_tank
-    if (man_made_ == "storage_tank"sv) return amenity_category::kStorageTank;
-    if (man_made_ == "silo"sv) return amenity_category::kStorageTank;
+    // Shop-other-16
+    if (!shop_.empty()) return amenity_category::kShopOther16;
+    if (amenity_ == "driving_school"sv) return amenity_category::kShopOther16;
+    // Office-16
+    if (!office_.empty()) return amenity_category::kOffice16;
+    // Social_amenity_darken-16
+    if (amenity_ == "nursing_home"sv) return amenity_category::kSocialAmenityDarken16;
+    if (amenity_ == "childcare"sv) return amenity_category::kSocialAmenityDarken16;
+    // Storage_tank-14
+    if (man_made_ == "storage_tank"sv) return amenity_category::kStorageTank14;
+    if (man_made_ == "silo"sv) return amenity_category::kStorageTank14;
     // Tower_freestanding
     if (man_made_ == "tower"sv) return amenity_category::kTowerFreestanding;
     // Tower_cantilever_communication
     if (man_made_ == "tower"sv && tower_type_ == "communication"sv) return amenity_category::kTowerCantileverCommunication;
-    // Generator_wind
-    if (power_ == "generator"sv && generator_source_ == "wind"sv && generator_method_ == "wind_turbine"sv) return amenity_category::kGeneratorWind;
-    // Hunting-stand
-    if (amenity_ == "hunting_stand"sv) return amenity_category::kHuntingStand;
-    // Christian
-    if (historic_ == "wayside_cross"sv) return amenity_category::kChristian;
-    if (man_made_ == "cross"sv) return amenity_category::kChristian;
-    // Water-tower
-    if (man_made_ == "water_tower"sv) return amenity_category::kWaterTower;
+    // Generator_wind-14
+    if (power_ == "generator"sv && generator_source_ == "wind"sv && generator_method_ == "wind_turbine"sv) return amenity_category::kGeneratorWind14;
+    // Hunting-stand-16
+    if (amenity_ == "hunting_stand"sv) return amenity_category::kHuntingStand16;
+    // Christian-9
+    if (historic_ == "wayside_cross"sv) return amenity_category::kChristian9;
+    if (man_made_ == "cross"sv) return amenity_category::kChristian9;
+    // Water-tower-16
+    if (man_made_ == "water_tower"sv) return amenity_category::kWaterTower16;
     // Mast_general
     if (man_made_ == "mast"sv) return amenity_category::kMastGeneral;
     // Bunker-osmcarto
     if (military_ == "bunker"sv) return amenity_category::kBunkerOsmcarto;
-    // Chimney
-    if (man_made_ == "chimney"sv) return amenity_category::kChimney;
+    // Chimney-14
+    if (man_made_ == "chimney"sv) return amenity_category::kChimney14;
     // Tower_observation
     if (man_made_ == "tower"sv && tower_type_ == "observation"sv) return amenity_category::kTowerObservation;
     if (man_made_ == "tower"sv && tower_type_ == "watchtower"sv) return amenity_category::kTowerObservation;
@@ -1169,22 +1173,22 @@ struct amenity_tags {
     if (man_made_ == "tower"sv && tower_type_ == "bell_tower"sv) return amenity_category::kTowerBellTower;
     // Tower_lighting
     if (man_made_ == "tower"sv && tower_type_ == "lighting"sv) return amenity_category::kTowerLighting;
-    // Lighthouse
-    if (man_made_ == "lighthouse"sv) return amenity_category::kLighthouse;
-    // Column
-    if (advertising_ == "column"sv) return amenity_category::kColumn;
-    // Crane
-    if (man_made_ == "crane"sv) return amenity_category::kCrane;
-    // Windmill
-    if (man_made_ == "windmill"sv) return amenity_category::kWindmill;
+    // Lighthouse-16
+    if (man_made_ == "lighthouse"sv) return amenity_category::kLighthouse16;
+    // Column-14
+    if (advertising_ == "column"sv) return amenity_category::kColumn14;
+    // Crane-14
+    if (man_made_ == "crane"sv) return amenity_category::kCrane14;
+    // Windmill-16
+    if (man_made_ == "windmill"sv) return amenity_category::kWindmill16;
     // Tower_lattice_communication
     if (man_made_ == "tower"sv && tower_type_ == "communication"sv && tower_construction_ == "lattice"sv) return amenity_category::kTowerLatticeCommunication;
     // Mast_lighting
     if (man_made_ == "mast"sv && tower_type_ == "lighting"sv) return amenity_category::kMastLighting;
     // Mast_communications
     if (man_made_ == "mast"sv && tower_type_ == "communication"sv) return amenity_category::kMastCommunications;
-    // Communication_tower
-    if (man_made_ == "communications_tower"sv) return amenity_category::kCommunicationTower;
+    // Communication_tower-14
+    if (man_made_ == "communications_tower"sv) return amenity_category::kCommunicationTower14;
     // Tower_defensive
     if (man_made_ == "tower"sv && tower_type_ == "defensive"sv) return amenity_category::kTowerDefensive;
     // Tower_cooling
@@ -1197,18 +1201,18 @@ struct amenity_tags {
     if (man_made_ == "tower"sv && tower_construction_ == "dish"sv) return amenity_category::kTowerDish;
     // Tower_dome
     if (man_made_ == "tower"sv && tower_construction_ == "dome"sv) return amenity_category::kTowerDome;
-    // Telescope_dish
-    if (man_made_ == "telescope"sv && telescope_type_ == "radio"sv) return amenity_category::kTelescopeDish;
-    // Telescope_dome
-    if (man_made_ == "telescope"sv && telescope_type_ == "optical"sv) return amenity_category::kTelescopeDome;
+    // Telescope_dish-14
+    if (man_made_ == "telescope"sv && telescope_type_ == "radio"sv) return amenity_category::kTelescopeDish14;
+    // Telescope_dome-14
+    if (man_made_ == "telescope"sv && telescope_type_ == "optical"sv) return amenity_category::kTelescopeDome14;
     // Power_tower
     if (power_ == "tower"sv) return amenity_category::kPowerTower;
     // Power_pole
     if (power_ == "pole"sv) return amenity_category::kPowerPole;
-    // Place
-    if (place_ == "city"sv) return amenity_category::kPlace;
-    // Place-capital
-    if (!capital_.empty()) return amenity_category::kPlaceCapital;
+    // Place-6
+    if (place_ == "city"sv) return amenity_category::kPlace6;
+    // Place-capital-8
+    if (!capital_.empty()) return amenity_category::kPlaceCapital8;
     // Rect
     if (entrance_ == "yes"sv) return amenity_category::kRect;
     // Entrance_main
