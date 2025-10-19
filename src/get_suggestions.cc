@@ -34,7 +34,6 @@ struct area {
 
 void activate_areas(typeahead const& t,
                     guess_context& ctx,
-                    std::uint8_t const numeric_tokens_mask,
                     area_set_idx_t const area_set_idx,
                     language_list_t const languages) {
   for (auto const area : t.area_sets_[area_set_idx]) {
@@ -45,18 +44,7 @@ void activate_areas(typeahead const& t,
 
     ctx.area_active_[to_idx(area)] = true;
     for (auto const [j, area_p] : utl::enumerate(ctx.phrases_)) {
-      auto const match_allowed = (  // Zip-code areas only match numeric tokens.
-          (((area_p.token_bits_ & numeric_tokens_mask) == area_p.token_bits_) &&
-           t.area_admin_level_[area] == kPostalCodeAdminLevel) ||
-          // No-zip-code areas only match non-numeric tokens.
-          (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
-           t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
-      );
-
       ctx.area_phrase_match_scores_[area][j] = kNoMatch;
-      if (!match_allowed) {
-        continue;
-      }
 
       // Determine best match for all languages.
       auto& score = ctx.area_phrase_match_scores_[area][j];
@@ -83,14 +71,11 @@ void activate_areas(typeahead const& t,
 
 template <bool Debug>
 void match_streets(std::uint8_t const all_tokens_mask,
-                   std::uint8_t const numeric_tokens_mask,
                    typeahead const& t,
                    guess_context& ctx,
                    std::vector<std::string> const& tokens,
                    language_list_t const languages) {
   UTL_START_TIMING(t);
-
-  trace("NUMERIC_TOKENS={}", bitmask{numeric_tokens_mask});
 
   for (auto const [street_edit_dist, street_p_idx, str_idx, street] :
        ctx.scored_street_matches_) {
@@ -110,13 +95,6 @@ void match_streets(std::uint8_t const all_tokens_mask,
     for (auto const [hn, areas_idx] :
          utl::zip(t.house_numbers_[street], t.house_areas_[street])) {
       for (auto const [hn_p_idx, p] : utl::enumerate(ctx.phrases_)) {
-        if ((p.token_bits_ & numeric_tokens_mask) != p.token_bits_) {
-          trace("[{}] {} HOUSENUMBER: {} is not numeric", street,
-                t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
-                p.s_);
-          continue;
-        }
-
         auto const hn_score =
             get_match_score(t.strings_[hn].view(), p.s_, ctx.sift4_offset_arr_,
                             ctx.normalize_buf_);
@@ -144,7 +122,7 @@ void match_streets(std::uint8_t const all_tokens_mask,
     }
 
     for (auto const& [area_set_idx, items] : ctx.area_match_items_) {
-      activate_areas(t, ctx, numeric_tokens_mask, area_set_idx, languages);
+      activate_areas(t, ctx, area_set_idx, languages);
 
       ctx.item_matched_masks_.clear();
       for (auto const& item : items) {
@@ -175,25 +153,6 @@ void match_streets(std::uint8_t const all_tokens_mask,
 
           for (auto const [area_idx, area] :
                utl::enumerate(t.area_sets_[area_set_idx])) {
-            auto const match_allowed =
-                (  // Zip-code areas only match numeric tokens.
-                    (((area_p.token_bits_ & numeric_tokens_mask) ==
-                      area_p.token_bits_) &&
-                     t.area_admin_level_[area] == kPostalCodeAdminLevel) ||
-                    // No-zip-code areas only match non-numeric tokens.
-                    (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
-                     t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
-                );
-
-            if (!match_allowed) {
-              trace("[{}] {} [p={}]\t\t\t{} vs {} -> NOT ALLOWED", street,
-                    t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
-                    ctx.phrases_[street_p_idx].s_,
-                    t.strings_[t.area_names_[area][kDefaultLangIdx]].view(),
-                    area_p.s_);
-              continue;
-            }
-
             auto const edit_dist =
                 ctx.area_phrase_match_scores_[area][area_p_idx];
 
@@ -308,7 +267,6 @@ void match_streets(std::uint8_t const all_tokens_mask,
 
 template <bool Debug>
 void match_places(std::uint8_t const all_tokens_mask,
-                  std::uint8_t const numeric_tokens_mask,
                   typeahead const& t,
                   guess_context& ctx,
                   std::vector<std::string> const& tokens,
@@ -325,7 +283,7 @@ void match_places(std::uint8_t const all_tokens_mask,
           place_edit_dist, ctx.phrases_[place_p_idx].s_,
           t.place_type_[place] == amenity_category::kExtra ? "EXT" : "REG");
 
-    activate_areas(t, ctx, numeric_tokens_mask, area_set_idx, languages);
+    activate_areas(t, ctx, area_set_idx, languages);
 
     auto matched_tokens_mask = ctx.phrases_[place_p_idx].token_bits_;
     auto matched_areas_mask = std::uint32_t{0U};
@@ -341,20 +299,6 @@ void match_places(std::uint8_t const all_tokens_mask,
 
       for (auto const [area_idx, area] :
            utl::enumerate(t.area_sets_[area_set_idx])) {
-        auto const match_allowed =
-            (  // Zip-code areas only match numeric tokens.
-                (((area_p.token_bits_ & numeric_tokens_mask) ==
-                  area_p.token_bits_) &&
-                 t.area_admin_level_[area] == kPostalCodeAdminLevel) ||
-                // No-zip-code areas only match non-numeric tokens.
-                (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
-                 t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
-            );
-
-        if (!match_allowed) {
-          continue;
-        }
-
         auto const edit_dist = ctx.area_phrase_match_scores_[area][area_p_idx];
 
         trace(
@@ -473,7 +417,6 @@ void compute_string_phrase_match_scores(guess_context& ctx,
 template <bool Debug>
 void get_scored_matches(typeahead const& t,
                         guess_context& ctx,
-                        std::uint8_t const numeric_tokens_mask,
                         language_list_t const&,
                         filter_type const filter) {
   UTL_START_TIMING(t);
@@ -483,12 +426,6 @@ void get_scored_matches(typeahead const& t,
 
   for (auto const [i, m] : utl::enumerate(ctx.string_matches_)) {
     for (auto p_idx = phrase_idx_t{0U}; p_idx != ctx.phrases_.size(); ++p_idx) {
-      if ((ctx.phrases_[p_idx].token_bits_ & numeric_tokens_mask) != 0U) {
-        trace("{}: name={}, cos_sim={}, phrase={}, NUMERIC", i,
-              t.strings_[m.idx_].view(), m.cos_sim_, ctx.phrases_[p_idx].s_);
-        continue;
-      }
-
       auto const p_match_score = ctx.string_phrase_match_scores_[i][p_idx];
       trace("{}: name={}, cos_sim={}, score={}, phrase={}", i,
             t.strings_[m.idx_].view(), m.cos_sim_, p_match_score,
@@ -591,14 +528,10 @@ std::vector<token> get_suggestions(typeahead const& t,
 
   utl::fill(ctx.area_active_, false);
 
-  auto const numeric_tokens_mask = get_numeric_tokens_mask(tokens);
+  get_scored_matches<Debug>(t, ctx, languages, filter);
 
-  get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, languages, filter);
-
-  match_streets<Debug>(all_tokens_mask, numeric_tokens_mask, t, ctx, tokens,
-                       languages);
-  match_places<Debug>(all_tokens_mask, numeric_tokens_mask, t, ctx, tokens,
-                      languages);
+  match_streets<Debug>(all_tokens_mask, t, ctx, tokens, languages);
+  match_places<Debug>(all_tokens_mask, t, ctx, tokens, languages);
 
   UTL_STOP_TIMING(t);
   trace("{} suggestions [{} ms]", ctx.suggestions_.size(), UTL_TIMING_MS(t));
