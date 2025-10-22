@@ -8,6 +8,7 @@
 
 #include "utl/concat.h"
 #include "utl/enumerate.h"
+#include "utl/helpers/algorithm.h"
 
 #include "adr/types.h"
 
@@ -27,10 +28,21 @@ using utf8_normalize_buf_t = basic_string<utf8proc_int32_t>;
 inline void erase_fillers(std::string& in) {
   std::replace_if(
       begin(in), end(in),
-      [](auto c) { return c == ',' || c == ';' || c == '-'; }, ' ');
+      [](auto c) {
+        return c == ',' || c == ';' || c == '-' || c == '/' || c == '(' ||
+               c == ')' || c == '.';
+      },
+      ' ');
   in.erase(std::unique(begin(in), end(in),
                        [](char a, char b) { return a == b && a == ' '; }),
            end(in));
+
+  while (!in.empty() && in.back() == ' ') {
+    in.resize(in.size() - 1);
+  }
+  while (!in.empty() && in.front() == ' ') {
+    in.erase(begin(in));
+  }
 }
 
 inline std::string_view normalize(std::string_view v,
@@ -75,6 +87,9 @@ inline std::optional<std::string_view> get_alt_string(std::string_view s) {
   switch (cista::hash(s)) {
     case cista::hash("hbf"): return "hauptbahnhof";
     case cista::hash("hauptbahnhof"): return "hbf";
+    case cista::hash("hauptbf"): return "hbf";
+    case cista::hash("bahnhof"): return "bhf";
+    case cista::hash("bhf"): return "bahnhof";
   }
   return std::nullopt;
 }
@@ -115,22 +130,6 @@ inline std::vector<phrase> get_phrases(std::vector<String> const& in_tokens) {
   }
   utl::sort(r, [](auto&& a, auto&& b) { return a.s_.size() > b.s_.size(); });
   return r;
-}
-
-inline std::uint8_t get_numeric_tokens_mask(
-    std::vector<std::string> const& tokens) {
-  auto const number_count = [](std::string_view s) {
-    return std::count_if(begin(s), end(s),
-                         [](auto&& c) { return c >= '0' && c <= '9'; });
-  };
-  auto mask = std::uint8_t{0U};
-  for (auto const [i, token] : utl::enumerate(tokens)) {
-    auto const c = number_count(token);
-    if (c != 0U && c >= static_cast<unsigned>((token.size() + 1U) / 2U)) {
-      mask |= 1U << i;
-    }
-  }
-  return mask;
 }
 
 }  // namespace adr

@@ -69,8 +69,8 @@ inline score_t get_token_match_score(
             sift4_offset_arr);
 
   if (dist >= cut_normalized_str.size()) {
-    //    std::cout << "dist=" << static_cast<int>(dist) << " > "
-    //              << cut_normalized_str.size() << "\n";
+    // std::cout << "dist=" << static_cast<int>(dist) << " > "
+    //           << cut_normalized_str.size() << "\n";
     return kNoMatch;
   }
   auto const overhang_penality =
@@ -100,19 +100,19 @@ inline score_t get_token_match_score(
   auto score = dist + first_letter_mismatch_penality +
                second_letter_mismatch_penality + overhang_penality +
                relative_coverage + common_prefix_bonus;
-  //  std::cout << "  " << dataset_token << " vs " << p
-  //            << ": dist=" << static_cast<int>(dist)
-  //            << ", size=" << cut_normalized_str.size()
-  //            << ", overhang_penality=" << overhang_penality
-  //            << ", relative_coverage=" << relative_coverage
-  //            << ", first_letter_mismatch_penality="
-  //            << first_letter_mismatch_penality
-  //            << ", second_letter_mismatch_penality="
-  //            << second_letter_mismatch_penality
-  //            << ", common_prefix_bonus=" << common_prefix_bonus
-  //            << ", score=" << score
-  //            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F))
-  //            << "\n";
+  // std::cout << "  " << dataset_token << " vs " << p
+  //           << ": dist=" << static_cast<int>(dist)
+  //           << ", size=" << cut_normalized_str.size()
+  //           << ", overhang_penality=" << overhang_penality
+  //           << ", relative_coverage=" << relative_coverage
+  //           << ", first_letter_mismatch_penality="
+  //           << first_letter_mismatch_penality
+  //           << ", second_letter_mismatch_penality="
+  //           << second_letter_mismatch_penality
+  //           << ", common_prefix_bonus=" << common_prefix_bonus
+  //           << ", score=" << score
+  //           << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F))
+  //           << "\n";
 
   return score > std::ceil(static_cast<float>(cut_normalized_str.size()) / 2.0F)
              ? kNoMatch
@@ -153,7 +153,8 @@ inline score_t get_match_score(
     return kNoMatch;
   }
 
-  auto const normalized_str = std::string_view{normalize(s, tmp)};
+  auto normalized_str = std::string{normalize(s, tmp)};
+  erase_fillers(normalized_str);
 
   auto s_tokens = std::vector<std::string_view>{};
   auto p_tokens = std::vector<std::string_view>{};
@@ -216,7 +217,7 @@ inline score_t get_match_score(
 
       auto const s_p_match_score =
           s_phrase.s_ == p_token
-              ? -1.8F
+              ? -1.5F
               : get_token_match_score(s_phrase.s_, p_token, sift4_offset_arr);
       if (best_s_score > s_p_match_score) {
         best_s_idx = s_idx;
@@ -244,7 +245,7 @@ inline score_t get_match_score(
     if ((covered & (1U << s_idx)) == 0U) {
       ++n_not_matched;
       auto const not_matched_penalty =
-          std::max(1.F, static_cast<float>(s_tokens[s_idx].size()) / 3.2F);
+          std::max(1.F, static_cast<float>(s_tokens[s_idx].size()) / 3.0F);
       //      std::cout << "PENALITY NOT MATCHED: " << s_tokens[s_idx] << ": "
       //                << not_matched_penalty << "\n";
       sum += not_matched_penalty;

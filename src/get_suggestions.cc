@@ -352,7 +352,7 @@ void match_places(std::uint8_t const all_tokens_mask,
     auto const no_area_score =
         !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 3 : 0;
     auto const population_score =
-        std::min(1.5F, (t.place_population_[place].get() / 200'000.F) * 1.5F);
+        std::min(2.5F, (t.place_population_[place].get() / 200'000.F) * 1.5F);
     auto const place_score = 1.0F;
 
     total_score -= extra_score;
@@ -496,8 +496,6 @@ std::vector<token> get_suggestions(typeahead const& t,
                                    filter_type const filter) {
   UTL_START_TIMING(t);
 
-  erase_fillers(in);
-
   ctx.suggestions_.clear();
   if (in.size() < 3) {
     return {};
@@ -511,6 +509,7 @@ std::vector<token> get_suggestions(typeahead const& t,
       return;
     }
     tokens.emplace_back(normalize(tok.view(), ctx.normalize_buf_));
+    erase_fillers(tokens.back());
     all_tokens_mask |= 1U << (i++);
 
     token_pos.push_back(
@@ -556,9 +555,9 @@ std::vector<token> get_suggestions(typeahead const& t,
       }
 
       if constexpr (Debug) {
-        s.print(std::cout, t, languages);
-        std::cout << "dist=" << dist << "  -> bonus = " << dist_bonus
-                  << " (score=" << s.score_ - dist_bonus << ")" << "\n";
+        // s.print(std::cout, t, languages);
+        // std::cout << "dist=" << dist << "  -> bonus = " << dist_bonus
+        //           << " (score=" << s.score_ - dist_bonus << ")" << "\n";
       }
       s.score_ -= dist_bonus;
     }
