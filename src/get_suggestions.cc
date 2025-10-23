@@ -32,6 +32,15 @@ struct area {
   float cos_sim_{0.0};
 };
 
+float get_category_score(amenity_category const x) {
+  switch (x) {
+    case amenity_category::kExtra: return 2.0;
+    case amenity_category::kPlace6: return 2.0;
+    case amenity_category::kPlaceCapital8: return 3.0;
+    default: return -1.F;
+  }
+}
+
 void activate_areas(typeahead const& t,
                     guess_context& ctx,
                     area_set_idx_t const area_set_idx,
@@ -346,34 +355,48 @@ void match_places(std::uint8_t const all_tokens_mask,
       }
     }
 
-    auto const extra_score =
-        t.place_type_[place] == amenity_category::kExtra ? 0.75F : 0.F;
+    auto const category_score = get_category_score(t.place_type_[place]);
     auto const areas_score = std::popcount(matched_areas_mask);
     auto const no_area_score =
         !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 3 : 0;
     auto const population_score =
-        std::min(2.5F, (t.place_population_[place].get() / 200'000.F) * 1.5F);
+        std::min(5.0F, (t.place_population_[place].get() / 100'000.F));
     auto const place_score = 1.0F;
 
-    total_score -= extra_score;
+    auto lang_score = -3.0F;
+    for (auto const [str, lang] :
+         utl::zip(t.place_names_[place], t.place_name_lang_[place])) {
+      if (str != str_idx) {
+        continue;
+      }
+      auto const it = utl::find(languages, lang);
+      if (it != end(languages)) {
+        auto const idx = std::distance(begin(languages), it);
+
+        lang_score = std::max(lang_score, 0.5F - (idx / 10.F));
+      }
+    }
+
+    total_score -= category_score;
     total_score -= areas_score;
     total_score -= no_area_score;
     total_score -= population_score;
     total_score -= place_score;
+    total_score -= lang_score;
 
     trace(
         "[{}] {} FINAL: place_edit_dist={}, areas_edit_dist={}, "
         "areas_bonus={}, no_area_score={}, population_score={} [{}], "
-        "place_score={}, extra_score={} => {}",
+        "place_score={}, extra_score={}, lang_score={} => {}",
         ii, t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
         place_edit_dist, areas_edit_dist, areas_score, no_area_score,
         population_score, t.place_population_[place].get(), place_score,
-        extra_score, total_score);
+        category_score, lang_score, total_score);
 
     // Add if it's not a duplicate of the previous one
     // or improves upon the previous one.
     if (ctx.suggestions_.empty() ||
-        ctx.suggestions_.back().score_ <= total_score ||
+        ctx.suggestions_.back().score_ >= total_score ||
         !holds_alternative<place_idx_t>(ctx.suggestions_.back().location_) ||
         get<place_idx_t>(ctx.suggestions_.back().location_) != place) {
       auto& back [[maybe_unused]] = ctx.suggestions_.emplace_back(
@@ -518,10 +541,19 @@ std::vector<token> get_suggestions(typeahead const& t,
   });
   ctx.phrases_ = get_phrases(tokens);
 
-  trace("tokens: {}, phrases: {}", tokens,
-        ctx.phrases_ | std::views::transform([](auto&& x) { return x.s_; }));
+  trace("tokens: {}, phrases: {}, languages={}", tokens,
+        ctx.phrases_ | std::views::transform([](auto&& x) { return x.s_; }),
+        languages | std::views::transform([&](language_idx_t const lang) {
+          return t.lang_names_[lang].view();
+        }));
 
-  t.guess<Debug>(normalize(in, ctx.normalize_buf_), ctx);
+  auto guess_str = std::string{normalize(in, ctx.normalize_buf_)};
+  for (auto const& token : tokens) {
+    if (auto const alt = get_alt_string(token); alt.has_value()) {
+      guess_str += *alt;
+    }
+  }
+  t.guess<Debug>(guess_str, ctx);
 
   compute_string_phrase_match_scores<Debug>(ctx, t);
 
@@ -571,6 +603,7 @@ std::vector<token> get_suggestions(typeahead const& t,
   //                   end(ctx.suggestions_));
   //  ctx.suggestions_.resize(result_count);
   std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
+
   ctx.suggestions_.erase(
       std::unique(begin(ctx.suggestions_), end(ctx.suggestions_),
                   [&](suggestion const& a, suggestion const& b) {
@@ -578,6 +611,17 @@ std::vector<token> get_suggestions(typeahead const& t,
                            a.area_set_ == b.area_set_;
                   }),
       end(ctx.suggestions_));
+
+  for (auto a = 0U; a < ctx.suggestions_.size(); ++a) {
+    for (auto b = a + 1; b < ctx.suggestions_.size(); ++b) {
+      if (ctx.suggestions_[a].location_ == ctx.suggestions_[b].location_ &&
+          ctx.suggestions_[a].area_set_ == ctx.suggestions_[b].area_set_) {
+        ctx.suggestions_.erase(begin(ctx.suggestions_) + b);
+        --b;
+      }
+    }
+  }
+
   UTL_STOP_TIMING(sort);
   trace("sort [{} us]", UTL_TIMING_US(sort));
 

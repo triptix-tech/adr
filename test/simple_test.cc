@@ -213,16 +213,22 @@ TEST(adr, score_test) {
   //  EXPECT_EQ(1, adr::get_match_score("Berliner Allee 8 bis 8f", "berliner
   //  allee",
   //                                    sift4_dist, buf));
-
   // EXPECT_EQ(1, adr::get_match_score("Berliner Allee", "berliner allee",
   //                                   sift4_dist, buf));
   // EXPECT_EQ(1, adr::get_match_score("D-Berliner Allee", "berliner allee",
   //                                   sift4_dist, buf));
 
-  EXPECT_EQ(1, adr::get_match_score("bikebox arnulf-klett-platz anlage a",
-                                    "arnulf klett platz", sift4_dist, buf));
-  EXPECT_EQ(1, adr::get_match_score("hauptbf arnulf klett platz",
-                                    "arnulf klett platz", sift4_dist, buf));
+  // EXPECT_EQ(1, adr::get_match_score("s+u berlin hauptbahnhof", "berlin",
+  //                                   sift4_dist, buf));
+  EXPECT_EQ(
+      1, adr::get_match_score("darmstadt merck", "darmstadt", sift4_dist, buf));
+  EXPECT_EQ(1, adr::get_match_score("darmstadt hauptbahnhof", "darmstadt",
+                                    sift4_dist, buf));
+
+  // EXPECT_EQ(1, adr::get_match_score("bikebox arnulf-klett-platz anlage a",
+  //                                   "arnulf klett platz", sift4_dist, buf));
+  // EXPECT_EQ(1, adr::get_match_score("hauptbf arnulf klett platz",
+  //                                   "arnulf klett platz", sift4_dist, buf));
 }
 
 TEST(adr, for_each_token) {
