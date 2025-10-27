@@ -94,9 +94,9 @@ struct typeahead {
 
   data::vecvec<place_idx_t, string_idx_t> place_names_;
   data::vecvec<place_idx_t, language_idx_t> place_name_lang_;
+  data::vecvec<place_idx_t, std::int64_t> place_osm_ids_;
   data::vector_map<place_idx_t, coordinates> place_coordinates_;
   data::vector_map<place_idx_t, area_set_idx_t> place_areas_;
-  data::vector_map<place_idx_t, std::int64_t> place_osm_ids_;
   data::vector_map<place_idx_t, population> place_population_;
   data::vector_map<place_idx_t, amenity_category> place_type_;
   data::bitvec place_is_way_;
