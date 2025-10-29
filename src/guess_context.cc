@@ -133,7 +133,7 @@ std::uint64_t suggestion::get_osm_id(typeahead const& t) const {
   assert(std::holds_alternative<place_idx_t>(location_));
   auto const place = std::get<place_idx_t>(location_);
   if (t.place_osm_ids_[place].size() == 1U) {
-    return 0U;
+    return t.place_osm_ids_[place][0U];
   }
 
   auto const place_names = t.place_names_[place];
