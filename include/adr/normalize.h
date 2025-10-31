@@ -132,4 +132,20 @@ inline std::vector<phrase> get_phrases(std::vector<String> const& in_tokens) {
   return r;
 }
 
+inline std::uint8_t get_numeric_tokens_mask(
+    std::vector<std::string> const& tokens) {
+  auto const number_count = [](std::string_view s) {
+    return std::count_if(begin(s), end(s),
+                         [](auto&& c) { return c >= '0' && c <= '9'; });
+  };
+  auto mask = std::uint8_t{0U};
+  for (auto const [i, token] : utl::enumerate(tokens)) {
+    auto const c = number_count(token);
+    if (c != 0U && c >= static_cast<unsigned>((token.size() + 1U) / 2U)) {
+      mask |= 1U << i;
+    }
+  }
+  return mask;
+}
+
 }  // namespace adr
