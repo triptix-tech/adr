@@ -35,7 +35,7 @@ struct area {
 float get_category_score(amenity_category const x) {
   switch (x) {
     case amenity_category::kExtra: return 2.0;
-    case amenity_category::kPlace6: return 2.0;
+    case amenity_category::kPlace6: return 1.0;
     case amenity_category::kPlaceCapital8: return 3.0;
     default: return -1.F;
   }
@@ -180,6 +180,22 @@ void match_streets(std::uint8_t const all_tokens_mask,
 
           for (auto const [area_idx, area] :
                utl::enumerate(t.area_sets_[area_set_idx])) {
+            // Zip-code areas only match numeric tokens.
+            auto const match_allowed =
+                t.area_admin_level_[area] != kPostalCodeAdminLevel ||
+                (area_p.token_bits_ & numeric_tokens_mask) ==
+                    area_p.token_bits_;
+
+            if (!match_allowed) {
+              trace("[{}] {} [p={}]\t\t\t{} vs {} -> NOT ALLOWED [NUMERIC]",
+                    street,
+                    t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
+                    ctx.phrases_[street_p_idx].s_,
+                    t.strings_[t.area_names_[area][kDefaultLangIdx]].view(),
+                    area_p.s_);
+              continue;
+            }
+
             auto const edit_dist =
                 ctx.area_phrase_match_scores_[area][area_p_idx];
 
@@ -327,6 +343,15 @@ void match_places(std::uint8_t const all_tokens_mask,
 
       for (auto const [area_idx, area] :
            utl::enumerate(t.area_sets_[area_set_idx])) {
+        // Zip-code areas only match numeric tokens.
+        auto const match_allowed =
+            t.area_admin_level_[area] != kPostalCodeAdminLevel ||
+            (area_p.token_bits_ & numeric_tokens_mask) == area_p.token_bits_;
+
+        if (!match_allowed) {
+          continue;
+        }
+
         auto const edit_dist = ctx.area_phrase_match_scores_[area][area_p_idx];
 
         trace(
