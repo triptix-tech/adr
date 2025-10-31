@@ -8,6 +8,8 @@
 #include "adr/sift4.h"
 #include "adr/types.h"
 
+// #define ADR_DEBUG_SCORE 1
+
 namespace adr {
 
 inline edit_dist_t levenshtein_distance(std::string_view source,
@@ -69,14 +71,16 @@ inline score_t get_token_match_score(
             sift4_offset_arr);
 
   if (dist >= cut_normalized_str.size()) {
-    //    std::cout << "dist=" << static_cast<int>(dist) << " > "
-    //              << cut_normalized_str.size() << "\n";
+#ifdef ADR_DEBUG_SCORE
+    std::cout << "dist=" << static_cast<int>(dist) << " > "
+              << cut_normalized_str.size() << "\n";
+#endif
     return kNoMatch;
   }
-  auto const overhang_penality =
-      (static_cast<float>(dataset_token.size() -
-                          std::min(dataset_token.size(), p.size())) /
-       3.0F);
+  auto const overhang_penality = std::min(
+      4.0F, static_cast<float>(dataset_token.size() -
+                               std::min(dataset_token.size(), p.size())) /
+                4.0F);
   auto const relative_coverage =
       6.0F * (static_cast<float>(dist) /
               static_cast<float>(cut_normalized_str.size()));
@@ -100,19 +104,22 @@ inline score_t get_token_match_score(
   auto score = dist + first_letter_mismatch_penality +
                second_letter_mismatch_penality + overhang_penality +
                relative_coverage + common_prefix_bonus;
-  //  std::cout << "  " << dataset_token << " vs " << p
-  //            << ": dist=" << static_cast<int>(dist)
-  //            << ", size=" << cut_normalized_str.size()
-  //            << ", overhang_penality=" << overhang_penality
-  //            << ", relative_coverage=" << relative_coverage
-  //            << ", first_letter_mismatch_penality="
-  //            << first_letter_mismatch_penality
-  //            << ", second_letter_mismatch_penality="
-  //            << second_letter_mismatch_penality
-  //            << ", common_prefix_bonus=" << common_prefix_bonus
-  //            << ", score=" << score
-  //            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F))
-  //            << "\n";
+
+#ifdef ADR_DEBUG_SCORE
+  std::cout << "  " << dataset_token << " vs " << p
+            << ": dist=" << static_cast<int>(dist)
+            << ", size=" << cut_normalized_str.size()
+            << ", overhang_penality=" << overhang_penality
+            << ", relative_coverage=" << relative_coverage
+            << ", first_letter_mismatch_penality="
+            << first_letter_mismatch_penality
+            << ", second_letter_mismatch_penality="
+            << second_letter_mismatch_penality
+            << ", common_prefix_bonus=" << common_prefix_bonus
+            << ", score=" << score
+            << ", max=" << (std::ceil(cut_normalized_str.size() / 2.0F))
+            << "\n";
+#endif
 
   return score > std::ceil(static_cast<float>(cut_normalized_str.size()) / 2.0F)
              ? kNoMatch
@@ -153,7 +160,8 @@ inline score_t get_match_score(
     return kNoMatch;
   }
 
-  auto const normalized_str = std::string_view{normalize(s, tmp)};
+  auto normalized_str = std::string{normalize(s, tmp)};
+  erase_fillers(normalized_str);
 
   auto s_tokens = std::vector<std::string_view>{};
   auto p_tokens = std::vector<std::string_view>{};
@@ -192,13 +200,17 @@ inline score_t get_match_score(
   auto const fallback =
       get_token_match_score(normalized_str, p, sift4_offset_arr);
   if (p_tokens.size() == 1U && s_tokens.size() == 1U) {
-    //    std::cout << "p_tokens=1, s_tokens=1 => " << fallback << "\n";
+#ifdef ADR_DEBUG_SCORE
+    std::cout << "p_tokens=1, s_tokens=1 => " << fallback << "\n";
+#endif
     return fallback;
   }
 
   auto const s_phrases = get_phrases(s_tokens);
 
-  //  std::cout << s << " vs " << p << "\n";
+#ifdef ADR_DEBUG_SCORE
+  std::cout << s << " vs " << p << "\n";
+#endif
 
   auto covered = std::uint8_t{0U};
   auto sum = 0.0F;
@@ -225,28 +237,37 @@ inline score_t get_match_score(
     }
 
     if (best_s_score == kNoMatch) {
-      //      std::cout << "  NO MATCH FOUND: " << p_token << "\n";
+#ifdef ADR_DEBUG_SCORE
+      std::cout << "  NO MATCH FOUND: " << p_token << "\n";
+#endif
       sum += static_cast<float>(p_tokens.size()) * 2.F;
       continue;
     }
 
-    //    std::cout << "  MATCHED: " << p_token << " vs " <<
-    //    s_phrases[best_s_idx].s_
-    //              << ": " << best_s_score << "\n";
+#ifdef ADR_DEBUG_SCORE
+    std::cout << "  MATCHED: " << p_token << " vs " << s_phrases[best_s_idx].s_
+              << ": " << best_s_score << "\n";
+#endif
     sum += best_s_score;
     covered |= s_phrases[best_s_idx].token_bits_;
   }
 
-  //  std::cout << "BEFORE NOT MATCHED SCORING: " << sum << "\n";
+#ifdef ADR_DEBUG_SCORE
+  std::cout << "BEFORE NOT MATCHED SCORING: " << sum << "\n";
+#endif
 
   auto n_not_matched = 0U;
   for (auto s_idx = 0U; s_idx != s_tokens.size(); ++s_idx) {
     if ((covered & (1U << s_idx)) == 0U) {
       ++n_not_matched;
-      auto const not_matched_penalty =
-          std::max(1.F, static_cast<float>(s_tokens[s_idx].size()) / 3.2F);
-      //      std::cout << "PENALITY NOT MATCHED: " << s_tokens[s_idx] << ": "
-      //                << not_matched_penalty << "\n";
+      auto const not_matched_penalty = std::clamp(
+          static_cast<float>(s_tokens[s_idx].size()) / 3.0F, 1.5F, 3.0F);
+
+#ifdef ADR_DEBUG_SCORE
+      std::cout << "PENALITY NOT MATCHED: " << s_tokens[s_idx] << ": "
+                << not_matched_penalty << "\n";
+#endif
+
       sum += not_matched_penalty;
     }
   }
@@ -258,8 +279,11 @@ inline score_t get_match_score(
   auto const max =
       std::ceil(static_cast<float>(std::min(s.size(), p.size())) / 2.0F);
   auto const score = std::min(fallback, sum);
-  //  std::cout << "  SUM: " << sum << ", MAX=" << max << ", SCORE=" << score
-  //            << "\n";
+#ifdef ADR_DEBUG_SCORE
+  std::cout << "  SUM: " << sum << ", FALLBACK=" << fallback << ", MAX=" << max
+            << ", SCORE=" << score << "\n";
+#endif
+
   return score >= max ? kNoMatch : score;
 }
 

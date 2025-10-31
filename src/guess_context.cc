@@ -3,6 +3,7 @@
 #include "fmt/format.h"
 
 #include "utl/overloaded.h"
+#include "utl/verify.h"
 
 #include "adr/area_set.h"
 #include "adr/formatter.h"
@@ -126,6 +127,19 @@ void suggestion::populate_areas(typeahead const& t) {
                        ? std::nullopt
                        : std::optional{std::distance(begin(areas), city_it)};
   unique_area_idx_ = city_area_idx_;
+}
+
+std::uint64_t suggestion::get_osm_id(typeahead const& t) const {
+  assert(std::holds_alternative<place_idx_t>(location_));
+  auto const place = std::get<place_idx_t>(location_);
+  if (t.place_osm_ids_[place].size() == 1U) {
+    return t.place_osm_ids_[place][0U];
+  }
+
+  auto const place_names = t.place_names_[place];
+  auto const it = utl::find(place_names, str_);
+  utl::verify(it != end(place_names), "place not found");
+  return t.place_osm_ids_[place][std::distance(begin(place_names), it)];
 }
 
 void guess_context::resize(typeahead const& t) {

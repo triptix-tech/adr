@@ -58,6 +58,7 @@ void for_each_name(typeahead& t, osmium::TagList const& tags, Fn&& fn) {
   call_fn(tags["name"], kDefaultLang);
   call_fn(tags["old_name"], kDefaultLang);
   call_fn(tags["alt_name"], kDefaultLang);
+  call_fn(tags["short_name"], kDefaultLang);
   call_fn(tags["official_name"], kDefaultLang);
 
   auto const add_lang_by_prefix = [&](std::string_view prefix) {
@@ -70,6 +71,7 @@ void for_each_name(typeahead& t, osmium::TagList const& tags, Fn&& fn) {
     }
   };
   add_lang_by_prefix("name:");
+  add_lang_by_prefix("short_name:");
   add_lang_by_prefix("alt_name:");
   add_lang_by_prefix("official_name:");
 }
@@ -268,7 +270,7 @@ void typeahead::add_place(import_context& ctx,
                                        population::kCompressionFactor));
 
   place_coordinates_.emplace_back(coordinates::from_location(l));
-  place_osm_ids_.emplace_back(id);
+  place_osm_ids_.emplace_back({id});
   place_is_way_.resize(place_is_way_.size() + 1U);
   place_is_way_.set(idx, is_way);
   place_type_.emplace_back(amenity_tags{tags}.get_category());

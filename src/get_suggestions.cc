@@ -32,6 +32,15 @@ struct area {
   float cos_sim_{0.0};
 };
 
+float get_category_score(amenity_category const x) {
+  switch (x) {
+    case amenity_category::kExtra: return 2.0;
+    case amenity_category::kPlace6: return 1.0;
+    case amenity_category::kPlaceCapital8: return 3.0;
+    default: return -1.F;
+  }
+}
+
 void activate_areas(typeahead const& t,
                     guess_context& ctx,
                     std::uint8_t const numeric_tokens_mask,
@@ -45,13 +54,9 @@ void activate_areas(typeahead const& t,
 
     ctx.area_active_[to_idx(area)] = true;
     for (auto const [j, area_p] : utl::enumerate(ctx.phrases_)) {
-      auto const match_allowed = (  // Zip-code areas only match numeric tokens.
-          (((area_p.token_bits_ & numeric_tokens_mask) == area_p.token_bits_) &&
-           t.area_admin_level_[area] == kPostalCodeAdminLevel) ||
-          // No-zip-code areas only match non-numeric tokens.
-          (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
-           t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
-      );
+      auto const match_allowed =  // Zip-code areas only match numeric tokens.
+          t.area_admin_level_[area] != kPostalCodeAdminLevel ||
+          ((area_p.token_bits_ & numeric_tokens_mask) == area_p.token_bits_);
 
       ctx.area_phrase_match_scores_[area][j] = kNoMatch;
       if (!match_allowed) {
@@ -175,18 +180,15 @@ void match_streets(std::uint8_t const all_tokens_mask,
 
           for (auto const [area_idx, area] :
                utl::enumerate(t.area_sets_[area_set_idx])) {
+            // Zip-code areas only match numeric tokens.
             auto const match_allowed =
-                (  // Zip-code areas only match numeric tokens.
-                    (((area_p.token_bits_ & numeric_tokens_mask) ==
-                      area_p.token_bits_) &&
-                     t.area_admin_level_[area] == kPostalCodeAdminLevel) ||
-                    // No-zip-code areas only match non-numeric tokens.
-                    (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
-                     t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
-                );
+                t.area_admin_level_[area] != kPostalCodeAdminLevel ||
+                (area_p.token_bits_ & numeric_tokens_mask) ==
+                    area_p.token_bits_;
 
             if (!match_allowed) {
-              trace("[{}] {} [p={}]\t\t\t{} vs {} -> NOT ALLOWED", street,
+              trace("[{}] {} [p={}]\t\t\t{} vs {} -> NOT ALLOWED [NUMERIC]",
+                    street,
                     t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
                     ctx.phrases_[street_p_idx].s_,
                     t.strings_[t.area_names_[area][kDefaultLangIdx]].view(),
@@ -341,15 +343,10 @@ void match_places(std::uint8_t const all_tokens_mask,
 
       for (auto const [area_idx, area] :
            utl::enumerate(t.area_sets_[area_set_idx])) {
+        // Zip-code areas only match numeric tokens.
         auto const match_allowed =
-            (  // Zip-code areas only match numeric tokens.
-                (((area_p.token_bits_ & numeric_tokens_mask) ==
-                  area_p.token_bits_) &&
-                 t.area_admin_level_[area] == kPostalCodeAdminLevel) ||
-                // No-zip-code areas only match non-numeric tokens.
-                (((area_p.token_bits_ & numeric_tokens_mask) == 0U) &&
-                 t.area_admin_level_[area] != kPostalCodeAdminLevel)  //
-            );
+            t.area_admin_level_[area] != kPostalCodeAdminLevel ||
+            (area_p.token_bits_ & numeric_tokens_mask) == area_p.token_bits_;
 
         if (!match_allowed) {
           continue;
@@ -402,34 +399,48 @@ void match_places(std::uint8_t const all_tokens_mask,
       }
     }
 
-    auto const extra_score =
-        t.place_type_[place] == amenity_category::kExtra ? 0.75F : 0.F;
+    auto const category_score = get_category_score(t.place_type_[place]);
     auto const areas_score = std::popcount(matched_areas_mask);
     auto const no_area_score =
         !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 3 : 0;
     auto const population_score =
-        std::min(1.5F, (t.place_population_[place].get() / 200'000.F) * 1.5F);
+        std::min(3.5F, (t.place_population_[place].get() / 100'000.F));
     auto const place_score = 1.0F;
 
-    total_score -= extra_score;
+    auto lang_score = -3.0F;
+    for (auto const [str, lang] :
+         utl::zip(t.place_names_[place], t.place_name_lang_[place])) {
+      if (str != str_idx) {
+        continue;
+      }
+      auto const it = utl::find(languages, lang);
+      if (it != end(languages)) {
+        auto const idx = std::distance(begin(languages), it);
+
+        lang_score = std::max(lang_score, 0.5F - (idx / 10.F));
+      }
+    }
+
+    total_score -= category_score;
     total_score -= areas_score;
     total_score -= no_area_score;
     total_score -= population_score;
     total_score -= place_score;
+    total_score -= lang_score;
 
     trace(
         "[{}] {} FINAL: place_edit_dist={}, areas_edit_dist={}, "
         "areas_bonus={}, no_area_score={}, population_score={} [{}], "
-        "place_score={}, extra_score={} => {}",
+        "place_score={}, extra_score={}, lang_score={} => {}",
         ii, t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
         place_edit_dist, areas_edit_dist, areas_score, no_area_score,
         population_score, t.place_population_[place].get(), place_score,
-        extra_score, total_score);
+        category_score, lang_score, total_score);
 
     // Add if it's not a duplicate of the previous one
     // or improves upon the previous one.
     if (ctx.suggestions_.empty() ||
-        ctx.suggestions_.back().score_ <= total_score ||
+        ctx.suggestions_.back().score_ >= total_score ||
         !holds_alternative<place_idx_t>(ctx.suggestions_.back().location_) ||
         get<place_idx_t>(ctx.suggestions_.back().location_) != place) {
       auto& back [[maybe_unused]] = ctx.suggestions_.emplace_back(
@@ -473,7 +484,6 @@ void compute_string_phrase_match_scores(guess_context& ctx,
 template <bool Debug>
 void get_scored_matches(typeahead const& t,
                         guess_context& ctx,
-                        std::uint8_t const numeric_tokens_mask,
                         language_list_t const&,
                         filter_type const filter) {
   UTL_START_TIMING(t);
@@ -483,12 +493,6 @@ void get_scored_matches(typeahead const& t,
 
   for (auto const [i, m] : utl::enumerate(ctx.string_matches_)) {
     for (auto p_idx = phrase_idx_t{0U}; p_idx != ctx.phrases_.size(); ++p_idx) {
-      if ((ctx.phrases_[p_idx].token_bits_ & numeric_tokens_mask) != 0U) {
-        trace("{}: name={}, cos_sim={}, phrase={}, NUMERIC", i,
-              t.strings_[m.idx_].view(), m.cos_sim_, ctx.phrases_[p_idx].s_);
-        continue;
-      }
-
       auto const p_match_score = ctx.string_phrase_match_scores_[i][p_idx];
       trace("{}: name={}, cos_sim={}, score={}, phrase={}", i,
             t.strings_[m.idx_].view(), m.cos_sim_, p_match_score,
@@ -559,8 +563,6 @@ std::vector<token> get_suggestions(typeahead const& t,
                                    filter_type const filter) {
   UTL_START_TIMING(t);
 
-  erase_fillers(in);
-
   ctx.suggestions_.clear();
   if (in.size() < 3) {
     return {};
@@ -574,6 +576,7 @@ std::vector<token> get_suggestions(typeahead const& t,
       return;
     }
     tokens.emplace_back(normalize(tok.view(), ctx.normalize_buf_));
+    erase_fillers(tokens.back());
     all_tokens_mask |= 1U << (i++);
 
     token_pos.push_back(
@@ -582,10 +585,19 @@ std::vector<token> get_suggestions(typeahead const& t,
   });
   ctx.phrases_ = get_phrases(tokens);
 
-  trace("tokens: {}, phrases: {}", tokens,
-        ctx.phrases_ | std::views::transform([](auto&& x) { return x.s_; }));
+  trace("tokens: {}, phrases: {}, languages={}", tokens,
+        ctx.phrases_ | std::views::transform([](auto&& x) { return x.s_; }),
+        languages | std::views::transform([&](language_idx_t const lang) {
+          return t.lang_names_[lang].view();
+        }));
 
-  t.guess<Debug>(normalize(in, ctx.normalize_buf_), ctx);
+  auto guess_str = std::string{normalize(in, ctx.normalize_buf_)};
+  for (auto const& token : tokens) {
+    if (auto const alt = get_alt_string(token); alt.has_value()) {
+      guess_str += *alt;
+    }
+  }
+  t.guess<Debug>(guess_str, ctx);
 
   compute_string_phrase_match_scores<Debug>(ctx, t);
 
@@ -593,7 +605,7 @@ std::vector<token> get_suggestions(typeahead const& t,
 
   auto const numeric_tokens_mask = get_numeric_tokens_mask(tokens);
 
-  get_scored_matches<Debug>(t, ctx, numeric_tokens_mask, languages, filter);
+  get_scored_matches<Debug>(t, ctx, languages, filter);
 
   match_streets<Debug>(all_tokens_mask, numeric_tokens_mask, t, ctx, tokens,
                        languages);
@@ -622,11 +634,6 @@ std::vector<token> get_suggestions(typeahead const& t,
         dist_bonus = 0.5F * bias;  // 1000 km bonus
       }
 
-      if constexpr (Debug) {
-        s.print(std::cout, t, languages);
-        std::cout << "dist=" << dist << "  -> bonus = " << dist_bonus
-                  << " (score=" << s.score_ - dist_bonus << ")" << "\n";
-      }
       s.score_ -= dist_bonus;
     }
   }
@@ -639,6 +646,7 @@ std::vector<token> get_suggestions(typeahead const& t,
   //                   end(ctx.suggestions_));
   //  ctx.suggestions_.resize(result_count);
   std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
+
   ctx.suggestions_.erase(
       std::unique(begin(ctx.suggestions_), end(ctx.suggestions_),
                   [&](suggestion const& a, suggestion const& b) {
@@ -646,6 +654,17 @@ std::vector<token> get_suggestions(typeahead const& t,
                            a.area_set_ == b.area_set_;
                   }),
       end(ctx.suggestions_));
+
+  for (auto a = 0U; a < ctx.suggestions_.size(); ++a) {
+    for (auto b = a + 1; b < ctx.suggestions_.size(); ++b) {
+      if (ctx.suggestions_[a].location_ == ctx.suggestions_[b].location_ &&
+          ctx.suggestions_[a].area_set_ == ctx.suggestions_[b].area_set_) {
+        ctx.suggestions_.erase(begin(ctx.suggestions_) + b);
+        --b;
+      }
+    }
+  }
+
   UTL_STOP_TIMING(sort);
   trace("sort [{} us]", UTL_TIMING_US(sort));
 

@@ -59,6 +59,7 @@ struct suggestion {
   area_set areas(typeahead const&, language_list_t const&) const;
   std::string description(typeahead const&) const;
   void populate_areas(typeahead const&);
+  std::uint64_t get_osm_id(typeahead const&) const;
 
   string_idx_t str_;
   std::variant<place_idx_t, address> location_;

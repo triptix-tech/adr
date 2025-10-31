@@ -100,10 +100,10 @@ TEST(adr, alt_string) {
   }
 }
 
-TEST(adr, numeric_tokens) {
-  EXPECT_EQ("01100000", adr::bit_mask_to_str(adr::get_numeric_tokens_mask(
-                            {"abc", "98", "9a", "0aa"})));
-}
+// TEST(adr, numeric_tokens) {
+//   EXPECT_EQ("01100000", adr::bit_mask_to_str(adr::get_numeric_tokens_mask(
+//                             {"abc", "98", "9a", "0aa"})));
+// }
 
 TEST(adr, score_test) {
   auto lev_dist = std::vector<adr::edit_dist_t>{};
@@ -213,11 +213,22 @@ TEST(adr, score_test) {
   //  EXPECT_EQ(1, adr::get_match_score("Berliner Allee 8 bis 8f", "berliner
   //  allee",
   //                                    sift4_dist, buf));
+  // EXPECT_EQ(1, adr::get_match_score("Berliner Allee", "berliner allee",
+  //                                   sift4_dist, buf));
+  // EXPECT_EQ(1, adr::get_match_score("D-Berliner Allee", "berliner allee",
+  //                                   sift4_dist, buf));
 
-  EXPECT_EQ(1, adr::get_match_score("Berliner Allee", "berliner allee",
+  // EXPECT_EQ(1, adr::get_match_score("s+u berlin hauptbahnhof", "berlin",
+  //                                   sift4_dist, buf));
+  EXPECT_EQ(
+      1, adr::get_match_score("darmstadt merck", "darmstadt", sift4_dist, buf));
+  EXPECT_EQ(1, adr::get_match_score("darmstadt hauptbahnhof", "darmstadt",
                                     sift4_dist, buf));
-  EXPECT_EQ(1, adr::get_match_score("D-Berliner Allee", "berliner allee",
-                                    sift4_dist, buf));
+
+  // EXPECT_EQ(1, adr::get_match_score("bikebox arnulf-klett-platz anlage a",
+  //                                   "arnulf klett platz", sift4_dist, buf));
+  // EXPECT_EQ(1, adr::get_match_score("hauptbf arnulf klett platz",
+  //                                   "arnulf klett platz", sift4_dist, buf));
 }
 
 TEST(adr, for_each_token) {

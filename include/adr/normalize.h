@@ -8,6 +8,7 @@
 
 #include "utl/concat.h"
 #include "utl/enumerate.h"
+#include "utl/helpers/algorithm.h"
 
 #include "adr/types.h"
 
@@ -27,10 +28,21 @@ using utf8_normalize_buf_t = basic_string<utf8proc_int32_t>;
 inline void erase_fillers(std::string& in) {
   std::replace_if(
       begin(in), end(in),
-      [](auto c) { return c == ',' || c == ';' || c == '-'; }, ' ');
+      [](auto c) {
+        return c == ',' || c == ';' || c == '-' || c == '/' || c == '(' ||
+               c == ')' || c == '.';
+      },
+      ' ');
   in.erase(std::unique(begin(in), end(in),
                        [](char a, char b) { return a == b && a == ' '; }),
            end(in));
+
+  while (!in.empty() && in.back() == ' ') {
+    in.resize(in.size() - 1);
+  }
+  while (!in.empty() && in.front() == ' ') {
+    in.erase(begin(in));
+  }
 }
 
 inline std::string_view normalize(std::string_view v,
@@ -75,6 +87,9 @@ inline std::optional<std::string_view> get_alt_string(std::string_view s) {
   switch (cista::hash(s)) {
     case cista::hash("hbf"): return "hauptbahnhof";
     case cista::hash("hauptbahnhof"): return "hbf";
+    case cista::hash("hauptbf"): return "hbf";
+    case cista::hash("bahnhof"): return "bhf";
+    case cista::hash("bhf"): return "bahnhof";
   }
   return std::nullopt;
 }
