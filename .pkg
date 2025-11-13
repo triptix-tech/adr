@@ -5,7 +5,7 @@
 [geo]
   url=git@github.com:motis-project/geo.git
   branch=master
-  commit=8feab908ebcdb78e37957e71fa90514b55f7dcbf
+  commit=3730d1fd47aa8c28a8f48898a4e3daa3c81dbac8
 [cista]
   url=git@github.com:felixguendling/cista.git
   branch=master
