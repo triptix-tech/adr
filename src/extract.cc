@@ -22,11 +22,12 @@
 #include "utl/to_vec.h"
 #include "utl/zip.h"
 
+#include "geo/area_db.h"
+
 #include "tiles/osm/hybrid_node_idx.h"
 #include "tiles/osm/tmp_file.h"
 #include "tiles/util_parallel.h"
 
-#include "adr/area_database.h"
 #include "adr/import_context.h"
 #include "adr/reverse.h"
 #include "adr/typeahead.h"
@@ -41,7 +42,7 @@ namespace osm_mem = osmium::memory;
 namespace adr {
 
 struct feature_handler : public osmium::handler::Handler {
-  feature_handler(area_database& area_db,
+  feature_handler(geo::area_db_storage<area_idx_t>& area_db,
                   typeahead& t,
                   reverse& r,
                   import_context& ctx,
@@ -96,11 +97,27 @@ struct feature_handler : public osmium::handler::Handler {
   void area(osmium::Area const& a) {
     auto const& tags = a.tags();
 
+    namespace v = std::ranges::views;
+    auto const nodes_to_coordinates = [](auto&& n) {
+      return geo::fixed_latlng::from_latlng({n.lat(), n.lon()});
+    };
+    auto const ring_to_coordinates = [&](auto&& r) {
+      return r | v::transform(nodes_to_coordinates);
+    };
+    auto const outers = [&]() {
+      return a.outer_rings() | v::transform(ring_to_coordinates);
+    };
+    auto const inners = [&]() {
+      return a.outer_rings() | v::transform([&](auto&& r) {
+               return a.inner_rings(r) | v::transform(ring_to_coordinates);
+             });
+    };
+
     if (tags.has_key("timezone") && !tags.has_key("admin_level")) {
       std::clog << a.id() << ": " << tags.get_value_by_key("timezone") << "\n";
       auto const tz_area_idx = t_.add_timezone_area(ctx_, a.tags());
       if (tz_area_idx != area_idx_t::invalid()) {
-        area_db_.add_area(tz_area_idx, a);
+        area_db_.add_area(outers(), inners());
       }
       return;
     }
@@ -120,16 +137,16 @@ struct feature_handler : public osmium::handler::Handler {
         std::clog << a.id() << ": " << tags.get_value_by_key("timezone")
                   << "\n";
       }
-      area_db_.add_area(admin_area_idx, a);
+      area_db_.add_area(outers(), inners());
     }
 
     auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
     if (postal_code_area_idx != area_idx_t::invalid()) {
-      area_db_.add_area(postal_code_area_idx, a);
+      area_db_.add_area(outers(), inners());
     }
   }
 
-  area_database& area_db_;
+  geo::area_db_storage<area_idx_t>& area_db_;
   typeahead& t_;
   reverse& r_;
   import_context& ctx_;
@@ -161,7 +178,8 @@ void extract(std::filesystem::path const& in_path,
                           .add_rule(true, "boundary", "postal_code")
                           .add_rule(true, "boundary", "administrative");
 
-  auto area_db = area_database{out_path, cista::mmap::protection::WRITE};
+  auto area_db_storage = geo::area_db_storage<area_idx_t>{
+      out_path, cista::mmap::protection::WRITE};
   auto const node_idx_file =
       tiles::tmp_file{(tmp_dname / "idx.bin").generic_string()};
   auto const node_dat_file =
@@ -200,7 +218,7 @@ void extract(std::filesystem::path const& in_path,
   {  // Extract streets, places, and areas.
     pt->status("Load OSM / Pass 2");
     auto reader = osm_io::Reader{input_file};
-    auto handler = feature_handler{area_db, t, r, ctx, areas_mutex};
+    auto handler = feature_handler{area_db_storage, t, r, ctx, areas_mutex};
     oneapi::tbb::parallel_pipeline(
         std::thread::hardware_concurrency() * 4U,
         oneapi::tbb::make_filter<void, osm_mem::Buffer>(
@@ -268,6 +286,13 @@ void extract(std::filesystem::path const& in_path,
     std::clog << "copy data timing: " << UTL_TIMING_MS(copy_data) << "\n";
   }
 
+  auto area_db = geo::area_db_lookup<area_idx_t>{area_db_storage};
+  auto const sort_by_admin_lvl = [&](basic_string<area_idx_t>& areas) {
+    utl::sort(areas, [&](area_idx_t const a, area_idx_t const b) {
+      return t.area_admin_level_[a] < t.area_admin_level_[b];
+    });
+  };
+
   {  // Assign place/street/housenumber coordinates to areas.
     auto timer = utl::scoped_timer{"coordinate to area mapping"};
 
@@ -281,7 +306,8 @@ void extract(std::filesystem::path const& in_path,
       utl::parallel_for_run_threadlocal<basic_string<area_idx_t>>(
           t.place_coordinates_.size(),
           [&](basic_string<area_idx_t>& areas, std::size_t const i) {
-            area_db.lookup(t, t.place_coordinates_[place_idx_t{i}], areas);
+            area_db.lookup(t.place_coordinates_[place_idx_t{i}], areas);
+            sort_by_admin_lvl(areas);
             place_areas[i] = std::move(areas);
           });
 
@@ -299,7 +325,8 @@ void extract(std::filesystem::path const& in_path,
           t.street_pos_.size(),
           [&](basic_string<area_idx_t>& areas, std::size_t const i) {
             for (auto const& c : t.street_pos_[street_idx_t{i}]) {
-              area_db.lookup(t, c, areas);
+              area_db.lookup(c, areas);
+              sort_by_admin_lvl(areas);
               street_areas[i].emplace_back(areas);
             }
           });
@@ -323,7 +350,8 @@ void extract(std::filesystem::path const& in_path,
           t.house_coordinates_.size(),
           [&](basic_string<area_idx_t>& areas, std::size_t const i) {
             for (auto const& c : t.house_coordinates_[street_idx_t{i}]) {
-              area_db.lookup(t, c, areas);
+              area_db.lookup(c, areas);
+              sort_by_admin_lvl(areas);
               house_areas[i].emplace_back(areas);
             }
           });
@@ -370,6 +398,6 @@ void extract(std::filesystem::path const& in_path,
     r.build_rtree(t);
     r.write();
   }
-}
+}  // namespace adr
 
 }  // namespace adr
