@@ -97,27 +97,11 @@ struct feature_handler : public osmium::handler::Handler {
   void area(osmium::Area const& a) {
     auto const& tags = a.tags();
 
-    namespace v = std::ranges::views;
-    auto const nodes_to_coordinates = [](auto&& n) {
-      return geo::fixed_latlng::from_latlng({n.lat(), n.lon()});
-    };
-    auto const ring_to_coordinates = [&](auto&& r) {
-      return r | v::transform(nodes_to_coordinates);
-    };
-    auto const outers = [&]() {
-      return a.outer_rings() | v::transform(ring_to_coordinates);
-    };
-    auto const inners = [&]() {
-      return a.outer_rings() | v::transform([&](auto&& r) {
-               return a.inner_rings(r) | v::transform(ring_to_coordinates);
-             });
-    };
-
     if (tags.has_key("timezone") && !tags.has_key("admin_level")) {
       std::clog << a.id() << ": " << tags.get_value_by_key("timezone") << "\n";
       auto const tz_area_idx = t_.add_timezone_area(ctx_, a.tags());
       if (tz_area_idx != area_idx_t::invalid()) {
-        area_db_.add_area(outers(), inners());
+        area_db_.add_osmium_area(a);
       }
       return;
     }
@@ -137,12 +121,12 @@ struct feature_handler : public osmium::handler::Handler {
         std::clog << a.id() << ": " << tags.get_value_by_key("timezone")
                   << "\n";
       }
-      area_db_.add_area(outers(), inners());
+      area_db_.add_osmium_area(a);
     }
 
     auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
     if (postal_code_area_idx != area_idx_t::invalid()) {
-      area_db_.add_area(outers(), inners());
+      area_db_.add_osmium_area(a);
     }
   }
 
