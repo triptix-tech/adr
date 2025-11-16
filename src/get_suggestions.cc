@@ -662,16 +662,6 @@ std::vector<token> get_suggestions(
                   }),
       end(ctx.suggestions_));
 
-  for (auto a = 0U; a < ctx.suggestions_.size(); ++a) {
-    for (auto b = a + 1; b < ctx.suggestions_.size(); ++b) {
-      if (ctx.suggestions_[a].location_ == ctx.suggestions_[b].location_ &&
-          ctx.suggestions_[a].area_set_ == ctx.suggestions_[b].area_set_) {
-        ctx.suggestions_.erase(begin(ctx.suggestions_) + b);
-        --b;
-      }
-    }
-  }
-
   UTL_STOP_TIMING(sort);
   trace("sort [{} us]", UTL_TIMING_US(sort));
 
