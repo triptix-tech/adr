@@ -407,7 +407,7 @@ void match_places(std::uint8_t const all_tokens_mask,
         std::min(3.5F, (t.place_population_[place].get() / 100'000.F));
     auto const place_score = 1.0F;
 
-    auto lang_score = -3.0F;
+    auto lang_score = -1.0F;
     for (auto const [str, lang] :
          utl::zip(t.place_names_[place], t.place_name_lang_[place])) {
       if (str != str_idx) {
@@ -416,8 +416,7 @@ void match_places(std::uint8_t const all_tokens_mask,
       auto const it = utl::find(languages, lang);
       if (it != end(languages)) {
         auto const idx = std::distance(begin(languages), it);
-
-        lang_score = std::max(lang_score, 0.5F - (idx / 10.F));
+        lang_score = std::max(lang_score, idx == 0U ? 1.0F : 0.5F);
       }
     }
 
