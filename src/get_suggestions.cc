@@ -34,7 +34,7 @@ struct area {
 
 float get_category_score(amenity_category const x) {
   switch (x) {
-    case amenity_category::kExtra: return 2.0;
+    case amenity_category::kExtra: return 3.0;
     case amenity_category::kPlace6: return 1.0;
     case amenity_category::kPlaceCapital8: return 3.0;
     default: return -1.F;
