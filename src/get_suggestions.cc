@@ -34,10 +34,9 @@ struct area {
 
 float get_category_score(amenity_category const x) {
   switch (x) {
-    case amenity_category::kExtra: return 3.0;
     case amenity_category::kPlace6: return 1.0;
     case amenity_category::kPlaceCapital8: return 3.0;
-    default: return -1.F;
+    default: return 0.F;
   }
 }
 
@@ -400,14 +399,16 @@ void match_places(std::uint8_t const all_tokens_mask,
     }
 
     auto const category_score = get_category_score(t.place_type_[place]);
-    auto const areas_score = std::popcount(matched_areas_mask);
+    auto const areas_score = std::popcount(matched_areas_mask) * 2.0F;
     auto const no_area_score =
         !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 3 : 0;
-    auto const population_score =
-        std::min(3.5F, (t.place_population_[place].get() / 100'000.F));
+    auto const population_score = std::min(
+        6.0F, (t.place_population_[place].get() /
+               (t.place_type_[place] == amenity_category::kExtra ? 2'000.F
+                                                                 : 100'000.F)));
     auto const place_score = 1.0F;
 
-    auto lang_score = -1.0F;
+    auto lang_score = -0.1F;
     for (auto const [str, lang] :
          utl::zip(t.place_names_[place], t.place_name_lang_[place])) {
       if (str != str_idx) {
@@ -416,7 +417,7 @@ void match_places(std::uint8_t const all_tokens_mask,
       auto const it = utl::find(languages, lang);
       if (it != end(languages)) {
         auto const idx = std::distance(begin(languages), it);
-        lang_score = std::max(lang_score, idx == 0U ? 1.0F : 0.5F);
+        lang_score = std::max(lang_score, idx == 0U ? 0.5F : 0.25F);
       }
     }
 
@@ -641,6 +642,41 @@ std::vector<token> get_suggestions(
       }
 
       s.score_ -= dist_bonus;
+    }
+  }
+
+  // REMOVE DUPLICATES
+  {
+    // Create sorted permutation.
+    // Sort by (location, score) to keep best scored entry for each location.
+    auto sorted = std::vector<std::uint32_t>{};
+    sorted.resize(ctx.suggestions_.size());
+    std::generate(begin(sorted), end(sorted),
+                  [i = 0U]() mutable { return i++; });
+    utl::sort(sorted, [&](unsigned const a, unsigned const b) {
+      return std::tie(ctx.suggestions_[a].location_,
+                      ctx.suggestions_[a].area_set_,
+                      ctx.suggestions_[a].score_) <
+             std::tie(ctx.suggestions_[b].location_,
+                      ctx.suggestions_[b].area_set_,
+                      ctx.suggestions_[b].score_);
+    });
+
+    // Store duplicates to remove.
+    auto remove = std::vector<std::uint32_t>{};
+    for (auto i = 1U; i != sorted.size(); ++i) {
+      auto const& pred = ctx.suggestions_[sorted[i - 1U]];
+      auto const& curr = ctx.suggestions_[sorted[i]];
+      if (std::tie(pred.location_, pred.area_set_) ==
+          std::tie(curr.location_, curr.area_set_)) {
+        remove.push_back(sorted[i]);
+      }
+    }
+
+    // Remove duplicates in a sorted way (back to front).
+    utl::sort(remove, std::greater<>{});
+    for (auto const i : remove) {
+      ctx.suggestions_.erase(begin(ctx.suggestions_) + i);
     }
   }
 

@@ -261,7 +261,7 @@ inline score_t get_match_score(
     if ((covered & (1U << s_idx)) == 0U) {
       ++n_not_matched;
       auto const not_matched_penalty = std::clamp(
-          static_cast<float>(s_tokens[s_idx].size()) / 3.0F, 1.5F, 3.0F);
+          static_cast<float>(s_tokens[s_idx].size()) / 3.5F, 1.35F, 3.0F);
 
 #ifdef ADR_DEBUG_SCORE
       std::cout << "PENALITY NOT MATCHED: " << s_tokens[s_idx] << ": "
