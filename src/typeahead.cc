@@ -105,7 +105,7 @@ area_idx_t typeahead::add_timezone_area(import_context& ctx,
   auto const idx = area_idx_t{area_admin_level_.size()};
   area_admin_level_.emplace_back(kTimezoneAdminLevel);
   area_population_.emplace_back(population{.value_ = 0U});
-  area_names_.emplace_back(std::initializer_list<string_idx_t>{});
+  area_names_.emplace_back({get_or_create_string(ctx, timezone)});
   area_name_lang_.emplace_back(std::initializer_list<language_idx_t>{});
   area_timezone_.emplace_back(get_or_create_timezone(ctx, timezone));
   area_country_code_.emplace_back(kNoCountryCode);
