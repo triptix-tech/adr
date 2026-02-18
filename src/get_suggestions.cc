@@ -46,8 +46,14 @@ void activate_areas(typeahead const& t,
                     area_set_idx_t const area_set_idx,
                     language_list_t const languages) {
   for (auto const area : t.area_sets_[area_set_idx]) {
-    if (ctx.area_active_[to_idx(area)] ||
-        t.area_admin_level_[area] == kTimezoneAdminLevel) {
+    if (ctx.area_active_[to_idx(area)]) {
+      continue;
+    }
+
+    if (t.area_admin_level_[area] == kTimezoneAdminLevel) {
+      std::fill(begin(ctx.area_phrase_match_scores_[area]),
+                end(ctx.area_phrase_match_scores_[area]), kNoMatch);
+      ctx.area_active_[to_idx(area)] = true;
       continue;
     }
 
@@ -401,11 +407,13 @@ void match_places(std::uint8_t const all_tokens_mask,
     auto const category_score = get_category_score(t.place_type_[place]);
     auto const areas_score = std::popcount(matched_areas_mask) * 2.0F;
     auto const no_area_score =
-        !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 3 : 0;
-    auto const population_score = std::min(
-        6.0F, (t.place_population_[place].get() /
-               (t.place_type_[place] == amenity_category::kExtra ? 2'000.F
-                                                                 : 100'000.F)));
+        !matched_areas_mask && matched_tokens_mask == all_tokens_mask ? 2.5F
+                                                                      : 0.F;
+    auto const population = t.place_population_[place].get();
+    auto const population_score =
+        t.place_type_[place] == amenity_category::kExtra
+            ? std::clamp(population / 2'000.F, 1.2F, 4.0F)
+            : std::clamp(population / 200'000.F, 0.0F, 3.0F);
     auto const place_score = 1.0F;
 
     auto lang_score = -0.1F;

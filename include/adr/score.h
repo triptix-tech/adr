@@ -72,7 +72,7 @@ inline score_t get_token_match_score(
 
   if (dist >= cut_normalized_str.size()) {
 #ifdef ADR_DEBUG_SCORE
-    std::cout << "dist=" << static_cast<int>(dist) << " > "
+    std::cout << "    dist=" << static_cast<int>(dist) << " > "
               << cut_normalized_str.size() << "\n";
 #endif
     return kNoMatch;
@@ -153,10 +153,10 @@ void for_each_token(std::string_view s, Fn&& f, Delimiter&&... d) {
 
 inline score_t get_match_score(
     std::string_view s,  // name from dataset - will be normalized!
-    std::string_view p,  // input phrase - won't be normalized!
+    std::string_view p_token,  // input phrase - won't be normalized!
     std::vector<sift_offset>& sift4_offset_arr,
     utf8_normalize_buf_t& tmp) {
-  if (s.empty() || p.empty()) {
+  if (s.empty() || p_token.empty()) {
     return kNoMatch;
   }
 
@@ -164,20 +164,6 @@ inline score_t get_match_score(
   erase_fillers(normalized_str);
 
   auto s_tokens = std::vector<std::string_view>{};
-  auto p_tokens = std::vector<std::string_view>{};
-
-  for_each_token(
-      p,
-      [&, c = 0U](auto&& p_token) mutable {
-        if (++c > 8) {
-          return utl::continue_t::kBreak;
-        }
-        if (!p_token.empty()) {
-          p_tokens.emplace_back(p_token);
-        }
-        return utl::continue_t::kContinue;
-      },
-      ' ', '-');
 
   for_each_token(
       normalized_str,
@@ -192,14 +178,9 @@ inline score_t get_match_score(
       },
       ' ', '-');
 
-  if (p_tokens.size() > s_tokens.size()) {
-    return get_token_match_score(normalized_str, p, sift4_offset_arr) +
-           static_cast<float>((p_tokens.size() - s_tokens.size()) * 2U);
-  }
-
   auto const fallback =
-      get_token_match_score(normalized_str, p, sift4_offset_arr);
-  if (p_tokens.size() == 1U && s_tokens.size() == 1U) {
+      get_token_match_score(normalized_str, p_token, sift4_offset_arr);
+  if (s_tokens.size() == 1U) {
 #ifdef ADR_DEBUG_SCORE
     std::cout << "p_tokens=1, s_tokens=1 => " << fallback << "\n";
 #endif
@@ -209,59 +190,54 @@ inline score_t get_match_score(
   auto const s_phrases = get_phrases(s_tokens);
 
 #ifdef ADR_DEBUG_SCORE
-  std::cout << s << " vs " << p << "\n";
+  std::cout << s << " vs " << p_token << "\n";
 #endif
 
-  auto covered = std::uint8_t{0U};
-  auto sum = 0.0F;
-  for (auto p_idx = 0U; p_idx != p_tokens.size(); ++p_idx) {
-    auto const& p_token = p_tokens[p_idx];
+  std::cout << "p_token=" << p_token << "\n";
 
-    auto best_s_score = kNoMatch;
-    auto best_s_idx = 0U;
+  auto best_s_score = kNoMatch;
+  auto best_s_idx = 0U;
+  for (auto s_idx = 0U; s_idx != s_phrases.size(); ++s_idx) {
+    auto const& s_phrase = s_phrases[s_idx];
 
-    for (auto s_idx = 0U; s_idx != s_phrases.size(); ++s_idx) {
-      auto const& s_phrase = s_phrases[s_idx];
-      if ((covered & s_phrase.token_bits_) != 0U) {
-        continue;
-      }
+#if ADR_DEBUG_SCORE
+    std::cout << "  " << s_phrase.s_ << ": ";
+#endif
 
-      auto const s_p_match_score =
-          s_phrase.s_ == p_token
-              ? -1.8F
-              : get_token_match_score(s_phrase.s_, p_token, sift4_offset_arr);
-      if (best_s_score > s_p_match_score) {
-        best_s_idx = s_idx;
-        best_s_score = s_p_match_score;
-      }
+    auto const s_p_match_score =
+        s_phrase.s_ == p_token
+            ? -1.8F
+            : get_token_match_score(s_phrase.s_, p_token, sift4_offset_arr);
+    if (best_s_score > s_p_match_score) {
+      best_s_idx = s_idx;
+      best_s_score = s_p_match_score;
     }
+  }
 
-    if (best_s_score == kNoMatch) {
+  if (best_s_score == kNoMatch) {
 #ifdef ADR_DEBUG_SCORE
-      std::cout << "  NO MATCH FOUND: " << p_token << "\n";
+    std::cout << "  NO MATCH FOUND\n";
 #endif
-      sum += static_cast<float>(p_tokens.size()) * 2.F;
-      continue;
-    }
-
-#ifdef ADR_DEBUG_SCORE
-    std::cout << "  MATCHED: " << p_token << " vs " << s_phrases[best_s_idx].s_
-              << ": " << best_s_score << "\n";
-#endif
-    sum += best_s_score;
-    covered |= s_phrases[best_s_idx].token_bits_;
+    return kNoMatch;
   }
 
 #ifdef ADR_DEBUG_SCORE
-  std::cout << "BEFORE NOT MATCHED SCORING: " << sum << "\n";
+  std::cout << "  MATCHED: " << p_token << " vs " << s_phrases[best_s_idx].s_
+            << ": " << best_s_score << "\n";
 #endif
 
+#ifdef ADR_DEBUG_SCORE
+  std::cout << "BEFORE NOT MATCHED SCORING: " << best_s_score << "\n";
+#endif
+
+  auto sum = best_s_score;
+  auto const covered = s_phrases[best_s_idx].token_bits_;
   auto n_not_matched = 0U;
   for (auto s_idx = 0U; s_idx != s_tokens.size(); ++s_idx) {
     if ((covered & (1U << s_idx)) == 0U) {
       ++n_not_matched;
       auto const not_matched_penalty = std::clamp(
-          static_cast<float>(s_tokens[s_idx].size()) / 3.5F, 1.35F, 3.0F);
+          static_cast<float>(s_tokens[s_idx].size()) / 4.0F, 0.75F, 3.0F);
 
 #ifdef ADR_DEBUG_SCORE
       std::cout << "PENALITY NOT MATCHED: " << s_tokens[s_idx] << ": "
@@ -277,7 +253,7 @@ inline score_t get_match_score(
   }
 
   auto const max =
-      std::ceil(static_cast<float>(std::min(s.size(), p.size())) / 2.0F);
+      std::ceil(static_cast<float>(std::min(s.size(), p_token.size())) / 2.0F);
   auto const score = std::min(fallback, sum);
 #ifdef ADR_DEBUG_SCORE
   std::cout << "  SUM: " << sum << ", FALLBACK=" << fallback << ", MAX=" << max
