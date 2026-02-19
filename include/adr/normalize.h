@@ -83,13 +83,44 @@ inline std::string bit_mask_to_str(std::uint8_t const b) {
   return r;
 }
 
-inline std::optional<std::string_view> get_alt_string(std::string_view s) {
+inline std::optional<std::pair<std::string_view, std::string_view>>
+get_postfix_alt_string(std::string_view s) {
+  using m = std::pair<std::string_view, std::string_view>;
+  constexpr auto kPostfixMapping = std::array{
+      m{"str", "strasse"},
+      m{"str.", "strasse"},
+      m{"strasse", "str."},
+  };
+
+  for (auto [postfix, replacement] : kPostfixMapping) {
+    if (s.ends_with(postfix)) {
+      return m{postfix, replacement};
+    }
+  }
+
+  return std::nullopt;
+}
+
+inline std::optional<std::string> get_exact_alt(std::string_view s) {
   switch (cista::hash(s)) {
     case cista::hash("hbf"): return "hauptbahnhof";
     case cista::hash("hauptbahnhof"): return "hbf";
     case cista::hash("hauptbf"): return "hbf";
     case cista::hash("bahnhof"): return "bhf";
     case cista::hash("bhf"): return "bahnhof";
+  }
+  return std::nullopt;
+}
+
+inline std::optional<std::string> get_alt_string(std::string_view s) {
+  if (auto const alt = get_exact_alt(s); alt.has_value()) {
+    return alt;
+  }
+  if (auto const postfix_alt = get_postfix_alt_string(s);
+      postfix_alt.has_value()) {
+    auto const [postfix, replacement] = *postfix_alt;
+    [[unlikely]] return fmt::format(
+        "{}{}", s.substr(0, s.size() - postfix.size()), replacement);
   }
   return std::nullopt;
 }

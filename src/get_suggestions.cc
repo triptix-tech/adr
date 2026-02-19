@@ -608,7 +608,7 @@ std::vector<token> get_suggestions(
 
   auto guess_str = std::string{normalize(in, ctx.normalize_buf_)};
   for (auto const& token : tokens) {
-    if (auto const alt = get_alt_string(token); alt.has_value()) {
+    if (auto const alt = get_exact_alt(token); alt.has_value()) {
       guess_str += *alt;
     }
   }
