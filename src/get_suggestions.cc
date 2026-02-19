@@ -265,7 +265,7 @@ void match_streets(std::uint8_t const all_tokens_mask,
           }
 
           auto const house_number_score =
-              item.type_ == match_item::type::kHouseNumber ? 3.F : 0.F;
+              item.type_ == match_item::type::kHouseNumber ? 5.F : 0.F;
           auto const areas_bonus = std::popcount(matched_areas_mask) * 2.0F;
           auto const no_area_score =
               !matched_areas_mask && matched_tokens_mask == all_tokens_mask
@@ -412,9 +412,9 @@ void match_places(std::uint8_t const all_tokens_mask,
     auto const population = t.place_population_[place].get();
     auto const population_score =
         t.place_type_[place] == amenity_category::kExtra
-            ? std::clamp(population / 2'000.F, 1.2F, 4.0F)
+            ? std::clamp(population / 2'000.F, 1.2F, 5.0F)
             : std::clamp(population / 200'000.F, 0.0F, 3.0F);
-    auto const place_score = 1.0F;
+    auto const place_score = 5.0F;
 
     auto lang_score = -0.1F;
     for (auto const [str, lang] :
