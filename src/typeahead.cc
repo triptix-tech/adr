@@ -139,6 +139,8 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
                   langs.push_back(lang);
                 });
 
+  utl::verify(!names.empty(), "no names for area");
+
   auto const p = tags["population"];
   area_population_.emplace_back(population{
       p == nullptr ? std::uint16_t{0U}
@@ -382,75 +384,28 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   UTL_STOP_TIMING(t1);
   trace("counting matches [{} ms]", UTL_TIMING_MS(t1));
 
-  auto min_match_count = 2U + n_in_ngrams / (4U + n_in_ngrams / 10U);
-
-  UTL_START_TIMING(t2);
-  std::vector<float> sampling;
-  trace("#strings = {}", strings_.size());
-  auto const n_strings = strings_.size();
-  for (auto i = string_idx_t{0U}; i < n_strings; i += 1) {
-    if (string_match_counts[i] < min_match_count) {
-      continue;
-    }
-    auto const match_count = string_match_counts[i];
-    auto const cos_sim = static_cast<float>(match_count * match_count) /
-                         (n_bigrams_[i] * n_in_ngrams);
-    if (cos_sim > 0.01) {
-      sampling.emplace_back(cos_sim);
-      i += 3072U;
-    }
-  }
-  auto const q_idx = std::ceil(sampling.size() / (n_in_ngrams * 3.0F));
-  std::nth_element(begin(sampling), begin(sampling) + q_idx, end(sampling),
-                   [](auto&& a, auto&& b) { return a > b; });
-  UTL_STOP_TIMING(t2);
-  if (sampling.empty()) {
-    return;
-  }
-  auto const cutoff = sampling[q_idx == 0 ? 0 : q_idx - 1];
-  trace("cutoff {} [size={}, idx={}] [{} ms]", cutoff, sampling.size(), q_idx,
-        UTL_TIMING_MS(t2));
-  //  std::cout << "ESTIMATED CUTOFF: " << sampling[q_idx - 1] << "\n";
-
   // ================
   // COMPUTE COS SIM
   // ----------------
+  auto min_match_count = 2U + n_in_ngrams / (4U + n_in_ngrams / 10U);
+  auto const n_strings = strings_.size();
   UTL_START_TIMING(t3);
+  constexpr auto kCutoff = 0.2;
   for (auto i = string_idx_t{0U}; i < n_strings; ++i) {
     if (string_match_counts[i] < min_match_count) {
-      continue;
+      [[likely]] continue;
     }
     auto const match_count = string_match_counts[i];
     auto const cos_sim = static_cast<float>(match_count * match_count) /
                          (n_bigrams_[i] * n_in_ngrams);
-    if (cos_sim >= cutoff) {
+    if (cos_sim >= kCutoff) {
       matches.emplace_back(cos_sim_match{i, cos_sim});
     }
   }
   std::sort(begin(matches), end(matches));
 
-  if (Debug) {
-    trace("n_in_ngrams={}, min_match_count={}\n", n_in_ngrams, min_match_count);
-    for (auto i = string_idx_t{0U}; i < n_strings; ++i) {
-      if (string_match_counts[i] < min_match_count) {
-        continue;
-      }
-
-      auto const match_count = string_match_counts[i];
-      auto const cos_sim = static_cast<float>(match_count * match_count) /
-                           (n_bigrams_[i] * n_bigrams_[i] * n_in_ngrams);
-
-      if (cos_sim > 0.01 && (matches.size() != 11'000 || matches.empty() ||
-                             matches.back().cos_sim_ < cos_sim)) {
-        utl::insert_sorted(matches, {i, cos_sim});
-        matches.resize(std::min(std::size_t{11'000}, matches.size()));
-      }
-    }
-    std::cout << "REAL CUTOFF: " << matches.back().cos_sim_ << "\n";
-  }
-
   UTL_STOP_TIMING(t3);
-  trace("{} matches [{} ms]", matches.size(), UTL_TIMING_MS(t3));
+  fmt::println("{} matches [{} ms]", matches.size(), UTL_TIMING_MS(t3));
 }
 
 cista::wrapped<typeahead> read(std::filesystem::path const& p) {
