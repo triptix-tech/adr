@@ -193,8 +193,6 @@ inline score_t get_match_score(
   std::cout << s << " vs " << p_token << "\n";
 #endif
 
-  std::cout << "p_token=" << p_token << "\n";
-
   auto best_s_score = kNoMatch;
   auto best_s_idx = 0U;
   for (auto s_idx = 0U; s_idx != s_phrases.size(); ++s_idx) {
