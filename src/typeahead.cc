@@ -390,7 +390,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   auto min_match_count = 2U + n_in_ngrams / (4U + n_in_ngrams / 10U);
   auto const n_strings = strings_.size();
   UTL_START_TIMING(t3);
-  constexpr auto kCutoff = 0.2;
+  constexpr auto kCutoff = 0.17;
   for (auto i = string_idx_t{0U}; i < n_strings; ++i) {
     if (string_match_counts[i] < min_match_count) {
       [[likely]] continue;
@@ -405,7 +405,7 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   std::sort(begin(matches), end(matches));
 
   UTL_STOP_TIMING(t3);
-  fmt::println("{} matches [{} ms]", matches.size(), UTL_TIMING_MS(t3));
+  trace("{} matches [{} ms]", matches.size(), UTL_TIMING_MS(t3));
 }
 
 cista::wrapped<typeahead> read(std::filesystem::path const& p) {

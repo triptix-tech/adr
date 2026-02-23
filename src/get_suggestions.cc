@@ -34,8 +34,17 @@ struct area {
 
 float get_category_score(amenity_category const x) {
   switch (x) {
-    case amenity_category::kPlace6: return 1.0;
-    case amenity_category::kPlaceCapital8: return 3.0;
+    case amenity_category::kCountry:
+    case amenity_category::kState:
+    case amenity_category::kRegion: return 1.0F;
+    case amenity_category::kMunicipality: return 1.0F;
+    case amenity_category::kCity: return 3.0F;
+    case amenity_category::kTown: return 2.0F;
+    case amenity_category::kVillage: return 1.0F;
+    case amenity_category::kIsland: return 1.0F;
+
+    case amenity_category::kPlace6: return 1.0F;
+    case amenity_category::kPlaceCapital8: return 3.0F;
     default: return 0.F;
   }
 }

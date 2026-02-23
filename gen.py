@@ -5,8 +5,9 @@ Generate C++ header for parsing OSM amenity categories from HTML table.
 
 from bs4 import BeautifulSoup, NavigableString
 import re
+from pathlib import Path
 from jinja2 import Template
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Set
 
 def sanitize_enum_name(name: str) -> str:
     """Convert category name to valid C++ enum name."""
@@ -149,6 +150,43 @@ def extract_categories(html_content: str) -> List[Dict]:
         suffix = entry.pop('icon_suffix', None)
         if icon and suffix:
             entry['icon'] = f"{icon}-{suffix}"
+
+    return entries
+
+
+def extract_place_types(html_content: str) -> List[Dict]:
+    """Extract place=* values from Key:place tables."""
+    soup = BeautifulSoup(html_content, 'html.parser')
+    tables = soup.find_all(
+        'table',
+        class_=lambda c: c and 'wikitable' in c and 'taginfo-taglist' in c
+    )
+    if not tables:
+        raise ValueError("Could not find place tag list tables")
+
+    entries: List[Dict] = []
+    seen_values: Set[str] = set()
+
+    for table in tables:
+        rows = table.find_all('tr')
+        for row in rows[1:]:
+            cells = row.find_all('td')
+            if len(cells) < 2:
+                continue
+
+            key = cells[0].get_text(strip=True)
+            value = cells[1].get_text(strip=True)
+            description = cells[3].get_text(strip=True) if len(cells) > 3 else ""
+
+            if key != "place" or not value or value in seen_values:
+                continue
+
+            seen_values.add(value)
+            entries.append({
+                'icon': value,
+                'description': description or value,
+                'tag_combos': [[f"place={value}"]]
+            })
 
     return entries
 
@@ -313,7 +351,7 @@ def main():
     html_file = sys.argv[1]
     output_file = sys.argv[2] if len(sys.argv) > 2 else "amenity_category.h"
     
-    # Read HTML content
+    # Read amenities HTML content
     print(f"Reading {html_file}...")
     with open(html_file, 'r', encoding='utf-8') as f:
         html_content = f.read()
@@ -323,6 +361,19 @@ def main():
     entries = extract_categories(html_content)
 
     print(f"\nFound {len(entries)} amenity entries (one per SVG/icon row)\n")
+
+    places_file = Path(html_file).with_name("places.html")
+    if places_file.exists():
+        print(f"Reading {places_file}...")
+        with open(places_file, 'r', encoding='utf-8') as f:
+            places_html_content = f.read()
+
+        print("Parsing place types...")
+        place_entries = extract_place_types(places_html_content)
+        entries.extend(place_entries)
+        print(f"Found {len(place_entries)} place type entries\n")
+    else:
+        print(f"Skipping place types, file not found: {places_file}\n")
 
     # Generate C++ header
     print("Generating C++ code...")

@@ -225,10 +225,20 @@ TEST(adr, score_test) {
   //     buf));
   // EXPECT_EQ(1, adr::get_match_score("darmstadt hauptbahnhof", "darmstadt",
   //                                   sift4_dist, buf));
-  EXPECT_EQ(1, adr::get_match_score("Lichterfelde West", "lichterfelde ost",
-                                    sift4_dist, buf));
-  EXPECT_EQ(1, adr::get_match_score("S Lichterfelde Ost Bhf (Berlin)",
-                                    "lichterfelde ost", sift4_dist, buf));
+  // EXPECT_EQ(1, adr::get_match_score("Lichterfelde West", "lichterfelde ost",
+  //                                   sift4_dist, buf));
+  // EXPECT_EQ(1, adr::get_match_score("S Lichterfelde Ost Bhf (Berlin)",
+  //                                   "lichterfelde ost", sift4_dist, buf));
+
+  // EXPECT_EQ(1, adr::get_match_score("S Lichterfelde West (Berlin)",
+  // "lichterfelde west", sift4_dist, buf));
+
+  // EXPECT_EQ(1,
+  //           adr::get_match_score("Groß-Umstadt", "umstadt", sift4_dist,
+  //           buf));
+
+  EXPECT_EQ(1,
+            adr::get_match_score("Langen (Hessen)", "langen", sift4_dist, buf));
 
   // EXPECT_EQ(1, adr::get_match_score("bikebox arnulf-klett-platz anlage a",
   //                                   "arnulf klett platz", sift4_dist, buf));

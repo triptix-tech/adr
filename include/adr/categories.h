@@ -289,10 +289,40 @@ enum class amenity_category : std::uint16_t {
   kEntranceMain,
   kEntrance,
   kRectdiag,
+  kCountry,
+  kState,
+  kRegion,
+  kProvince,
+  kDistrict,
+  kCounty,
+  kSubdistrict,
+  kMunicipality,
+  kCity,
+  kBorough,
+  kSuburb,
+  kQuarter,
+  kNeighbourhood,
+  kCityBlock,
+  kPlot,
+  kTown,
+  kVillage,
+  kHamlet,
+  kIsolatedDwelling,
+  kFarm,
+  kAllotments,
+  kContinent,
+  kArchipelago,
+  kIsland,
+  kIslet,
+  kSquare,
+  kLocality,
+  kPolder,
+  kSea,
+  kOcean,
   kExtra
 };
 
-constexpr std::array<char const*, 278> amenity_category_names = {
+constexpr std::array<char const*, 308> amenity_category_names = {
   "none",
   "restaurant_14",
   "cafe_16",
@@ -570,6 +600,36 @@ constexpr std::array<char const*, 278> amenity_category_names = {
   "entrance_main",
   "entrance",
   "rectdiag",
+  "country",
+  "state",
+  "region",
+  "province",
+  "district",
+  "county",
+  "subdistrict",
+  "municipality",
+  "city",
+  "borough",
+  "suburb",
+  "quarter",
+  "neighbourhood",
+  "city_block",
+  "plot",
+  "town",
+  "village",
+  "hamlet",
+  "isolated_dwelling",
+  "farm",
+  "allotments",
+  "continent",
+  "archipelago",
+  "island",
+  "islet",
+  "square",
+  "locality",
+  "polder",
+  "sea",
+  "ocean",
   "extra"
 };
 
@@ -1221,6 +1281,66 @@ struct amenity_tags {
     if (entrance_ == "service"sv) return amenity_category::kEntrance;
     // Rectdiag
     if (!entrance_.empty() && access_ == "no"sv) return amenity_category::kRectdiag;
+    // country
+    if (place_ == "country"sv) return amenity_category::kCountry;
+    // state
+    if (place_ == "state"sv) return amenity_category::kState;
+    // region
+    if (place_ == "region"sv) return amenity_category::kRegion;
+    // province
+    if (place_ == "province"sv) return amenity_category::kProvince;
+    // district
+    if (place_ == "district"sv) return amenity_category::kDistrict;
+    // county
+    if (place_ == "county"sv) return amenity_category::kCounty;
+    // subdistrict
+    if (place_ == "subdistrict"sv) return amenity_category::kSubdistrict;
+    // municipality
+    if (place_ == "municipality"sv) return amenity_category::kMunicipality;
+    // city
+    if (place_ == "city"sv) return amenity_category::kCity;
+    // borough
+    if (place_ == "borough"sv) return amenity_category::kBorough;
+    // suburb
+    if (place_ == "suburb"sv) return amenity_category::kSuburb;
+    // quarter
+    if (place_ == "quarter"sv) return amenity_category::kQuarter;
+    // neighbourhood
+    if (place_ == "neighbourhood"sv) return amenity_category::kNeighbourhood;
+    // city_block
+    if (place_ == "city_block"sv) return amenity_category::kCityBlock;
+    // plot
+    if (place_ == "plot"sv) return amenity_category::kPlot;
+    // town
+    if (place_ == "town"sv) return amenity_category::kTown;
+    // village
+    if (place_ == "village"sv) return amenity_category::kVillage;
+    // hamlet
+    if (place_ == "hamlet"sv) return amenity_category::kHamlet;
+    // isolated_dwelling
+    if (place_ == "isolated_dwelling"sv) return amenity_category::kIsolatedDwelling;
+    // farm
+    if (place_ == "farm"sv) return amenity_category::kFarm;
+    // allotments
+    if (place_ == "allotments"sv) return amenity_category::kAllotments;
+    // continent
+    if (place_ == "continent"sv) return amenity_category::kContinent;
+    // archipelago
+    if (place_ == "archipelago"sv) return amenity_category::kArchipelago;
+    // island
+    if (place_ == "island"sv) return amenity_category::kIsland;
+    // islet
+    if (place_ == "islet"sv) return amenity_category::kIslet;
+    // square
+    if (place_ == "square"sv) return amenity_category::kSquare;
+    // locality
+    if (place_ == "locality"sv) return amenity_category::kLocality;
+    // polder
+    if (place_ == "polder"sv) return amenity_category::kPolder;
+    // sea
+    if (place_ == "sea"sv) return amenity_category::kSea;
+    // ocean
+    if (place_ == "ocean"sv) return amenity_category::kOcean;
     return amenity_category::kNone;
   }
 
