@@ -237,8 +237,10 @@ TEST(adr, score_test) {
   //           adr::get_match_score("Groß-Umstadt", "umstadt", sift4_dist,
   //           buf));
 
-  EXPECT_EQ(1,
-            adr::get_match_score("Langen (Hessen)", "langen", sift4_dist, buf));
+  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "darmstadt", sift4_dist, buf));
+
+  EXPECT_EQ(1, adr::get_match_score("Darmstadt,ZOB Zweifalltorweg", "darmstadt",
+                                    sift4_dist, buf));
 
   // EXPECT_EQ(1, adr::get_match_score("bikebox arnulf-klett-platz anlage a",
   //                                   "arnulf klett platz", sift4_dist, buf));

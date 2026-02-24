@@ -518,18 +518,22 @@ void get_scored_matches(
             ctx.phrases_[p_idx].s_);
 
       if (p_match_score == kNoMatch) {
+        trace("  -> no match");
         continue;
       }
 
+      trace("  -> locations: {}", t.string_to_location_[m.idx_].size());
       for (auto const [idx, type] :
            utl::zip(t.string_to_location_[m.idx_], t.string_to_type_[m.idx_])) {
         switch (type) {
           case location_type_t::kStreet: {
+            auto const street_idx = street_idx_t{idx};
             if (filter != filter_type::kNone &&
                 filter != filter_type::kAddress) {
+              trace("  -> STREET {} [phrase={:?}]  => filtered by type",
+                    street_idx, ctx.phrases_[p_idx].s_);
               continue;
             }
-            auto const street_idx = street_idx_t{idx};
             if (ctx.scored_street_matches_.size() != kMaxScoredMatches ||
                 ctx.scored_street_matches_.back().score_ > p_match_score) {
               utl::insert_sorted(ctx.scored_street_matches_,
@@ -539,19 +543,28 @@ void get_scored_matches(
                                   .idx_ = street_idx});
               ctx.scored_street_matches_.resize(std::min(
                   kMaxScoredMatches, ctx.scored_street_matches_.size()));
+              trace("  -> STREET {} [phrase={:?}]", street_idx,
+                    ctx.phrases_[p_idx].s_);
+            } else {
+              trace("  -> STREET {} [phrase={:?}] => ignore [no improvement]",
+                    street_idx, ctx.phrases_[p_idx].s_);
             }
             break;
           }
 
-          case location_type_t::kPlace:
+          case location_type_t::kPlace: {
             auto const place_idx = place_idx_t{idx};
             if (filter != filter_type::kNone &&
                 (filter == filter_type::kAddress ||
                  ((filter == filter_type::kExtra) !=
                   (t.place_type_[place_idx] == amenity_category::kExtra)))) {
+              trace("  -> PLACE {} [phrase={:?}]  => filtered by type",
+                    place_idx, ctx.phrases_[p_idx].s_);
               continue;
             }
             if (place_filter && !place_filter(place_idx)) {
+              trace("  -> PLACE {} [phrase={:?}] => place filter function",
+                    place_idx, ctx.phrases_[p_idx].s_);
               continue;
             }
             if (ctx.scored_place_matches_.size() != kMaxScoredMatches ||
@@ -563,8 +576,16 @@ void get_scored_matches(
                                   .idx_ = place_idx});
               ctx.scored_place_matches_.resize(std::min(
                   kMaxScoredMatches, ctx.scored_place_matches_.size()));
+              trace("  -> PLACE {} [phrase={:?}]", place_idx,
+                    ctx.phrases_[p_idx].s_);
+            } else {
+              trace("  -> PLACE {} [phrase={:?}] => ignore [no improvement]",
+                    place_idx, ctx.phrases_[p_idx].s_);
             }
             break;
+          }
+
+          default: trace("unknown type");
         }
       }
     }

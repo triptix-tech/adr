@@ -60,6 +60,14 @@ inline score_t get_token_match_score(
     std::string_view dataset_token,
     std::string_view p,
     std::vector<sift_offset>& sift4_offset_arr) {
+  if (dataset_token == p) {
+    auto const score = -2.0F - p.size() * 0.75F;
+#if ADR_DEBUG_SCORE
+    std::cout << "    exact match: " << score << "\n";
+#endif
+    return score;
+  }
+
   auto const cut_normalized_str =
       dataset_token.substr(0U, std::min(dataset_token.size(), p.size()));
   //  std::vector<edit_dist_t> lev_dist;
@@ -182,7 +190,7 @@ inline score_t get_match_score(
       get_token_match_score(normalized_str, p_token, sift4_offset_arr);
   if (s_tokens.size() == 1U) {
 #ifdef ADR_DEBUG_SCORE
-    std::cout << "p_tokens=1, s_tokens=1 => " << fallback << "\n";
+    std::cout << "p_tokens=1, s_tokens=1 => fallback=" << fallback << "\n";
 #endif
     return fallback;
   }
@@ -203,9 +211,8 @@ inline score_t get_match_score(
 #endif
 
     auto const s_p_match_score =
-        s_phrase.s_ == p_token
-            ? -2.0F - p_token.size()
-            : get_token_match_score(s_phrase.s_, p_token, sift4_offset_arr);
+        get_token_match_score(s_phrase.s_, p_token, sift4_offset_arr);
+
     if (best_s_score > s_p_match_score) {
       best_s_idx = s_idx;
       best_s_score = s_p_match_score;
