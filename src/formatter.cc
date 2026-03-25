@@ -89,7 +89,7 @@ std::string formatter::format(address const& x) const {
   if (it == end(impl_->formatting_info_) ||
       !std::holds_alternative<formatting_info>(it->second) ||
       !std::get<formatting_info>(it->second).address_template_.has_value()) {
-    return "";
+    return x.house_number_.empty() ? x.road_ : x.house_number_ + " " + x.road_;
   }
 
   using namespace kainjow::mustache;
