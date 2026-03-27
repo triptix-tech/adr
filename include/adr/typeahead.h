@@ -65,6 +65,8 @@ struct typeahead {
   void build_ngram_index();
   bool verify();
 
+  void propagate_country_codes(struct area_database const& area_db);
+
   area_set_idx_t get_or_create_area_set(import_context&,
                                         basic_string_view<area_idx_t>);
 

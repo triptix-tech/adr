@@ -1,5 +1,7 @@
 #include "adr/typeahead.h"
 
+#include <algorithm>
+#include <iostream>
 #include <string_view>
 
 #include "cista/io.h"
@@ -15,6 +17,7 @@
 #include "osmium/geom/haversine.hpp"
 
 #include "adr/adr.h"
+#include "adr/area_database.h"
 #include "adr/guess_context.h"
 #include "adr/import_context.h"
 #include "adr/trace.h"
@@ -192,6 +195,71 @@ area_idx_t typeahead::add_admin_area(import_context& ctx,
   area_admin_level_.emplace_back(admin_level_t{admin_lvl_int});
 
   return idx;
+}
+
+void typeahead::propagate_country_codes(area_database const& area_db) {
+  auto const n = area_country_code_.size();
+  if (n == 0U) {
+    return;
+  }
+
+  auto count_missing = [&]() {
+    unsigned m = 0U;
+    for (auto i = 0U; i < n; ++i) {
+      auto const a = area_idx_t{i};
+      if (area_country_code_[a] == kNoCountryCode &&
+          area_admin_level_[a] != kPostalCodeAdminLevel &&
+          area_admin_level_[a] != kTimezoneAdminLevel) {
+        ++m;
+      }
+    }
+    return m;
+  };
+
+  auto const initial_missing = count_missing();
+  std::clog << "propagate_country_codes: " << n << " areas total, "
+            << initial_missing << " without country code\n";
+
+  // Iterative spatial containment: for each area still missing a country code,
+  // compute a representative point and use area_db (R-tree + tg point-in-polygon)
+  // to find enclosing areas. Newly resolved areas become donors for subsequent
+  // passes, propagating from coarse (admin_level 2-4) to fine (8-11).
+  unsigned total_spatial = 0U;
+  for (unsigned pass = 0U; pass < 6U; ++pass) {
+    unsigned propagated = 0U;
+    basic_string<area_idx_t> lookup_results;
+    for (auto i = 0U; i < n; ++i) {
+      auto const a = area_idx_t{i};
+      if (area_country_code_[a] != kNoCountryCode ||
+          area_admin_level_[a] == kPostalCodeAdminLevel ||
+          area_admin_level_[a] == kTimezoneAdminLevel) {
+        continue;
+      }
+      auto const rep = area_db.representative_point(a);
+      if (!rep.has_value()) {
+        continue;
+      }
+      area_db.lookup(*this, *rep, lookup_results);
+      for (auto const parent : lookup_results) {
+        if (area_country_code_[parent] != kNoCountryCode) {
+          area_country_code_[a] = area_country_code_[parent];
+          ++propagated;
+          break;
+        }
+      }
+    }
+    total_spatial += propagated;
+    std::clog << "  spatial pass " << pass << ": " << propagated
+              << " areas resolved\n";
+    if (propagated == 0U) {
+      break;
+    }
+  }
+
+  auto const final_missing = count_missing();
+  std::clog << "propagate_country_codes: spatial=" << total_spatial
+            << ", remaining=" << final_missing
+            << " (was " << initial_missing << ")\n";
 }
 
 timezone_idx_t typeahead::get_or_create_timezone(import_context& ctx,

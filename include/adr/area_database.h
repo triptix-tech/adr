@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 
 #include "cista/mmap.h"
 
@@ -22,6 +23,7 @@ struct area_database final {
   void lookup(typeahead const&, coordinates, basic_string<area_idx_t>&) const;
   void add_area(area_idx_t, osmium::Area const&);
   bool is_within(coordinates, area_idx_t) const;
+  std::optional<coordinates> representative_point(area_idx_t) const;
 
   struct impl;
   std::unique_ptr<impl> impl_;
