@@ -241,6 +241,11 @@ void extract(std::filesystem::path const& in_path,
   //    std::cout << k << ": " << v << "\n";
   //  }
 
+  {
+    auto const timer = utl::scoped_timer{"propagate country codes"};
+    t.propagate_country_codes(area_db);
+  }
+
   {  // Copy data from context to typeahead (not possible before, because vecvec
      // requires to build indices 0, ..., N in order).
     UTL_START_TIMING(copy_data);

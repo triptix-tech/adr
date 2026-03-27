@@ -246,4 +246,30 @@ bool area_database::is_within(coordinates const c, area_idx_t area) const {
   return impl_->is_within(c, area);
 }
 
+std::optional<coordinates> area_database::representative_point(
+    area_idx_t const area) const {
+  auto const i = to_idx(area);
+  if (i >= impl_->outer_rings_.size()) {
+    return std::nullopt;
+  }
+  auto const& outers = impl_->outer_rings_[area];
+  if (outers.size() == 0U) {
+    return std::nullopt;
+  }
+  auto const& first_ring = outers[0U];
+  if (first_ring.size() == 0U) {
+    return std::nullopt;
+  }
+  auto const count =
+      static_cast<unsigned>((std::min)(first_ring.size(), std::size_t{8U}));
+  double lat_sum = 0.0;
+  double lng_sum = 0.0;
+  for (auto j = 0U; j < count; ++j) {
+    lat_sum += static_cast<double>(first_ring[j].lat_);
+    lng_sum += static_cast<double>(first_ring[j].lng_);
+  }
+  return coordinates{.lat_ = static_cast<std::int32_t>(lat_sum / count),
+                     .lng_ = static_cast<std::int32_t>(lng_sum / count)};
+}
+
 }  // namespace adr
