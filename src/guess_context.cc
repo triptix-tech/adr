@@ -67,8 +67,11 @@ void suggestion::print(std::ostream& out,
   auto const tz_name =
       tz == timezone_idx_t::invalid() ? "" : t.timezone_names_[tz].view();
   out << ", pos=" << coordinates_ << ", areas=" << areas(t, languages)
-      << ", tz=" << tz_name << " -> score=" << static_cast<float>(score_)
-      << "\n";
+      << ", tz=" << tz_name << " -> score=" << static_cast<float>(score_);
+  if (is_duplicate_) {
+    out << " [DUP]";
+  }
+  out << "\n";
 }
 
 area_set suggestion::areas(typeahead const& t,

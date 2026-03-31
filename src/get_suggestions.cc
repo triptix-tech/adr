@@ -683,7 +683,7 @@ std::vector<token> get_suggestions(
     }
   }
 
-  // REMOVE DUPLICATES
+  // MARK DUPLICATES
   {
     // Create sorted permutation.
     // Sort by (location, score) to keep best scored entry for each location.
@@ -700,46 +700,30 @@ std::vector<token> get_suggestions(
                       ctx.suggestions_[b].score_);
     });
 
-    // Store duplicates to remove.
-    auto remove = std::vector<std::uint32_t>{};
+    // Mark duplicates.
+    // Duplicates are consecutive with the highest scoring entry first.
+    // Mark all but the first entry as duplicate (keeps highest scoring).
     for (auto i = 1U; i != sorted.size(); ++i) {
       auto const& pred = ctx.suggestions_[sorted[i - 1U]];
       auto const& curr = ctx.suggestions_[sorted[i]];
       if (std::tie(pred.location_, pred.area_set_) ==
           std::tie(curr.location_, curr.area_set_)) {
-        remove.push_back(sorted[i]);
+        ctx.suggestions_[sorted[i]].is_duplicate_ = true;
       }
-    }
-
-    // Remove duplicates in a sorted way (back to front).
-    utl::sort(remove, std::greater<>{});
-    for (auto const i : remove) {
-      ctx.suggestions_.erase(begin(ctx.suggestions_) + i);
     }
   }
 
   UTL_START_TIMING(sort);
-  //  auto const result_count = static_cast<std::ptrdiff_t>(
-  //      std::min(std::size_t{n_suggestions * 10U}, ctx.suggestions_.size()));
-  //  std::nth_element(begin(ctx.suggestions_),
-  //                   begin(ctx.suggestions_) + result_count,
-  //                   end(ctx.suggestions_));
-  //  ctx.suggestions_.resize(result_count);
-  std::sort(begin(ctx.suggestions_), end(ctx.suggestions_));
-
-  ctx.suggestions_.erase(
-      std::unique(begin(ctx.suggestions_), end(ctx.suggestions_),
-                  [&](suggestion const& a, suggestion const& b) {
-                    return a.location_ == b.location_ &&
-                           a.area_set_ == b.area_set_;
-                  }),
-      end(ctx.suggestions_));
+  auto const result_count = static_cast<std::ptrdiff_t>(
+      std::min(std::size_t{n_suggestions}, ctx.suggestions_.size()));
+  std::nth_element(begin(ctx.suggestions_),
+                   begin(ctx.suggestions_) + result_count,
+                   end(ctx.suggestions_));
+  ctx.suggestions_.resize(result_count);
+  utl::sort(ctx.suggestions_);
 
   UTL_STOP_TIMING(sort);
   trace("sort [{} us]", UTL_TIMING_US(sort));
-
-  ctx.suggestions_.resize(std::min(static_cast<std::size_t>(n_suggestions),
-                                   ctx.suggestions_.size()));
 
   for (auto& s : ctx.suggestions_) {
     s.populate_areas(t);

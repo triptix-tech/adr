@@ -52,8 +52,8 @@ struct suggestion {
                      std::string_view country_code) const;
   void print(std::ostream&, typeahead const&, language_list_t const&) const;
   bool operator<(suggestion const& o) const {
-    return std::tie(score_, location_, area_set_) <
-           std::tie(o.score_, o.location_, o.area_set_);
+    return std::tie(is_duplicate_, score_, location_, area_set_) <
+           std::tie(o.is_duplicate_, o.score_, o.location_, o.area_set_);
   }
 
   area_set areas(typeahead const&, language_list_t const&) const;
@@ -68,6 +68,7 @@ struct suggestion {
   area_set_lang_t matched_area_lang_;
   std::uint32_t matched_areas_;
   std::uint8_t matched_tokens_;
+  bool is_duplicate_{false};
   float score_;
 
   std::optional<unsigned> city_area_idx_{};
