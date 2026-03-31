@@ -70,12 +70,16 @@ inline std::string_view normalize(std::string_view in) {
   return normalize(in, decomposed_buf);
 }
 
+using token_bitmask_t = std::uint8_t;
+
+constexpr auto kMaxTokens = sizeof(token_bitmask_t) * 8U;
+
 struct phrase {
-  std::uint8_t token_bits_;
+  token_bitmask_t token_bits_;
   std::string s_;
 };
 
-inline std::string bit_mask_to_str(std::uint8_t const b) {
+inline std::string bit_mask_to_str(token_bitmask_t const b) {
   auto r = std::string{};
   for (auto i = 0U; i != sizeof(b) * 8U; ++i) {
     r += (((b >> i) & 0x1) == 0x1) ? '1' : '0';
@@ -160,6 +164,7 @@ inline std::vector<phrase> get_phrases(std::vector<String> const& in_tokens) {
     }
   }
   utl::sort(r, [](auto&& a, auto&& b) { return a.s_.size() > b.s_.size(); });
+  r.resize(std::min(static_cast<std::size_t>(kMaxInputPhrases), r.size()));
   return r;
 }
 

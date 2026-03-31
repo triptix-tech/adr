@@ -19,6 +19,8 @@
 #include "adr/trace.h"
 #include "adr/typeahead.h"
 
+namespace sv = std::views;
+
 namespace adr {
 
 constexpr auto const kMaxScoredMatches = std::size_t{10000};
@@ -51,7 +53,7 @@ float get_category_score(amenity_category const x) {
 
 void activate_areas(typeahead const& t,
                     guess_context& ctx,
-                    std::uint8_t const numeric_tokens_mask,
+                    token_bitmask_t const numeric_tokens_mask,
                     area_set_idx_t const area_set_idx,
                     language_list_t const languages) {
   for (auto const area : t.area_sets_[area_set_idx]) {
@@ -101,8 +103,8 @@ void activate_areas(typeahead const& t,
 }
 
 template <bool Debug>
-void match_streets(std::uint8_t const all_tokens_mask,
-                   std::uint8_t const numeric_tokens_mask,
+void match_streets(token_bitmask_t const all_tokens_mask,
+                   token_bitmask_t const numeric_tokens_mask,
                    typeahead const& t,
                    guess_context& ctx,
                    std::vector<std::string> const& tokens,
@@ -154,8 +156,8 @@ void match_streets(std::uint8_t const all_tokens_mask,
             .type_ = match_item::type::kHouseNumber,
             .score_ = t.strings_[hn].view() == p.s_ ? -2.5F : hn_score,
             .index_ = index,
-            .house_number_p_idx_ = static_cast<std::uint8_t>(hn_p_idx),
-            .matched_mask_ = static_cast<std::uint8_t>(
+            .house_number_p_idx_ = static_cast<phrase_idx_t>(hn_p_idx),
+            .matched_mask_ = static_cast<token_bitmask_t>(
                 ctx.phrases_[street_p_idx].token_bits_ |
                 ctx.phrases_[hn_p_idx].token_bits_)});
       }
@@ -323,8 +325,8 @@ void match_streets(std::uint8_t const all_tokens_mask,
 }
 
 template <bool Debug>
-void match_places(std::uint8_t const all_tokens_mask,
-                  std::uint8_t const numeric_tokens_mask,
+void match_places(token_bitmask_t const all_tokens_mask,
+                  token_bitmask_t const numeric_tokens_mask,
                   typeahead const& t,
                   guess_context& ctx,
                   std::vector<std::string> const& tokens,
@@ -615,7 +617,7 @@ std::vector<token> get_suggestions(
 
   auto token_pos = std::vector<token>{};
   auto tokens = std::vector<std::string>{};
-  auto all_tokens_mask = std::uint8_t{0U};
+  auto all_tokens_mask = token_bitmask_t{0U};
   utl::for_each_token(utl::cstr{in}, ' ', [&, i = 0U](utl::cstr tok) mutable {
     if (tok.empty()) {
       return;
@@ -628,11 +630,12 @@ std::vector<token> get_suggestions(
         token{static_cast<std::uint16_t>(tok.data() - in.data()),
               static_cast<std::uint16_t>(tok.length())});
   });
+  tokens.resize(std::min(tokens.size(), kMaxTokens));
   ctx.phrases_ = get_phrases(tokens);
 
   trace("tokens: {}, phrases: {}, languages={}", tokens,
-        ctx.phrases_ | std::views::transform([](auto&& x) { return x.s_; }),
-        languages | std::views::transform([&](language_idx_t const lang) {
+        ctx.phrases_ | sv::transform([](auto&& x) { return x.s_; }),
+        languages | sv::transform([&](language_idx_t const lang) {
           return t.lang_names_[lang].view();
         }));
 
