@@ -406,9 +406,9 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
   // ===============
   // RESTRICT + SORT
   // ---------------
-  constexpr auto kMaxMatches = std::size_t{5'000U};
+  constexpr auto kMaxMatches = std::size_t{6000U};
   auto const n_matches = std::min(kMaxMatches, matches.size());
-  if (matches.size() != n_matches) {
+  if (matches.size() >= n_matches) {
     std::nth_element(begin(matches), begin(matches) + n_matches, end(matches));
     matches.resize(n_matches);
   }
