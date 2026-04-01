@@ -402,9 +402,20 @@ void typeahead::guess(std::string_view normalized, guess_context& ctx) const {
       matches.emplace_back(cos_sim_match{i, cos_sim});
     }
   }
-  std::sort(begin(matches), end(matches));
+
+  // ===============
+  // RESTRICT + SORT
+  // ---------------
+  constexpr auto kMaxMatches = std::size_t{5'000U};
+  auto const n_matches = std::min(kMaxMatches, matches.size());
+  if (matches.size() != n_matches) {
+    std::nth_element(begin(matches), begin(matches) + n_matches, end(matches));
+    matches.resize(n_matches);
+  }
+  utl::sort(matches);
 
   UTL_STOP_TIMING(t3);
+
   trace("{} matches [{} ms]", matches.size(), UTL_TIMING_MS(t3));
 }
 

@@ -92,7 +92,8 @@ void activate_areas(typeahead const& t,
             t.strings_[t.area_names_[area][static_cast<std::uint8_t>(lang_idx)]]
                 .view();
         auto const lang_match_score = get_match_score(
-            area_name, area_p.s_, ctx.sift4_offset_arr_, ctx.normalize_buf_);
+            area_name, area_p.s_, ctx.sift4_offset_arr_, ctx.normalize_buf_,
+            ctx.phrase_mem_, ctx.s_tokens_mem_);
         if (lang_match_score < score) {
           score = lang_match_score;
           lang = static_cast<std::uint8_t>(lang_idx);
@@ -138,9 +139,9 @@ void match_streets(token_bitmask_t const all_tokens_mask,
           continue;
         }
 
-        auto const hn_score =
-            get_match_score(t.strings_[hn].view(), p.s_, ctx.sift4_offset_arr_,
-                            ctx.normalize_buf_);
+        auto const hn_score = get_match_score(
+            t.strings_[hn].view(), p.s_, ctx.sift4_offset_arr_,
+            ctx.normalize_buf_, ctx.phrase_mem_, ctx.s_tokens_mem_);
         if (hn_score == kNoMatch) {
           trace("[{}] {} HOUSENUMBER: {} vs {} no match", street,
                 t.strings_[t.street_names_[street][kDefaultLangIdx]].view(),
@@ -491,9 +492,9 @@ void compute_string_phrase_match_scores(guess_context& ctx,
   ctx.string_phrase_match_scores_.resize(ctx.string_matches_.size());
   for (auto const [i, m] : utl::enumerate(ctx.string_matches_)) {
     for (auto const [j, p] : utl::enumerate(ctx.phrases_)) {
-      ctx.string_phrase_match_scores_[i][j] =
-          get_match_score(t.strings_[m.idx_].view(), p.s_,
-                          ctx.sift4_offset_arr_, ctx.normalize_buf_);
+      ctx.string_phrase_match_scores_[i][j] = get_match_score(
+          t.strings_[m.idx_].view(), p.s_, ctx.sift4_offset_arr_,
+          ctx.normalize_buf_, ctx.phrase_mem_, ctx.s_tokens_mem_);
     }
   }
   UTL_STOP_TIMING(t);
@@ -631,7 +632,7 @@ std::vector<token> get_suggestions(
               static_cast<std::uint16_t>(tok.length())});
   });
   tokens.resize(std::min(tokens.size(), kMaxTokens));
-  ctx.phrases_ = get_phrases(tokens);
+  ctx.phrases_ = get_sorted_phrases(tokens);
 
   trace("tokens: {}, phrases: {}, languages={}", tokens,
         ctx.phrases_ | sv::transform([](auto&& x) { return x.s_; }),

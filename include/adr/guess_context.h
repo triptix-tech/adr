@@ -110,7 +110,9 @@ struct guess_context {
   void resize(typeahead const&);
 
   utf8_normalize_buf_t normalize_buf_;
+  std::string phrase_mem_;
   std::vector<sift_offset> sift4_offset_arr_;
+  std::vector<std::string_view> s_tokens_mem_;
 
   std::vector<phrase> phrases_;
   std::vector<suggestion> suggestions_;

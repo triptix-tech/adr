@@ -105,7 +105,7 @@ get_postfix_alt_string(std::string_view s) {
   return std::nullopt;
 }
 
-inline std::optional<std::string> get_exact_alt(std::string_view s) {
+inline std::optional<std::string_view> get_exact_alt(std::string_view s) {
   switch (cista::hash(s)) {
     case cista::hash("hbf"): return "hauptbahnhof";
     case cista::hash("hauptbahnhof"): return "hbf";
@@ -116,53 +116,73 @@ inline std::optional<std::string> get_exact_alt(std::string_view s) {
   return std::nullopt;
 }
 
-inline std::optional<std::string> get_alt_string(std::string_view s) {
+inline bool append_alt_string(std::string_view s, std::string& out) {
   if (auto const alt = get_exact_alt(s); alt.has_value()) {
-    return alt;
+    out.append(alt->data(), alt->size());
+    return true;
   }
-  if (auto const postfix_alt = get_postfix_alt_string(s);
-      postfix_alt.has_value()) {
+
+  auto const postfix_alt = get_postfix_alt_string(s);
+  if (postfix_alt.has_value()) {
     auto const [postfix, replacement] = *postfix_alt;
-    [[unlikely]] return fmt::format(
-        "{}{}", s.substr(0, s.size() - postfix.size()), replacement);
+    out.append(s.data(), s.size() - postfix.size());
+    out.append(replacement.data(), replacement.size());
+    return true;
   }
-  return std::nullopt;
+
+  return false;
+}
+
+template <typename String, typename Fn>
+inline void for_each_phrase(std::vector<String> const& in_tokens,
+                            std::string& mem,
+                            Fn&& fn) {
+  mem.clear();
+  for (auto from = 0U; from != in_tokens.size(); ++from) {
+    for (auto len = 1U; from + len <= in_tokens.size() && len != 5U; ++len) {
+      auto const to = from + len;
+      auto token_bits = token_bitmask_t{0U};
+      for (auto i = from; i != to; ++i) {
+        token_bits |= static_cast<token_bitmask_t>(1U << i);
+      }
+
+      auto const append_until_end = [&](auto&& recurse,
+                                        unsigned const token_idx) -> void {
+        auto const old_size = mem.size();
+        for (auto i = token_idx; i != to; ++i) {
+          auto const prefix_size = mem.size();
+          auto const token = std::string_view{in_tokens[i]};
+
+          if (append_alt_string(token, mem)) {
+            recurse(recurse, i + 1U);
+          }
+
+          mem.resize(prefix_size);
+          if (!mem.empty()) {
+            mem.push_back(' ');
+          }
+          mem.append(token);
+        }
+
+        fn(token_bits, std::string_view{mem});
+        mem.resize(old_size);
+      };
+
+      append_until_end(append_until_end, from);
+      mem.clear();
+    }
+  }
 }
 
 template <typename String>
-inline std::vector<phrase> get_phrases(std::vector<String> const& in_tokens) {
+inline std::vector<phrase> get_sorted_phrases(std::vector<String> const& in_tokens) {
   auto r = std::vector<phrase>{};
-  for (auto from = 0U; from != in_tokens.size(); ++from) {
-    for (auto length = 1U; from + length <= in_tokens.size() && length != 5U;
-         ++length) {
-      auto phrases = std::vector<phrase>{phrase{}};
-      for (auto to = from; to < from + length && to < in_tokens.size(); ++to) {
-        auto const alt = get_alt_string(in_tokens[to]);
-        auto alt_phrases = std::vector<phrase>{};
-        if (alt.has_value()) {
-          alt_phrases = phrases;
-          for (auto& p : alt_phrases) {
-            p.token_bits_ |= 1 << to;
-            if (to != from) {
-              p.s_ += ' ';
-            }
-            p.s_ += *alt;
-          }
-        }
-
-        for (auto& p : phrases) {
-          p.token_bits_ |= 1 << to;
-          if (to != from) {
-            p.s_ += ' ';
-          }
-          p.s_ += in_tokens[to];
-        }
-
-        utl::concat(phrases, alt_phrases);
-      }
-      utl::concat(r, phrases);
-    }
-  }
+  auto mem = std::string{};
+  for_each_phrase(
+      in_tokens, mem,
+      [&](token_bitmask_t const token_bits, std::string_view const s) {
+        r.push_back(phrase{token_bits, std::string{s}});
+      });
   utl::sort(r, [](auto&& a, auto&& b) { return a.s_.size() > b.s_.size(); });
   r.resize(std::min(static_cast<std::size_t>(kMaxInputPhrases), r.size()));
   return r;

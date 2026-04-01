@@ -47,7 +47,7 @@ TEST(adr, for_each_bigram) {
 }
 
 TEST(adr, phrase) {
-  auto const phrases = adr::get_phrases<std::string_view>(
+  auto const phrases = adr::get_sorted_phrases<std::string_view>(
       {"willy", "brandt", "platz", "abert", "ainstein", "illme"});
   auto const expected = std::vector<std::pair<std::string, std::string>>{
       {"willy", "10000000"},
@@ -68,14 +68,15 @@ TEST(adr, phrase) {
   auto i = 0U;
   for (auto const& p : phrases) {
     EXPECT_EQ((std::pair{p.s_, adr::bit_mask_to_str(p.token_bits_)}),
-              (expected[i]));
+              (expected.at(i)))
+        << "computed phrase: " << p.s_;
     ++i;
   }
 }
 
 TEST(adr, alt_string) {
-  auto const phrases =
-      adr::get_phrases<std::string_view>({"hauptbahnhof", "darmstadt", "abc"});
+  auto const phrases = adr::get_sorted_phrases<std::string_view>(
+      {"hauptbahnhof", "darmstadt", "abc"});
   auto const expected = std::vector<std::pair<std::string, std::string>>{
       {"hauptbahnhof darmstadt abc", "11100000"},
       {"hauptbahnhof darmstadt", "11000000"},
@@ -148,7 +149,9 @@ TEST(adr, score_test) {
   //  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "damrstadt", lev_dist,
   //  tmp));
 
-  adr::utf8_normalize_buf_t buf;
+  auto buf = adr::utf8_normalize_buf_t{};
+  auto mem = std::string{};
+  auto s_tokens_mem = std::vector<std::string_view>{};
   //  EXPECT_EQ(1,
   //            adr::get_match_score("Landkreis Aschaffenburg",
   //                                 "mainaschaff aschaffenburg", sift4_dist,
@@ -237,10 +240,11 @@ TEST(adr, score_test) {
   //           adr::get_match_score("Groß-Umstadt", "umstadt", sift4_dist,
   //           buf));
 
-  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "darmstadt", sift4_dist, buf));
+  EXPECT_EQ(1, adr::get_match_score("Darmstadt", "darmstadt", sift4_dist, buf,
+                                    mem, s_tokens_mem));
 
   EXPECT_EQ(1, adr::get_match_score("Darmstadt,ZOB Zweifalltorweg", "darmstadt",
-                                    sift4_dist, buf));
+                                    sift4_dist, buf, mem, s_tokens_mem));
 
   // EXPECT_EQ(1, adr::get_match_score("bikebox arnulf-klett-platz anlage a",
   //                                   "arnulf klett platz", sift4_dist, buf));
