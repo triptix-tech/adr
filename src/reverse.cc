@@ -48,7 +48,7 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
   rtree_.search(min, max, [&](auto&&, auto&&, rtree_entity const& e) {
     switch (e.type_) {
       case adr::entity_type::kHouseNumber: {
-        if (filter == filter_type::kPlace || filter == filter_type::kExtra) {
+        if (!allows(filter, filter_type::kAddress)) {
           return true;
         }
         auto const& hn = e.hn_;
@@ -69,9 +69,11 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
       } break;
 
       case adr::entity_type::kPlace: {
-        if (filter == filter_type::kAddress ||
-            (filter == filter_type::kExtra &&
-             t.place_type_[e.place_.place_] != amenity_category::kExtra)) {
+        auto const required =
+            t.place_type_[e.place_.place_] == amenity_category::kExtra
+                ? filter_type::kExtra
+                : filter_type::kPlace;
+        if (!allows(filter, required)) {
           return true;
         }
         auto const& p = e.place_;
@@ -90,7 +92,7 @@ std::vector<suggestion> reverse::lookup(typeahead const& t,
       } break;
 
       case adr::entity_type::kStreet: {
-        if (filter == filter_type::kPlace || filter == filter_type::kExtra) {
+        if (!allows(filter, filter_type::kAddress)) {
           return true;
         }
         auto const& s = e.street_segment_;

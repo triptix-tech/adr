@@ -63,11 +63,34 @@ enum class location_type_t : std::uint8_t {
 };
 
 enum class filter_type : std::uint8_t {
-  kNone,
-  kAddress,
-  kPlace,
-  kExtra,
+  kNone = 0U,
+  kAddress = 1U << 0U,
+  kPlace = 1U << 1U,
+  kExtra = 1U << 2U,
 };
+
+constexpr filter_type operator|(filter_type const a, filter_type const b) {
+  return static_cast<filter_type>(static_cast<std::uint8_t>(a) |
+                                  static_cast<std::uint8_t>(b));
+}
+
+constexpr filter_type operator&(filter_type const a, filter_type const b) {
+  return static_cast<filter_type>(static_cast<std::uint8_t>(a) &
+                                  static_cast<std::uint8_t>(b));
+}
+
+constexpr filter_type& operator|=(filter_type& a, filter_type const b) {
+  a = a | b;
+  return a;
+}
+
+constexpr bool any(filter_type const f) {
+  return static_cast<std::uint8_t>(f) != 0U;
+}
+
+constexpr bool allows(filter_type const filter, filter_type const flag) {
+  return filter == filter_type::kNone || any(filter & flag);
+}
 
 struct coordinates {
   friend std::ostream& operator<<(std::ostream& out, coordinates const& c) {
