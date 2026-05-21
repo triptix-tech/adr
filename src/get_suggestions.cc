@@ -534,8 +534,7 @@ void get_scored_matches(
         switch (type) {
           case location_type_t::kStreet: {
             auto const street_idx = street_idx_t{idx};
-            if (filter != filter_type::kNone &&
-                filter != filter_type::kAddress) {
+            if (!allows(filter, filter_type::kAddress)) {
               trace("  -> STREET {} [phrase={:?}]  => filtered by type",
                     street_idx, ctx.phrases_[p_idx].s_);
               continue;
@@ -560,10 +559,11 @@ void get_scored_matches(
 
           case location_type_t::kPlace: {
             auto const place_idx = place_idx_t{idx};
-            if (filter != filter_type::kNone &&
-                (filter == filter_type::kAddress ||
-                 ((filter == filter_type::kExtra) !=
-                  (t.place_type_[place_idx] == amenity_category::kExtra)))) {
+            auto const required =
+                t.place_type_[place_idx] == amenity_category::kExtra
+                    ? filter_type::kExtra
+                    : filter_type::kPlace;
+            if (!allows(filter, required)) {
               trace("  -> PLACE {} [phrase={:?}]  => filtered by type",
                     place_idx, ctx.phrases_[p_idx].s_);
               continue;
