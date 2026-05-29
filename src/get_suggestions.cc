@@ -1,6 +1,9 @@
 #include "adr/adr.h"
 
+#include <optional>
 #include <ranges>
+
+#include "geo/box.h"
 
 #include "fmt/ranges.h"
 
@@ -611,7 +614,8 @@ std::vector<token> get_suggestions(
     std::optional<geo::latlng> const& coord,
     float const bias,
     filter_type const filter,
-    std::function<bool(adr::place_idx_t)> const& place_filter) {
+    std::function<bool(adr::place_idx_t)> const& place_filter,
+    std::optional<geo::box> const& bbox = std::nullopt) {
   UTL_START_TIMING(t);
 
   ctx.suggestions_.clear();
@@ -688,6 +692,12 @@ std::vector<token> get_suggestions(
 
       s.score_ -= dist_bonus;
     }
+  }
+
+  if (bbox.has_value()) {
+    std::erase_if(ctx.suggestions_, [&](suggestion const& s) {
+      return !bbox->contains(s.coordinates_.as_latlng());
+    });
   }
 
   // MARK DUPLICATES
@@ -771,7 +781,8 @@ template std::vector<token> get_suggestions<true>(
     std::optional<geo::latlng> const&,
     float,
     filter_type,
-    std::function<bool(place_idx_t)> const&);
+    std::function<bool(place_idx_t)> const&,
+    std::optional<geo::box> const& bbox);
 
 template std::vector<token> get_suggestions<false>(
     typeahead const&,
@@ -782,6 +793,7 @@ template std::vector<token> get_suggestions<false>(
     std::optional<geo::latlng> const&,
     float,
     filter_type,
-    std::function<bool(place_idx_t)> const&);
+    std::function<bool(place_idx_t)> const&,
+    std::optional<geo::box> const& bbox);
 
 }  // namespace adr
