@@ -2,10 +2,11 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include "geo/latlng.h"
+#include "geo/box.h"
 
 #include "cista/memory_holder.h"
 
@@ -36,7 +37,8 @@ std::vector<token> get_suggestions(
     std::optional<geo::latlng> const& coord,
     float bias,
     filter_type filter = filter_type::kNone,
-    std::function<bool(place_idx_t)> const& place_filter = {});
+    std::function<bool(place_idx_t)> const& place_filter = {},
+    std::optional<geo::box> const& = std::nullopt);
 
 void print_stats(typeahead const&);
 
