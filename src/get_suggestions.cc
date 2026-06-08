@@ -1,9 +1,6 @@
 #include "adr/adr.h"
 
-#include <optional>
 #include <ranges>
-
-#include "geo/box.h"
 
 #include "fmt/ranges.h"
 
@@ -615,7 +612,7 @@ std::vector<token> get_suggestions(
     float const bias,
     filter_type const filter,
     std::function<bool(adr::place_idx_t)> const& place_filter,
-    std::optional<geo::box> const& bbox = std::nullopt) {
+    std::optional<geo::box> const& bbox) {
   UTL_START_TIMING(t);
 
   ctx.suggestions_.clear();
@@ -782,7 +779,7 @@ template std::vector<token> get_suggestions<true>(
     float,
     filter_type,
     std::function<bool(place_idx_t)> const&,
-    std::optional<geo::box> const& bbox);
+    std::optional<geo::box> const&);
 
 template std::vector<token> get_suggestions<false>(
     typeahead const&,
@@ -794,6 +791,6 @@ template std::vector<token> get_suggestions<false>(
     float,
     filter_type,
     std::function<bool(place_idx_t)> const&,
-    std::optional<geo::box> const& bbox);
+    std::optional<geo::box> const&);
 
 }  // namespace adr
