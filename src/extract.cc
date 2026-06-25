@@ -96,37 +96,57 @@ struct feature_handler : public osmium::handler::Handler {
   void area(osmium::Area const& a) {
     auto const& tags = a.tags();
 
-    if (tags.has_key("timezone") && !tags.has_key("admin_level")) {
-      std::clog << a.id() << ": " << tags.get_value_by_key("timezone") << "\n";
-      auto const tz_area_idx = t_.add_timezone_area(ctx_, a.tags());
-      if (tz_area_idx != area_idx_t::invalid()) {
-        area_db_.add_area(tz_area_idx, a);
-      }
-      return;
-    }
-
-    auto const env = a.envelope();
-    if (!env.valid() ||
-        ((!tags.has_key("admin_level") || !tags.has_key("name")) &&
-         !tags.has_key("postal_code"))) {
-      return;
-    }
-
-    auto const lock = std::scoped_lock{areas_mutex_};
-
-    auto const admin_area_idx = t_.add_admin_area(ctx_, a.tags());
-    if (admin_area_idx != area_idx_t::invalid()) {
-      if (tags.has_key("timezone")) {
+    if (tags.has_key("timezone") || tags.has_key("boundary")) {
+      if (tags.has_key("timezone") && !tags.has_key("admin_level")) {
         std::clog << a.id() << ": " << tags.get_value_by_key("timezone")
                   << "\n";
+        auto const tz_area_idx = t_.add_timezone_area(ctx_, a.tags());
+        if (tz_area_idx != area_idx_t::invalid()) {
+          area_db_.add_area(tz_area_idx, a);
+        }
+        return;
       }
-      area_db_.add_area(admin_area_idx, a);
+
+      auto const env = a.envelope();
+      if (!env.valid() ||
+          ((!tags.has_key("admin_level") || !tags.has_key("name")) &&
+           !tags.has_key("postal_code"))) {
+        return;
+      }
+
+      auto const lock = std::scoped_lock{areas_mutex_};
+
+      auto const admin_area_idx = t_.add_admin_area(ctx_, a.tags());
+      if (admin_area_idx != area_idx_t::invalid()) {
+        if (tags.has_key("timezone")) {
+          std::clog << a.id() << ": " << tags.get_value_by_key("timezone")
+                    << "\n";
+        }
+        area_db_.add_area(admin_area_idx, a);
+      }
+
+      auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
+      if (postal_code_area_idx != area_idx_t::invalid()) {
+        area_db_.add_area(postal_code_area_idx, a);
+      }
+      return;
+    }
+    if (a.from_way()) {
+      return;
+    }
+    auto const ring_it = a.outer_rings().begin();
+    if (ring_it == a.outer_rings().end()) {
+      return;
     }
 
-    auto const postal_code_area_idx = t_.add_postal_code_area(ctx_, a.tags());
-    if (postal_code_area_idx != area_idx_t::invalid()) {
-      area_db_.add_area(postal_code_area_idx, a);
+    if (!tags.has_key("name")) {
+      return;
     }
+    auto const& ring = *ring_it;
+    auto const loc = ring.front().location();
+
+    t_.add_place(ctx_, a.id(), true, tags, loc);
+    t_.add_address(ctx_, tags, loc);
   }
 
   area_database& area_db_;
@@ -169,7 +189,7 @@ void extract(std::filesystem::path const& in_path,
   auto node_idx =
       tiles::hybrid_node_idx{node_idx_file.fileno(), node_dat_file.fileno()};
   auto mp_manager = osm_area::MultipolygonManager<osm_area::Assembler>{
-      osm_area::Assembler::config_type{}, filter};
+      osm_area::Assembler::config_type{}};
 
   {  // Collect node coordinates.
     pt->status("Load OSM / Pass 1");

@@ -175,7 +175,8 @@ inline void for_each_phrase(std::vector<String> const& in_tokens,
 }
 
 template <typename String>
-inline std::vector<phrase> get_sorted_phrases(std::vector<String> const& in_tokens) {
+inline std::vector<phrase> get_sorted_phrases(
+    std::vector<String> const& in_tokens) {
   auto r = std::vector<phrase>{};
   auto mem = std::string{};
   for_each_phrase(
