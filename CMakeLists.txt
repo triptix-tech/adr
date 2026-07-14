@@ -37,6 +37,7 @@ target_link_libraries(adr
     address_formatting_res
     icu_rules_res
     mustache
+    TBB::tbb
 )
 target_compile_definitions(adr PUBLIC RAPIDJSON_HAS_STDSTRING)
 

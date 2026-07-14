@@ -23,7 +23,6 @@
 #include "utl/zip.h"
 
 #include "tiles/osm/hybrid_node_idx.h"
-#include "tiles/osm/tmp_file.h"
 #include "tiles/util_parallel.h"
 
 #include "adr/area_database.h"
@@ -182,12 +181,11 @@ void extract(std::filesystem::path const& in_path,
                           .add_rule(true, "boundary", "administrative");
 
   auto area_db = area_database{out_path, cista::mmap::protection::WRITE};
-  auto const node_idx_file =
-      tiles::tmp_file{(tmp_dname / "idx.bin").generic_string()};
-  auto const node_dat_file =
-      tiles::tmp_file{(tmp_dname / "dat.bin").generic_string()};
-  auto node_idx =
-      tiles::hybrid_node_idx{node_idx_file.fileno(), node_dat_file.fileno()};
+  auto node_idx = tiles::hybrid_node_idx{
+      cista::mmap{tmp_dname.generic_string().c_str(),
+                  cista::mmap::protection::TMPFILE},
+      cista::mmap{tmp_dname.generic_string().c_str(),
+                  cista::mmap::protection::TMPFILE}};
   auto mp_manager = osm_area::MultipolygonManager<osm_area::Assembler>{
       osm_area::Assembler::config_type{}};
 

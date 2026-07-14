@@ -87,6 +87,10 @@ struct area_database::impl {
                               static_cast<int>(tmp.inner_tmp_.size()));
               tg_ring_free(outer);
               tmp.polys_tmp_.emplace_back(poly);
+
+              for (auto const& x : tmp.inner_tmp_) {
+                tg_ring_free(x);
+              }
             }
 
             auto const min_corner = box.min_.lnglat();
@@ -101,10 +105,6 @@ struct area_database::impl {
               rtree_insert(rtree_, min_corner.data(), max_corner.data(),
                            reinterpret_cast<void*>(
                                static_cast<std::uintptr_t>(to_idx(area_idx))));
-            }
-
-            for (auto const& x : tmp.inner_tmp_) {
-              tg_ring_free(x);
             }
           });
     }
