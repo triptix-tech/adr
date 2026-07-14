@@ -14,8 +14,10 @@
 #include "osmium/io/xml_input.hpp"
 
 #include "utl/enumerate.h"
+#include "utl/erase_if.h"
 #include "utl/helpers/algorithm.h"
 #include "utl/parallel_for.h"
+#include "utl/pipes/sum.h"
 #include "utl/progress_tracker.h"
 #include "utl/timer.h"
 #include "utl/timing.h"
@@ -66,7 +68,21 @@ struct feature_handler : public osmium::handler::Handler {
             r_.add_street(ctx_, street, w);
           }
         } else {
-          t_.add_place(ctx_, w.id(), true, tags, w.nodes().front().location());
+          auto const center =
+              w.ends_have_same_id()
+                  ? std::transform_reduce(
+                        w.nodes().begin(), w.nodes().end(),
+                        osm::Location{0.0, 0.0},
+                        [](auto const& a, auto const& b) {
+                          return osm::Location{a.x() + b.x(), a.y() + b.y()};
+                        },
+                        [&](auto const& l) {
+                          auto const n = static_cast<int32_t>(w.nodes().size());
+                          return osm::Location{l.location().x() / n,
+                                               l.location().y() / n};
+                        })
+                  : w.nodes()[w.nodes().size() / 2].location();
+          t_.add_place(ctx_, w.id(), true, tags, center);
         }
         t_.add_address(ctx_, tags, w.nodes().front().location());
       }
