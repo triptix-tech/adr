@@ -182,6 +182,12 @@ street_idx_t typeahead::get_or_create_street(import_context& ctx,
     ctx.string_to_location_[string_idx].emplace_back(to_idx(idx),
                                                      location_type_t::kStreet);
     street_names_.emplace_back({string_idx});
+
+    // prevent out-of-bounds access
+    ctx.street_pos_[idx];
+    ctx.house_numbers_[idx];
+    ctx.house_coordinates_[idx];
+
     return idx;
   });
 }

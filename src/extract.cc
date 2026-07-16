@@ -289,9 +289,6 @@ void extract(std::filesystem::path const& in_path,
   {  // Assign place/street/housenumber coordinates to areas.
     auto timer = utl::scoped_timer{"coordinate to area mapping"};
 
-    t.house_coordinates_.resize(t.street_names_.size());
-    t.house_numbers_.resize(t.street_names_.size());
-
     {
       auto place_areas = std::vector<basic_string<area_idx_t>>{};
       place_areas.resize(t.place_coordinates_.size());
