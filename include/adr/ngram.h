@@ -30,7 +30,12 @@ inline std::string decompress_bigram(ngram_t const t) {
   return s;
 }
 
-inline ngram_t compress_char(char const c) { return static_cast<ngram_t>(c); }
+inline ngram_t compress_char(char const c) {
+  // cast via uint8_t: a plain cast would sign-extend bytes >= 0x80 (UTF-8
+  // multi-byte sequences) on platforms with signed char, clobbering the high
+  // byte of the bigram
+  return static_cast<ngram_t>(static_cast<std::uint8_t>(c));
+}
 
 inline ngram_t compress_bigram(std::string_view s) {
   assert(s.size() >= 2);
