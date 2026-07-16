@@ -207,7 +207,13 @@ void typeahead::add_address(import_context& ctx,
     return;
   }
 
-  auto const street = tags["addr:street"];
+  // Addresses in quarters without street names (e.g. Bulgarian ж.к. housing
+  // estates) reference the quarter by name via addr:place instead of
+  // addr:street. Index the quarter name like a street name in that case.
+  auto street = tags["addr:street"];
+  if (street == nullptr) {
+    street = tags["addr:place"];
+  }
   if (street == nullptr) {
     return;
   }
