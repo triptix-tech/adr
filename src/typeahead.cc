@@ -114,6 +114,13 @@ area_idx_t typeahead::add_timezone_area(import_context& ctx,
 
 area_idx_t typeahead::add_admin_area(import_context& ctx,
                                      osmium::TagList const& tags) {
+  // Reject non-administrative boundaries (ecclesiastical, protected_area,
+  // ...): they may carry admin_level + name but must not label cities.
+  auto const boundary = tags["boundary"];
+  if (boundary != nullptr && std::string_view{boundary} != "administrative") {
+    return area_idx_t::invalid();
+  }
+
   auto const admin_lvl = tags["admin_level"];
   if (admin_lvl == nullptr) {
     return area_idx_t::invalid();

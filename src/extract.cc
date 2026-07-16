@@ -137,15 +137,13 @@ struct feature_handler : public osmium::handler::Handler {
     if (ring_it == a.outer_rings().end()) {
       return;
     }
+    auto const loc = ring_it->front().location();
 
-    if (!tags.has_key("name")) {
-      return;
-    }
-    auto const& ring = *ring_it;
-    auto const loc = ring.front().location();
-
-    t_.add_place(ctx_, a.id(), true, tags, loc);
     t_.add_address(ctx_, tags, loc);
+
+    if (tags.has_key("name")) {
+      t_.add_place(ctx_, a.id(), true, tags, loc);
+    }
   }
 
   area_database& area_db_;
@@ -178,16 +176,18 @@ void extract(std::filesystem::path const& in_path,
   auto const filter = osm::TagsFilter{}
                           .add_rule(true, "timezone")
                           .add_rule(true, "boundary", "postal_code")
-                          .add_rule(true, "boundary", "administrative");
+                          .add_rule(true, "boundary", "administrative")
+                          .add_rule(true, "name")
+                          .add_rule(true, "addr:housenumber");
 
   auto area_db = area_database{out_path, cista::mmap::protection::WRITE};
-  auto node_idx = tiles::hybrid_node_idx{
-      cista::mmap{tmp_dname.generic_string().c_str(),
-                  cista::mmap::protection::TMPFILE},
-      cista::mmap{tmp_dname.generic_string().c_str(),
-                  cista::mmap::protection::TMPFILE}};
+  auto node_idx =
+      tiles::hybrid_node_idx{cista::mmap{tmp_dname.generic_string().c_str(),
+                                         cista::mmap::protection::TMPFILE},
+                             cista::mmap{tmp_dname.generic_string().c_str(),
+                                         cista::mmap::protection::TMPFILE}};
   auto mp_manager = osm_area::MultipolygonManager<osm_area::Assembler>{
-      osm_area::Assembler::config_type{}};
+      osm_area::Assembler::config_type{}, filter};
 
   {  // Collect node coordinates.
     pt->status("Load OSM / Pass 1");
