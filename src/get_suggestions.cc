@@ -1,5 +1,6 @@
 #include "adr/adr.h"
 
+#include <cmath>
 #include <ranges>
 
 #include "fmt/ranges.h"
@@ -47,8 +48,7 @@ float get_category_score(amenity_category const x) {
     case amenity_category::kCity: return 3.0F;
     case amenity_category::kTown: return 2.0F;
     case amenity_category::kIsland: return 1.0F;
-
-    case amenity_category::kPlace6: return 1.0F;
+    case amenity_category::kPlace6: return 2.5F;
     case amenity_category::kPlaceCapital8: return 3.0F;
     default: return 0.F;
   }
@@ -427,7 +427,10 @@ void match_places(token_bitmask_t const all_tokens_mask,
     auto const population = t.place_population_[place].get();
     auto const population_score =
         t.place_type_[place] == amenity_category::kExtra
-            ? std::clamp(population / 2'000.F, 1.2F, 5.0F)
+            ? std::clamp(1.25F * (std::log10(static_cast<float>(
+                                      std::max(population, 1U))) -
+                                  1.0F),
+                         1.2F, 5.0F)
             : std::clamp(population / 200'000.F, 0.0F, 3.0F);
     auto const place_score = 5.0F;
 
@@ -454,11 +457,11 @@ void match_places(token_bitmask_t const all_tokens_mask,
     trace(
         "[{}] {} FINAL: place_edit_dist={}, areas_edit_dist={}, "
         "areas_bonus={}, no_area_score={}, population_score={} [{}], "
-        "place_score={}, extra_score={}, lang_score={} => {}",
+        "place_score={}, extra_score={} [cat={}], lang_score={} => {}",
         ii, t.strings_[t.place_names_[place][kDefaultLangIdx]].view(),
         place_edit_dist, areas_edit_dist, areas_score, no_area_score,
         population_score, t.place_population_[place].get(), place_score,
-        category_score, lang_score, total_score);
+        category_score, to_str(t.place_type_[place]), lang_score, total_score);
 
     // Add if it's not a duplicate of the previous one
     // or improves upon the previous one.

@@ -52,6 +52,8 @@ int main(int ac, char** av) {
   auto warmup = false;
   auto benchmark = false;
   auto dark = false;
+  auto lat = 49.8731001322536;
+  auto lng = 8.647738878714677;
 
   try {
     bpo::options_description desc{"Options"};
@@ -60,6 +62,8 @@ int main(int ac, char** av) {
         ("verbose,v", "Print debug output")  //
         ("benchmark,b", "parallel benchmark on all threads")  //
         ("dark,d", "dark mode")  //
+        ("lat", bpo::value<double>(&lat)->default_value(lat), "bias lat")  //
+        ("lng", bpo::value<double>(&lng)->default_value(lng), "bias lng")  //
         ("file,f", bpo::value<std::string>(&file)->default_value(file),
          "read inputs from file")  //
         ("warmup,w", "warm up with test query")  //
@@ -121,8 +125,7 @@ int main(int ac, char** av) {
     lang_indices.push_back(l_idx);
   }
 
-  auto const coord =
-      std::optional{geo::latlng{49.8731001322536, 8.647738878714677}};
+  auto const coord = std::optional{geo::latlng{lat, lng}};
 
   auto cache = adr::cache{t->strings_.size(), 1000U};
   auto ctx = adr::guess_context{cache};
