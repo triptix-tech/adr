@@ -37,7 +37,7 @@
 [tiles]
   url=git@github.com:motis-project/tiles.git
   branch=master
-  commit=f9aa90cb9c5f43d17db2495d8e8a0291344de05d
+  commit=8257a1dc804c1bdf699554691ba565e68e6ff255
 [FTXUI]
   url=git@github.com:ArthurSonzogni/FTXUI.git
   branch=main
