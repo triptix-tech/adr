@@ -153,6 +153,9 @@ inline void for_each_phrase(std::vector<String> const& in_tokens,
           auto const prefix_size = mem.size();
           auto const token = std::string_view{in_tokens[i]};
 
+          if (!mem.empty()) {
+            mem.push_back(' ');
+          }
           if (append_alt_string(token, mem)) {
             recurse(recurse, i + 1U);
           }

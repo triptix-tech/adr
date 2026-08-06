@@ -698,6 +698,9 @@ std::vector<token> get_suggestions(
     std::erase_if(ctx.suggestions_, [&](suggestion const& s) {
       return !bbox->contains(s.coordinates_.as_latlng());
     });
+    if (ctx.suggestions_.empty()) {
+      return token_pos;
+    }
   }
 
   // MARK DUPLICATES
@@ -720,7 +723,7 @@ std::vector<token> get_suggestions(
     // Mark duplicates.
     // Duplicates are consecutive with the highest scoring entry first.
     // Mark all but the first entry as duplicate (keeps highest scoring).
-    for (auto i = 1U; i != sorted.size(); ++i) {
+    for (auto i = 1U; i < sorted.size(); ++i) {
       auto const& pred = ctx.suggestions_[sorted[i - 1U]];
       auto const& curr = ctx.suggestions_[sorted[i]];
       if (std::tie(pred.location_, pred.area_set_) ==
@@ -746,7 +749,7 @@ std::vector<token> get_suggestions(
     s.populate_areas(t);
   }
 
-  for (auto i = begin(ctx.suggestions_); i != end(ctx.suggestions_) - 1; ++i) {
+  for (auto i = begin(ctx.suggestions_); i != end(ctx.suggestions_); ++i) {
     for (auto j = std::next(i); j != end(ctx.suggestions_); ++j) {
       while (i->location_ == j->location_ &&  //
              i->unique_area_idx_.has_value() &&
