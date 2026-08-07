@@ -187,12 +187,30 @@ inline score_t get_match_score(
       },
       ' ', '-', ',', ';', '-', '/', '(', ')', '.');
 
+  auto q_tokens = std::vector<std::string_view>{};
+  for_each_token(
+      p_token,
+      [&, c = 0U](std::string_view q) mutable {
+        if (++c > kMaxTokens) {
+          return utl::continue_t::kBreak;
+        }
+        if (!q.empty()) {
+          q_tokens.emplace_back(q);
+        }
+        return utl::continue_t::kContinue;
+      },
+      ' ', '-', ',', ';', '-', '/', '(', ')', '.');
+
   auto const fallback =
       get_token_match_score(normalized_str, p_token, sift4_offset_arr);
-  if (s_tokens_mem.size() == 1U) {
-#ifdef ADR_DEBUG_SCORE
-    std::cout << "p_tokens=1, s_tokens=1 => fallback=" << fallback << "\n";
-#endif
+
+  // more query tokens than the name has words
+  if (q_tokens.size() > s_tokens_mem.size()) {
+    return fallback +
+           static_cast<float>((q_tokens.size() - s_tokens_mem.size()) * 2U);
+  }
+
+  if (q_tokens.size() == 1U && s_tokens_mem.size() == 1U) {
     return fallback;
   }
 
@@ -200,56 +218,47 @@ inline score_t get_match_score(
   std::cout << s << " vs " << p_token << "\n";
 #endif
 
-  auto best_s_score = kNoMatch;
-  auto best_s_token_bits = token_bitmask_t{0U};
-  auto best_s_phrase = std::string_view{};
-  for_each_phrase(
-      s_tokens_mem, mem,
-      [&](token_bitmask_t const token_bits, std::string_view const s_phrase) {
-#if ADR_DEBUG_SCORE
-        std::cout << "  " << s_phrase << ": ";
-#endif
-
-        auto const s_p_match_score =
-            get_token_match_score(s_phrase, p_token, sift4_offset_arr);
-
-        if (best_s_score > s_p_match_score) {
-          best_s_token_bits = token_bits;
-          best_s_score = s_p_match_score;
-          best_s_phrase = s_phrase;
-        }
-      });
-
-  if (best_s_score == kNoMatch) {
+  auto covered = token_bitmask_t{0U};
+  auto sum = 0.0F;
+  auto any = false;
+  for (auto j = 0U; j != q_tokens.size(); ++j) {
+    auto best = kNoMatch;
+    auto best_bits = token_bitmask_t{0U};
+    for_each_phrase(s_tokens_mem, mem,
+                    [&](token_bitmask_t const bits, std::string_view s_phrase) {
+                      if ((bits & covered) != 0U) {
+                        return;
+                      }
+                      auto const sc = get_token_match_score(
+                          s_phrase, q_tokens[j], sift4_offset_arr);
+                      if (best > sc) {
+                        best = sc;
+                        best_bits = bits;
+                      }
+                    });
+    if (best == kNoMatch) {
+      // original charge for a query token nothing matched
+      sum += static_cast<float>(q_tokens.size()) * 2.0F;
+      continue;
+    }
 #ifdef ADR_DEBUG_SCORE
-    std::cout << "  NO MATCH FOUND\n";
+    std::cout << "  MATCHED: " << q_tokens[j] << ": " << best << "\n";
 #endif
+    sum += best;
+    covered |= best_bits;
+    any = true;
+  }
+
+  if (!any) {
     return kNoMatch;
   }
 
-#ifdef ADR_DEBUG_SCORE
-  std::cout << "  MATCHED: " << p_token << " vs " << best_s_phrase << ": "
-            << best_s_score << "\n";
-#endif
-
-#ifdef ADR_DEBUG_SCORE
-  std::cout << "BEFORE NOT MATCHED SCORING: " << best_s_score << "\n";
-#endif
-
-  auto sum = best_s_score;
   auto n_not_matched = 0U;
   for (auto s_idx = 0U; s_idx != s_tokens_mem.size(); ++s_idx) {
-    if ((best_s_token_bits & (1U << s_idx)) == 0U) {
+    if ((covered & (1U << s_idx)) == 0U) {
       ++n_not_matched;
-      auto const not_matched_penalty = std::clamp(
-          static_cast<float>(s_tokens_mem[s_idx].size()) / 4.0F, 0.75F, 3.0F);
-
-#ifdef ADR_DEBUG_SCORE
-      std::cout << "PENALITY NOT MATCHED: " << s_tokens_mem[s_idx] << ": "
-                << not_matched_penalty << "\n";
-#endif
-
-      sum += not_matched_penalty;
+      sum += std::clamp(static_cast<float>(s_tokens_mem[s_idx].size()) / 4.0F,
+                        0.75F, 3.0F);
     }
   }
 
