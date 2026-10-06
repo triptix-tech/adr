@@ -57,10 +57,10 @@ struct feature_handler : public osmium::handler::Handler {
           !tags.has_tag("natural", "wood") &&
           !tags.has_tag("leisure", "playground") &&
           !tags.has_tag("access", "false") &&
-          !tags.has_tag("amenity", "taxi") && (
-              !tags.has_tag("power", "substation") ||
-              tags.has_tag("substation", "transmission") ||
-              tags.has_tag("substation", "distribution"))) {
+          !tags.has_tag("amenity", "taxi") &&
+          (!tags.has_tag("power", "substation") ||
+           tags.has_tag("substation", "transmission") ||
+           tags.has_tag("substation", "distribution"))) {
         if (tags.has_key("highway")) {
           auto const street =
               t_.add_street(ctx_, tags, w.nodes().front().location());
@@ -89,10 +89,10 @@ struct feature_handler : public osmium::handler::Handler {
         !tags.has_tag("building", "industrial") &&
         !tags.has_tag("amenity", "bicycle_rental") &&
         !tags.has_tag("leisure", "playground") &&
-        !tags.has_tag("access", "false") && !tags.has_tag("amenity", "taxi") && (
-              !tags.has_tag("power", "substation") ||
-              tags.has_tag("substation", "transmission") ||
-              tags.has_tag("substation", "distribution"))) {
+        !tags.has_tag("access", "false") && !tags.has_tag("amenity", "taxi") &&
+        (!tags.has_tag("power", "substation") ||
+         tags.has_tag("substation", "transmission") ||
+         tags.has_tag("substation", "distribution"))) {
       t_.add_address(ctx_, tags, n.location());
       t_.add_place(ctx_, n.id(), false, tags, n.location());
     }
