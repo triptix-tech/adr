@@ -626,19 +626,18 @@ std::vector<token> get_suggestions(
   auto token_pos = std::vector<token>{};
   auto tokens = std::vector<std::string>{};
   auto all_tokens_mask = token_bitmask_t{0U};
-  utl::for_each_token(utl::cstr{in}, ' ', [&, i = 0U](utl::cstr tok) mutable {
-    if (tok.empty()) {
+  utl::for_each_token(utl::cstr{in}, ' ', [&](utl::cstr tok) {
+    if (tok.empty() || tokens.size() == kMaxTokens) {
       return;
     }
+    all_tokens_mask |= static_cast<token_bitmask_t>(1U << tokens.size());
     tokens.emplace_back(normalize(tok.view(), ctx.normalize_buf_));
     erase_fillers(tokens.back());
-    all_tokens_mask |= 1U << (i++);
 
     token_pos.push_back(
         token{static_cast<std::uint16_t>(tok.data() - in.data()),
               static_cast<std::uint16_t>(tok.length())});
   });
-  tokens.resize(std::min(tokens.size(), kMaxTokens));
   ctx.phrases_ = get_sorted_phrases(tokens);
 
   trace("tokens: {}, phrases: {}, languages={}", tokens,
