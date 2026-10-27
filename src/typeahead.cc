@@ -201,7 +201,8 @@ street_idx_t typeahead::get_or_create_street(import_context& ctx,
 
 void typeahead::add_address(import_context& ctx,
                             osmium::TagList const& tags,
-                            osmium::Location const& l) {
+                            osmium::Location const& l,
+                            char const* associated_street) {
   auto const house_number = tags["addr:housenumber"];
   if (house_number == nullptr) {
     return;
@@ -213,6 +214,12 @@ void typeahead::add_address(import_context& ctx,
   auto street = tags["addr:street"];
   if (street == nullptr) {
     street = tags["addr:place"];
+  }
+
+  // Many French addresses carry only addr:housenumber: the street is the
+  // name of the associatedStreet relation they belong to.
+  if (street == nullptr) {
+    street = associated_street;
   }
   if (street == nullptr) {
     return;

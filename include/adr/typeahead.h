@@ -50,7 +50,8 @@ struct typeahead {
 
   void add_address(import_context&,
                    osmium::TagList const&,
-                   osmium::Location const&);
+                   osmium::Location const&,
+                   char const* associated_street = nullptr);
 
   street_idx_t add_street(import_context&,
                           osmium::TagList const&,

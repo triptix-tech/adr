@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="hand-written">
+  <!-- Rue Brémontier, Bordeaux: the street and its house numbers are tied by an associatedStreet relation. -->
+  <node id="1" version="1" lat="44.8262" lon="-0.5720"/>
+  <node id="2" version="1" lat="44.8270" lon="-0.5695"/>
+  <way id="10" version="1">
+    <nd ref="1"/>
+    <nd ref="2"/>
+    <tag k="highway" v="residential"/>
+    <tag k="name" v="Rue Brémontier"/>
+  </way>
+
+  <!-- A house number with no addr:street: the relation gives its street. -->
+  <node id="3" version="1" lat="44.8265635" lon="-0.5707207">
+    <tag k="addr:housenumber" v="36"/>
+  </node>
+
+  <!-- A building with a house number and no addr:street, also a member. -->
+  <node id="4" version="1" lat="44.8266" lon="-0.5712"/>
+  <node id="5" version="1" lat="44.8267" lon="-0.5712"/>
+  <node id="6" version="1" lat="44.8267" lon="-0.5711"/>
+  <way id="11" version="1">
+    <nd ref="4"/>
+    <nd ref="5"/>
+    <nd ref="6"/>
+    <nd ref="4"/>
+    <tag k="building" v="yes"/>
+    <tag k="addr:housenumber" v="40"/>
+  </way>
+
+  <!-- A member with its own addr:street keeps it. -->
+  <node id="7" version="1" lat="44.8264" lon="-0.5716">
+    <tag k="addr:housenumber" v="5"/>
+    <tag k="addr:street" v="Rue Saint-Genès"/>
+  </node>
+
+  <!-- A house number in no relation and with no street stays out, as before. -->
+  <node id="8" version="1" lat="44.8263" lon="-0.5718">
+    <tag k="addr:housenumber" v="99"/>
+  </node>
+
+  <relation id="20" version="1">
+    <member type="way" ref="10" role="street"/>
+    <member type="node" ref="3" role="house"/>
+    <member type="way" ref="11" role="house"/>
+    <member type="node" ref="7" role="house"/>
+    <tag k="type" v="associatedStreet"/>
+    <tag k="name" v="Rue Brémontier"/>
+  </relation>
+</osm>

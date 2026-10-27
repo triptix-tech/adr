@@ -39,13 +39,59 @@ namespace osm_mem = osmium::memory;
 
 namespace adr {
 
+// Street names of the "house" members of associatedStreet relations. Collected
+// in the first pass, then only read: lookups from the parallel second pass are
+// safe.
+struct associated_streets : public osmium::handler::Handler {
+  using id_map =
+      import_context::raw_hash_map<osmium::object_id_type, std::uint32_t>;
+
+  void relation(osmium::Relation const& r) {
+    auto const& tags = r.tags();
+    auto const name = tags["name"];
+    if (name == nullptr || !tags.has_tag("type", "associatedStreet")) {
+      return;
+    }
+    auto const name_idx = static_cast<std::uint32_t>(names_.size());
+    names_.emplace_back(name);
+    for (auto const& m : r.members()) {
+      if (std::string_view{m.role()} != "house") {
+        continue;
+      }
+      switch (m.type()) {
+        case osmium::item_type::node: nodes_.emplace(m.ref(), name_idx); break;
+        case osmium::item_type::way: ways_.emplace(m.ref(), name_idx); break;
+        case osmium::item_type::relation:
+          relations_.emplace(m.ref(), name_idx);
+          break;
+        default: break;
+      }
+    }
+  }
+
+  char const* get(id_map const& members,
+                  osmium::object_id_type const id) const {
+    auto const it = members.find(id);
+    return it == end(members) ? nullptr : names_[it->second].c_str();
+  }
+
+  std::vector<std::string> names_;
+  id_map nodes_, ways_, relations_;
+};
+
 struct feature_handler : public osmium::handler::Handler {
   feature_handler(area_database& area_db,
                   typeahead& t,
                   reverse& r,
                   import_context& ctx,
-                  std::mutex& areas_mutex)
-      : area_db_{area_db}, t_{t}, r_{r}, ctx_{ctx}, areas_mutex_{areas_mutex} {}
+                  std::mutex& areas_mutex,
+                  associated_streets const& associated)
+      : area_db_{area_db},
+        t_{t},
+        r_{r},
+        ctx_{ctx},
+        areas_mutex_{areas_mutex},
+        associated_{associated} {}
 
   void way(osmium::Way const& w) {
     if (!w.nodes().empty()) {
@@ -70,7 +116,8 @@ struct feature_handler : public osmium::handler::Handler {
         } else {
           t_.add_place(ctx_, w.id(), true, tags, w.nodes().front().location());
         }
-        t_.add_address(ctx_, tags, w.nodes().front().location());
+        t_.add_address(ctx_, tags, w.nodes().front().location(),
+                       associated_.get(associated_.ways_, w.id()));
       }
     }
   }
@@ -93,7 +140,8 @@ struct feature_handler : public osmium::handler::Handler {
         (!tags.has_tag("power", "substation") ||
          tags.has_tag("substation", "transmission") ||
          tags.has_tag("substation", "distribution"))) {
-      t_.add_address(ctx_, tags, n.location());
+      t_.add_address(ctx_, tags, n.location(),
+                     associated_.get(associated_.nodes_, n.id()));
       t_.add_place(ctx_, n.id(), false, tags, n.location());
     }
   }
@@ -145,7 +193,8 @@ struct feature_handler : public osmium::handler::Handler {
     }
     auto const loc = ring_it->front().location();
 
-    t_.add_address(ctx_, tags, loc);
+    t_.add_address(ctx_, tags, loc,
+                   associated_.get(associated_.relations_, a.orig_id()));
 
     if (tags.has_key("name")) {
       t_.add_place(ctx_, a.id(), true, tags, loc);
@@ -157,6 +206,7 @@ struct feature_handler : public osmium::handler::Handler {
   reverse& r_;
   import_context& ctx_;
   std::mutex& areas_mutex_;
+  associated_streets const& associated_;
 };
 
 void extract(std::filesystem::path const& in_path,
@@ -194,6 +244,7 @@ void extract(std::filesystem::path const& in_path,
                                          cista::mmap::protection::TMPFILE}};
   auto mp_manager = osm_area::MultipolygonManager<osm_area::Assembler>{
       osm_area::Assembler::config_type{}, filter};
+  auto associated = associated_streets{};
 
   {  // Collect node coordinates.
     pt->status("Load OSM / Pass 1");
@@ -203,7 +254,7 @@ void extract(std::filesystem::path const& in_path,
                                  osmium::io::read_meta::no};
     while (auto buffer = reader.read()) {
       pt->update(reader.offset());
-      osm::apply(buffer, node_idx_builder, mp_manager);
+      osm::apply(buffer, node_idx_builder, mp_manager, associated);
     }
     reader.close();
 
@@ -224,7 +275,7 @@ void extract(std::filesystem::path const& in_path,
   {  // Extract streets, places, and areas.
     pt->status("Load OSM / Pass 2");
     auto reader = osm_io::Reader{input_file};
-    auto handler = feature_handler{area_db, t, r, ctx, areas_mutex};
+    auto handler = feature_handler{area_db, t, r, ctx, areas_mutex, associated};
     oneapi::tbb::parallel_pipeline(
         std::thread::hardware_concurrency() * 4U,
         oneapi::tbb::make_filter<void, osm_mem::Buffer>(
